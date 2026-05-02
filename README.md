@@ -22,7 +22,7 @@ Giao diện (UI): Java Swing
 Kiến trúc: Phân tách rõ ràng giữa Entity (dữ liệu) và Service (logic xử lý), giúp dễ bảo trì và mở rộng.
 
 📁 Cấu trúc dự án (dự kiến)
-text
+```text
 ExpenseManager/
 ├── src/
 │   ├── main/
@@ -39,3 +39,4 @@ ExpenseManager/
 │   │   └── resources/           # (tùy chọn) file cấu hình, icons...
 │   └── test/java/...            # (mở rộng) Kiểm thử đơn vị
 └── pom.xml                      # File cấu hình Maven
+```
