@@ -1,7 +1,7 @@
-Quản Lý Chi Tiêu Mini (Expense Manager)
+# Quản Lý Chi Tiêu Mini (Expense Manager)
 Ứng dụng quản lý tài chính cá nhân đơn giản được xây dựng bằng ngôn ngữ Java và thư viện Swing. Đây là dự án nền tảng để thực hành tư duy Lập trình hướng đối tượng (OOP) và quản lý dự án với Maven.
 
-Chức năng chính
+# Chức năng chính
 Quản lý Thu nhập: Thêm các khoản thu từ nhiều nguồn khác nhau (lương, học bổng, tiền được cho...).
 
 Quản lý Chi tiêu: Ghi chép các khoản chi, mỗi khoản được gắn với một danh mục cụ thể (ăn uống, học tập, đi lại, giải trí...).
@@ -12,7 +12,7 @@ Tính toán số dư: Tự động tổng kết tổng thu, tổng chi và hiể
 
 Giao diện trực quan: Tương tác trực tiếp thông qua cửa sổ ứng dụng (Java Swing), dễ sử dụng cho người mới bắt đầu.
 
-🛠 Công nghệ sử dụng
+# 🛠 Công nghệ sử dụng
 Ngôn ngữ: Java (JDK 17+)
 
 Quản lý dự án: Apache Maven
@@ -21,7 +21,7 @@ Giao diện (UI): Java Swing
 
 Kiến trúc: Phân tách rõ ràng giữa Entity (dữ liệu) và Service (logic xử lý), giúp dễ bảo trì và mở rộng.
 
-📁 Cấu trúc dự án (dự kiến)
+# 📁 Cấu trúc dự án (dự kiến)
 ```text
 ExpenseManager/
 ├── src/
