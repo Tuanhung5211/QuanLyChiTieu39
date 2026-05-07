@@ -1,4 +1,4 @@
-package com.expensemanager.Service;
+package com.expensemanager.service;
 
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
@@ -6,17 +6,16 @@ import com.expensemanager.entity.Category;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class Statistics {
-    private List<Transaction> transactions;
+public class StatisticsService {
+    private FinanceService financeService;
 
-    public Statistics(List<Transaction> transactions) {
-        this.transactions = transactions;
+    public StatisticsService(FinanceService financeService) {
+        this.financeService = financeService;
     }
 
-    // THỐNG KÊ THEO THÁNG (OVERLOAD)
-    // Tính tổng tiền theo loại giao dịch (Thu hoặc Chi) trong một tháng cụ thể
+    // Overload 1: Tính tổng theo loại giao dịch trong một tháng
     public double calculateTotal(int month, int year, TransactionType type) {
-        return transactions.stream()
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getDateTime().getMonthValue() == month)
                 .filter(t -> t.getDateTime().getYear() == year)
                 .filter(t -> t.getType() == type)
@@ -24,29 +23,26 @@ public class Statistics {
                 .sum();
     }
 
-
-    // Tính tổng tất cả chi tiêu/thu nhập (không phân biệt loại) trong một tháng
+    // Overload 2: Tính tổng tất cả giao dịch trong tháng
     public double calculateTotal(int month, int year) {
-        return transactions.stream()
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getDateTime().getMonthValue() == month)
                 .filter(t -> t.getDateTime().getYear() == year)
                 .mapToDouble(Transaction::getAmount)
                 .sum();
     }
 
-    //  THỐNG KÊ THEO DANH MỤC (OVERLOAD)
-    // Tính tổng tiền của một danh mục cụ thể (Ví dụ: Ăn uống, Lương...)
+    // Overload 3: Tính tổng theo danh mục
     public double calculateByCategory(Category category) {
-        return transactions.stream()
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getCategory().getId().equals(category.getId()))
                 .mapToDouble(Transaction::getAmount)
                 .sum();
     }
 
-
-     // Tính tổng tiền của một danh mục trong một khoảng thời gian nhất định (tháng/năm)
+    // Overload 4: Tính tổng theo danh mục + tháng/năm
     public double calculateByCategory(Category category, int month, int year) {
-        return transactions.stream()
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getCategory().getId().equals(category.getId()))
                 .filter(t -> t.getDateTime().getMonthValue() == month)
                 .filter(t -> t.getDateTime().getYear() == year)
@@ -54,9 +50,28 @@ public class Statistics {
                 .sum();
     }
 
-    // phương thức hỗ trợ khác.
+    // Tổng thu tháng này
+    public double getTotalIncomeThisMonth() {
+        int month = java.time.LocalDate.now().getMonthValue();
+        int year = java.time.LocalDate.now().getYear();
+        return calculateTotal(month, year, TransactionType.INCOME);
+    }
+
+    // Tổng chi tháng này
+    public double getTotalExpenseThisMonth() {
+        int month = java.time.LocalDate.now().getMonthValue();
+        int year = java.time.LocalDate.now().getYear();
+        return calculateTotal(month, year, TransactionType.EXPENSE);
+    }
+
+    // Số dư tháng này
+    public double getBalanceThisMonth() {
+        return getTotalIncomeThisMonth() - getTotalExpenseThisMonth();
+    }
+
+    // Danh sách giao dịch giá trị cao
     public List<Transaction> getHighValueTransactions(double threshold) {
-        return transactions.stream()
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getAmount() > threshold)
                 .collect(Collectors.toList());
     }

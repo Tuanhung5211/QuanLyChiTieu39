@@ -1,45 +1,66 @@
 package com.expensemanager.ui;
 
+import com.expensemanager.database.DatabaseUtil;
+import com.expensemanager.entity.Transaction;
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.util.Vector;
+import java.util.List;
 
 public class HistoryPanel extends JPanel {
+
     private JTable table;
     private DefaultTableModel tableModel;
 
     public HistoryPanel() {
         setLayout(new BorderLayout());
+        setBackground(Color.WHITE);
 
-        // Sử dụng Vector theo đúng yêu cầu
-        Vector<String> columnNames = new Vector<>();
-        columnNames.add("ID");
-        columnNames.add("Ngày");
-        columnNames.add("Loại");
-        columnNames.add("Danh mục");
-        columnNames.add("Số tiền");
-        columnNames.add("Ghi chú");
+        // Tiêu đề
+        JLabel title = new JLabel("LỊCH SỬ GIAO DỊCH", SwingConstants.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 20));
+        title.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        add(title, BorderLayout.NORTH);
 
-        // Dữ liệu mẫu (Vector lồng Vector)
-        Vector<Vector<Object>> data = new Vector<>();
-        
-        tableModel = new DefaultTableModel(data, columnNames);
+        // Bảng
+        String[] columns = {"ID", "Số tiền", "Loại", "Danh mục", "Ngày giờ", "Ghi chú"};
+        tableModel = new DefaultTableModel(columns, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Không cho sửa trực tiếp trên bảng
+            }
+        };
         table = new JTable(tableModel);
-        
+        table.setRowHeight(25);
+        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 13));
+
         JScrollPane scrollPane = new JScrollPane(table);
-        add(new JLabel("LỊCH SỬ GIAO DỊCH", SwingConstants.CENTER), BorderLayout.NORTH);
         add(scrollPane, BorderLayout.CENTER);
+
+        // Nút làm mới
+        JButton btnRefresh = new JButton("Làm mới");
+        btnRefresh.addActionListener(e -> refreshData());
+        add(btnRefresh, BorderLayout.SOUTH);
+
+        refreshData();
     }
 
-    // Hàm gọi Service lấy list giao dịch đổ vào bảng
-    public void refreshTable() {
-        // tableModel.setRowCount(0); // Xóa data cũ
-        // List<Transaction> list = financeService.getAll();
-        // for(Transaction t : list) {
-        //     Vector<Object> row = new Vector<>();
-        //     row.add(t.getId()); ...
-        //     tableModel.addRow(row);
-        // }
+    public void refreshData() {
+        // Xóa dữ liệu cũ
+        tableModel.setRowCount(0);
+
+        List<Transaction> transactions = DatabaseUtil.getAllTransactions();
+        for (Transaction t : transactions) {
+            Object[] row = {
+                    t.getId(),
+                    String.format("%,.0f VND", t.getAmount()),
+                    t.getType() == com.expensemanager.entity.TransactionType.INCOME ? "Thu" : "Chi",
+                    t.getCategory().getName(),
+                    t.getDateTime().toString().replace("T", " "),
+                    t.getNote()
+            };
+            tableModel.addRow(row);
+        }
     }
 }
