@@ -8,7 +8,6 @@ import java.util.List;
 
 public class DatabaseUtil {
 
-    // Lấy kết nối
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(
                 DatabaseConfig.DB_URL,
@@ -17,7 +16,7 @@ public class DatabaseUtil {
         );
     }
 
-    // ===== CRUD cho Category =====
+    // ========== CATEGORIES ==========
     public static void insertCategory(Category category) {
         String sql = "INSERT INTO categories (id, name, type) VALUES (?, ?, ?)";
         try (Connection conn = getConnection();
@@ -49,7 +48,7 @@ public class DatabaseUtil {
         return list;
     }
 
-    // ===== CRUD cho Transaction =====
+    // ========== TRANSACTIONS ==========
     public static void insertTransaction(Transaction transaction) {
         String sql = "INSERT INTO transactions (id, amount, type, category_id, date_time, note) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
@@ -119,7 +118,7 @@ public class DatabaseUtil {
         }
     }
 
-    // ===== CRUD cho Budget =====
+    // ========== BUDGETS ==========
     public static void insertBudget(Budget budget) {
         String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();

@@ -16,11 +16,10 @@ public class Transaction {
         this.amount = amount;
         this.type = type;
         this.category = category;
-        this.dateTime = LocalDateTime.now(); // tự động lấy ngày giờ hiện tại
+        this.dateTime = LocalDateTime.now();
         this.note = note;
     }
 
-    // Getter
     public String getId() { return id; }
     public double getAmount() { return amount; }
     public TransactionType getType() { return type; }
@@ -28,7 +27,6 @@ public class Transaction {
     public LocalDateTime getDateTime() { return dateTime; }
     public String getNote() { return note; }
 
-    // Setter
     public void setAmount(double amount) { this.amount = amount; }
     public void setNote(String note) { this.note = note; }
 

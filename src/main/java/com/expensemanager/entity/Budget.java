@@ -4,8 +4,8 @@ public class Budget {
     private String id;
     private int month;
     private int year;
-    private double limit;    // hạn mức
-    private double spent;    // đã chi
+    private double limit;
+    private double spent;
 
     public Budget(String id, int month, int year, double limit) {
         this.id = id;
@@ -25,14 +25,6 @@ public class Budget {
     public void setSpent(double spent) { this.spent = spent; }
 
     public void addSpent(double amount) { this.spent += amount; }
-
     public boolean isOverBudget() { return spent > limit; }
-
     public double getRemaining() { return limit - spent; }
-
-    @Override
-    public String toString() {
-        return String.format("Ngân sách %d/%d: %,.0f / %,.0f VND (Còn: %,.0f)",
-                month, year, spent, limit, getRemaining());
-    }
 }
