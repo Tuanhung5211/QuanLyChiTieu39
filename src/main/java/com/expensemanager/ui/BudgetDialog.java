@@ -11,18 +11,29 @@ public class BudgetDialog extends JDialog {
     public BudgetDialog(JFrame parent, BudgetManager budgetManager) {
         super(parent, "Thiết lập ngân sách tháng", true);
         this.budgetManager = budgetManager;
-        setSize(300, 150);
+        setSize(350, 200);
         setLocationRelativeTo(parent);
-        setLayout(new GridLayout(3, 2, 10, 10));
+        getContentPane().setBackground(new Color(30, 30, 30));
+        setLayout(new BorderLayout());
 
-        add(new JLabel("Hạn mức (VND):"));
+        JPanel p = new JPanel(new GridLayout(2, 1, 10, 10));
+        p.setOpaque(false);
+        p.setBorder(BorderFactory.createEmptyBorder(20, 30, 10, 30));
+
+        JLabel lbl = new JLabel("Hạn mức (VND):");
+        lbl.setForeground(Color.WHITE);
         txtLimit = new JTextField();
-        add(txtLimit);
+        txtLimit.setBackground(new Color(45, 45, 45));
+        txtLimit.setForeground(Color.WHITE);
+        txtLimit.setCaretColor(Color.WHITE);
 
+        p.add(lbl); p.add(txtLimit);
+        add(p, BorderLayout.CENTER);
+
+        JPanel bp = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        bp.setOpaque(false);
         JButton btnSave = new JButton("Lưu");
         JButton btnCancel = new JButton("Hủy");
-        add(btnSave);
-        add(btnCancel);
 
         btnSave.addActionListener(e -> {
             try {
@@ -32,12 +43,14 @@ public class BudgetDialog extends JDialog {
                 budgetManager.setBudget(month, year, limit);
                 JOptionPane.showMessageDialog(this, "Đã thiết lập ngân sách!");
                 dispose();
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!");
             }
         });
+
         btnCancel.addActionListener(e -> dispose());
+
+        bp.add(btnSave); bp.add(btnCancel);
+        add(bp, BorderLayout.SOUTH);
     }
 }
