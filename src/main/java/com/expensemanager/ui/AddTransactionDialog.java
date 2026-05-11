@@ -1,152 +1,132 @@
 package com.expensemanager.ui;
 
 import com.expensemanager.database.DatabaseUtil;
-import com.expensemanager.entity.*;
+import com.expensemanager.entity.Category;
+import com.expensemanager.entity.Transaction;
+import com.expensemanager.entity.TransactionType;
+
 import javax.swing.*;
 import java.awt.*;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.ResolverStyle;
 import java.util.List;
 import java.util.UUID;
 
 public class AddTransactionDialog extends JDialog {
-    private JTextField txtAmount, txtNote, txtDate;
+    private JTextField txtAmount, txtNote;
     private JComboBox<Category> cmbCategory;
     private JRadioButton rbIncome, rbExpense;
     private MainFrame mainFrame;
-    private Transaction editTransaction;
 
     public AddTransactionDialog(MainFrame mainFrame) {
-        this(mainFrame, null);
-    }
-
-    public AddTransactionDialog(MainFrame mainFrame, Transaction t) {
-        super(mainFrame, t == null ? "Thêm giao dịch mới" : "Sửa giao dịch", true);
+        super(mainFrame, "Thêm giao dịch mới", true);
         this.mainFrame = mainFrame;
-        this.editTransaction = t;
-        setSize(420, 520);
+        setSize(400, 350);
         setLocationRelativeTo(mainFrame);
-        getContentPane().setBackground(new Color(30, 30, 30));
-        setLayout(new BorderLayout());
 
-        JPanel p = new JPanel(new GridLayout(10, 1, 5, 2));
-        p.setOpaque(false);
-        p.setBorder(BorderFactory.createEmptyBorder(25, 45, 10, 45));
+        JPanel panel = new JPanel(new GridLayout(6, 2, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        txtDate = createField(LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-        txtAmount = createField("");
-        txtNote = createField("");
-        
-        cmbCategory = new JComboBox<>();
-        loadCategories();
-
+        // Loại giao dịch (Thu / Chi)
+        panel.add(new JLabel("Loại giao dịch:"));
         rbIncome = new JRadioButton("Thu nhập");
         rbExpense = new JRadioButton("Chi tiêu", true);
-        rbIncome.setForeground(Color.WHITE);
-        rbExpense.setForeground(Color.WHITE);
-        rbIncome.setOpaque(false);
-        rbExpense.setOpaque(false);
-        ButtonGroup g = new ButtonGroup();
-        g.add(rbIncome);
-        g.add(rbExpense);
-        JPanel tp = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        tp.setOpaque(false);
-        tp.add(rbIncome);
-        tp.add(rbExpense);
+        ButtonGroup group = new ButtonGroup();
+        group.add(rbIncome);
+        group.add(rbExpense);
+        JPanel typePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        typePanel.add(rbIncome);
+        typePanel.add(rbExpense);
+        panel.add(typePanel);
 
-        if (editTransaction != null) {
-            txtDate.setText(editTransaction.getDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            txtAmount.setText(String.format("%.0f", editTransaction.getAmount()));
-            txtNote.setText(editTransaction.getNote());
-            if (editTransaction.getType() == TransactionType.INCOME) rbIncome.setSelected(true);
-            
-            for (int i = 0; i < cmbCategory.getItemCount(); i++) {
-                if (cmbCategory.getItemAt(i).getId().equals(editTransaction.getCategory().getId())) {
-                    cmbCategory.setSelectedIndex(i);
-                    break;
-                }
-            }
-        }
+        // Số tiền
+        panel.add(new JLabel("Số tiền (VND):"));
+        txtAmount = new JTextField();
+        panel.add(txtAmount);
 
-        p.add(label("Ngày (dd/MM/yyyy):"));
-        p.add(txtDate);
-        p.add(label("Số tiền (VND):"));
-        p.add(txtAmount);
-        p.add(label("Loại giao dịch:"));
-        p.add(tp);
-        p.add(label("Danh mục:"));
-        p.add(cmbCategory);
-        p.add(label("Ghi chú:"));
-        p.add(txtNote);
-        add(p, BorderLayout.CENTER);
+        // Danh mục
+        panel.add(new JLabel("Danh mục:"));
+        cmbCategory = new JComboBox<>();
+        loadCategories();
+        panel.add(cmbCategory);
 
-        JPanel bp = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 20));
-        bp.setOpaque(false);
-        JButton btn = new JButton(editTransaction == null ? "LƯU GIAO DỊCH" : "CẬP NHẬT GIAO DỊCH");
-        btn.setPreferredSize(new Dimension(250, 42));
-        btn.setBackground(new Color(46, 204, 113));
-        btn.setForeground(Color.BLACK);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btn.addActionListener(e -> save());
-        bp.add(btn);
-        add(bp, BorderLayout.SOUTH);
+        // Ghi chú
+        panel.add(new JLabel("Ghi chú:"));
+        txtNote = new JTextField();
+        panel.add(txtNote);
+
+        // Nút
+        JButton btnSave = new JButton("Lưu");
+        btnSave.addActionListener(e -> saveTransaction());
+        JButton btnCancel = new JButton("Hủy");
+        btnCancel.addActionListener(e -> dispose());
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(btnSave);
+        buttonPanel.add(btnCancel);
+        panel.add(new JLabel()); // ô trống
+        panel.add(buttonPanel);
+
+        add(panel);
+        setVisible(true);
     }
 
     private void loadCategories() {
-        List<Category> categories = DatabaseUtil.getAllCategories();
-        cmbCategory.removeAllItems();
-        for (Category c : categories) {
-            cmbCategory.addItem(c);
+        try {
+            List<Category> categories = DatabaseUtil.getAllCategories();
+            cmbCategory.removeAllItems();
+            if (categories != null) {
+                for (Category c : categories) {
+                    cmbCategory.addItem(c);
+                }
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                    "Không thể tải danh mục từ database: " + e.getMessage(),
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private JTextField createField(String t) {
-        JTextField f = new JTextField(t);
-        f.setBackground(new Color(50, 50, 50));
-        f.setForeground(Color.WHITE);
-        f.setCaretColor(Color.WHITE);
-        f.setBorder(BorderFactory.createLineBorder(new Color(70, 70, 70)));
-        return f;
-    }
-
-    private JLabel label(String t) {
-        JLabel l = new JLabel(t);
-        l.setForeground(Color.WHITE);
-        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        return l;
-    }
-
-    private void save() {
+    private void saveTransaction() {
         try {
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
-            LocalDate d = LocalDate.parse(txtDate.getText().trim(), dtf);
-            double a = Double.parseDouble(txtAmount.getText().trim());
-            TransactionType type = rbIncome.isSelected() ? TransactionType.INCOME : TransactionType.EXPENSE;
-            Category cat = (Category) cmbCategory.getSelectedItem();
-
-            if (cat == null) {
-                JOptionPane.showMessageDialog(this, "Vui lòng thêm danh mục trước!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            double amount = Double.parseDouble(txtAmount.getText().trim());
+            if (amount <= 0) {
+                JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!", "Lỗi", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
-            if (editTransaction == null) {
-                Transaction t = new Transaction(UUID.randomUUID().toString().substring(0, 8), a, type, cat, txtNote.getText());
-                t.setDateTime(d.atStartOfDay());
+            TransactionType type = rbIncome.isSelected() ? TransactionType.INCOME : TransactionType.EXPENSE;
+            Category category = (Category) cmbCategory.getSelectedItem();
+            if (category == null) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn danh mục!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            String note = txtNote.getText().trim();
+            String id = UUID.randomUUID().toString().substring(0, 8); // Tạo ID ngắn ngẫu nhiên
+
+            Transaction t = new Transaction(id, amount, type, category, note);
+
+            // Thêm vào database
+            try {
                 DatabaseUtil.insertTransaction(t);
-            } else {
-                editTransaction.setAmount(a);
-                editTransaction.setNote(txtNote.getText());
-                editTransaction.setDateTime(d.atStartOfDay());
-                // Logic cập nhật đối tượng đã tồn tại trong Database
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                        "Lỗi khi lưu giao dịch vào database: " + e.getMessage(),
+                        "Lỗi Database", JOptionPane.ERROR_MESSAGE);
+                return;
             }
 
-            if (mainFrame != null) {
-                mainFrame.refreshAllPanels();
-            }
+            JOptionPane.showMessageDialog(this, "Thêm giao dịch thành công!");
             dispose();
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Lỗi: Kiểm tra lại định dạng ngày hoặc số tiền!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+
+            // Yêu cầu MainFrame làm mới các panel
+            if (mainFrame != null) {
+                try {
+                    mainFrame.refreshAllPanels();
+                } catch (Exception e) {
+                    System.err.println("Lỗi khi làm mới giao diện: " + e.getMessage());
+                }
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
