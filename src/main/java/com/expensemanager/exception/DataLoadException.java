@@ -1,9 +1,15 @@
 package com.expensemanager.exception;
 
-/**
- * Ngoại lệ ném ra khi có lỗi đọc/ghi dữ liệu từ file.
- */
 public class DataLoadException extends Exception {
+
+    public DataLoadException() {
+        super("Lỗi khi tải dữ liệu");
+    }
+
+    public DataLoadException(String message) {
+        super(message);
+    }
+
     public DataLoadException(String message, Throwable cause) {
         super(message, cause);
     }
