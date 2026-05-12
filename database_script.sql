@@ -24,3 +24,16 @@ CREATE TABLE IF NOT EXISTS transactions (
     note TEXT,
     FOREIGN KEY (category_id) REFERENCES categories(id)
     );
+CREATE TABLE IF NOT EXISTS users (
+                                     id VARCHAR(20) PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    nickname VARCHAR(100),
+    avatar VARCHAR(10) DEFAULT '👤'
+    );
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(10) PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

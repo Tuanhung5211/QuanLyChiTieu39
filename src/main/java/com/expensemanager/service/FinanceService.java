@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 package com.expensemanager.service;
 
 import com.expensemanager.database.DatabaseUtil;
@@ -16,7 +15,7 @@ import java.util.stream.Collectors;
 
 public class FinanceService {
     private List<Transaction> transactionList;
-    private Map<String, Category> categoryMap; // HashMap quản lý danh mục theo id
+    private Map<String, Category> categoryMap;
     private static final String JSON_FILE_PATH = "transactions.json";
 
     public FinanceService() {
@@ -25,20 +24,29 @@ public class FinanceService {
         loadInitialData();
     }
 
-    /**
-     * Tải dữ liệu ban đầu: danh mục từ DB, giao dịch từ JSON (nếu có).
-     */
     private void loadInitialData() {
-        // Tải danh mục từ database và đưa vào HashMap
-        List<Category> categories = DatabaseUtil.getAllCategories();
-        for (Category c : categories) {
-            categoryMap.put(c.getId(), c);
+        // 1. Tải danh mục từ database (dùng chung, không cần userId)
+        try {
+            List<Category> categories = DatabaseUtil.getAllCategories();
+            if (categories != null) {
+                for (Category c : categories) {
+                    if (c != null) {
+                        categoryMap.put(c.getId(), c);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Không thể tải danh mục từ database: " + e.getMessage());
         }
 
-        // Tải giao dịch từ file JSON (nếu có)
+        // 2. Tải giao dịch từ file JSON (dữ liệu tạm, sau khi đăng nhập sẽ đồng bộ từ DB)
         try {
             List<Transaction> savedTransactions = JsonUtil.loadFromJson(JSON_FILE_PATH);
-            transactionList = savedTransactions;
+            if (savedTransactions != null) {
+                transactionList = savedTransactions;
+            } else {
+                transactionList = new ArrayList<>();
+            }
         } catch (DataLoadException e) {
             System.err.println("Không thể tải file JSON, khởi tạo danh sách rỗng: " + e.getMessage());
             transactionList = new ArrayList<>();
@@ -47,92 +55,79 @@ public class FinanceService {
 
     // ========== CÁC PHƯƠNG THỨC THAO TÁC VỚI GIAO DỊCH ==========
 
-    /**
-     * Thêm giao dịch mới (vào DB, file JSON và danh sách trong bộ nhớ).
-     */
     public void addTransaction(Transaction transaction) {
-        DatabaseUtil.insertTransaction(transaction); // Lưu vào DB
-        transactionList.add(transaction);            // Thêm vào bộ nhớ
-        saveToFile();                                // Lưu ra file
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) {
+            System.err.println("Lỗi: Chưa đăng nhập, không thể thêm giao dịch.");
+            return;
+        }
+        try {
+            DatabaseUtil.insertTransaction(transaction, userId);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi thêm giao dịch vào database: " + e.getMessage());
+        }
+        transactionList.add(transaction);
+        saveToFile();
     }
 
-    /**
-     * Lấy tất cả giao dịch.
-     */
     public List<Transaction> getAllTransactions() {
         return transactionList;
     }
 
-    /**
-     * Lọc giao dịch theo loại (INCOME/EXPENSE) - Sử dụng Stream/Lambda.
-     */
     public List<Transaction> getTransactionsByType(TransactionType type) {
         return transactionList.stream()
-                .filter(t -> t.getType() == type)
+                .filter(t -> t != null && t.getType() == type)
                 .collect(Collectors.toList());
     }
 
     // ========== CÁC PHƯƠNG THỨC TÍNH TOÁN TỔNG QUAN ==========
 
-    /**
-     * Tính tổng thu nhập - Sử dụng Stream/Lambda.
-     */
     public double getTotalIncome() {
         return transactionList.stream()
-                .filter(t -> t.getType() == TransactionType.INCOME)
+                .filter(t -> t != null && t.getType() == TransactionType.INCOME)
                 .mapToDouble(Transaction::getAmount)
                 .sum();
     }
 
-    /**
-     * Tính tổng chi tiêu - Sử dụng Stream/Lambda.
-     */
     public double getTotalExpense() {
         return transactionList.stream()
-                .filter(t -> t.getType() == TransactionType.EXPENSE)
+                .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
                 .mapToDouble(Transaction::getAmount)
                 .sum();
     }
 
-    /**
-     * Tính số dư hiện tại.
-     */
     public double getBalance() {
         return getTotalIncome() - getTotalExpense();
     }
 
     // ========== QUẢN LÝ DANH MỤC (HashMap) ==========
 
-    /**
-     * Lấy danh mục theo id từ HashMap.
-     */
     public Category getCategoryById(String id) {
         return categoryMap.get(id);
     }
 
-    /**
-     * Lấy tất cả danh mục từ HashMap.
-     */
     public List<Category> getAllCategories() {
         return new ArrayList<>(categoryMap.values());
     }
 
-    /**
-     * Làm mới danh mục từ database vào HashMap.
-     */
     public void refreshCategories() {
-        List<Category> categories = DatabaseUtil.getAllCategories();
-        categoryMap.clear();
-        for (Category c : categories) {
-            categoryMap.put(c.getId(), c);
+        try {
+            List<Category> categories = DatabaseUtil.getAllCategories();
+            categoryMap.clear();
+            if (categories != null) {
+                for (Category c : categories) {
+                    if (c != null) {
+                        categoryMap.put(c.getId(), c);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Không thể làm mới danh mục: " + e.getMessage());
         }
     }
 
     // ========== HỖ TRỢ LƯU FILE ==========
 
-    /**
-     * Lưu danh sách giao dịch hiện tại ra file JSON.
-     */
     private void saveToFile() {
         try {
             JsonUtil.saveToJson(transactionList, JSON_FILE_PATH);
@@ -141,164 +136,11 @@ public class FinanceService {
         }
     }
 
-    /**
-     * Đồng bộ dữ liệu: lấy toàn bộ giao dịch từ DB và ghi đè vào danh sách + file.
-     */
     public void syncFromDatabase() {
-        List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions();
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) return;
+        List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions(userId);
         this.transactionList = dbTransactions;
         saveToFile();
     }
-=======
-package com.expensemanager.service;
-
-import com.expensemanager.database.DatabaseUtil;
-import com.expensemanager.entity.Category;
-import com.expensemanager.entity.Transaction;
-import com.expensemanager.entity.TransactionType;
-import com.expensemanager.exception.DataLoadException;
-import com.expensemanager.util.JsonUtil;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-public class FinanceService {
-    private List<Transaction> transactionList;
-    private Map<String, Category> categoryMap; // HashMap quản lý danh mục theo id
-    private static final String JSON_FILE_PATH = "transactions.json";
-
-    public FinanceService() {
-        transactionList = new ArrayList<>();
-        categoryMap = new HashMap<>();
-        loadInitialData();
-    }
-
-    /**
-     * Tải dữ liệu ban đầu: danh mục từ DB, giao dịch từ JSON (nếu có).
-     */
-    private void loadInitialData() {
-        // Tải danh mục từ database và đưa vào HashMap
-        List<Category> categories = DatabaseUtil.getAllCategories();
-        for (Category c : categories) {
-            categoryMap.put(c.getId(), c);
-        }
-
-        // Tải giao dịch từ file JSON (nếu có)
-        try {
-            List<Transaction> savedTransactions = JsonUtil.loadFromJson(JSON_FILE_PATH);
-            transactionList = savedTransactions;
-        } catch (DataLoadException e) {
-            System.err.println("Không thể tải file JSON, khởi tạo danh sách rỗng: " + e.getMessage());
-            transactionList = new ArrayList<>();
-        }
-    }
-
-    // ========== CÁC PHƯƠNG THỨC THAO TÁC VỚI GIAO DỊCH ==========
-
-    /**
-     * Thêm giao dịch mới (vào DB, file JSON và danh sách trong bộ nhớ).
-     */
-    public void addTransaction(Transaction transaction) {
-        DatabaseUtil.insertTransaction(transaction); // Lưu vào DB
-        transactionList.add(transaction);            // Thêm vào bộ nhớ
-        saveToFile();                                // Lưu ra file
-    }
-
-    /**
-     * Lấy tất cả giao dịch.
-     */
-    public List<Transaction> getAllTransactions() {
-        return transactionList;
-    }
-
-    /**
-     * Lọc giao dịch theo loại (INCOME/EXPENSE) - Sử dụng Stream/Lambda.
-     */
-    public List<Transaction> getTransactionsByType(TransactionType type) {
-        return transactionList.stream()
-                .filter(t -> t.getType() == type)
-                .collect(Collectors.toList());
-    }
-
-    // ========== CÁC PHƯƠNG THỨC TÍNH TOÁN TỔNG QUAN ==========
-
-    /**
-     * Tính tổng thu nhập - Sử dụng Stream/Lambda.
-     */
-    public double getTotalIncome() {
-        return transactionList.stream()
-                .filter(t -> t.getType() == TransactionType.INCOME)
-                .mapToDouble(Transaction::getAmount)
-                .sum();
-    }
-
-    /**
-     * Tính tổng chi tiêu - Sử dụng Stream/Lambda.
-     */
-    public double getTotalExpense() {
-        return transactionList.stream()
-                .filter(t -> t.getType() == TransactionType.EXPENSE)
-                .mapToDouble(Transaction::getAmount)
-                .sum();
-    }
-
-    /**
-     * Tính số dư hiện tại.
-     */
-    public double getBalance() {
-        return getTotalIncome() - getTotalExpense();
-    }
-
-    // ========== QUẢN LÝ DANH MỤC (HashMap) ==========
-
-    /**
-     * Lấy danh mục theo id từ HashMap.
-     */
-    public Category getCategoryById(String id) {
-        return categoryMap.get(id);
-    }
-
-    /**
-     * Lấy tất cả danh mục từ HashMap.
-     */
-    public List<Category> getAllCategories() {
-        return new ArrayList<>(categoryMap.values());
-    }
-
-    /**
-     * Làm mới danh mục từ database vào HashMap.
-     */
-    public void refreshCategories() {
-        List<Category> categories = DatabaseUtil.getAllCategories();
-        categoryMap.clear();
-        for (Category c : categories) {
-            categoryMap.put(c.getId(), c);
-        }
-    }
-
-    // ========== HỖ TRỢ LƯU FILE ==========
-
-    /**
-     * Lưu danh sách giao dịch hiện tại ra file JSON.
-     */
-    private void saveToFile() {
-        try {
-            JsonUtil.saveToJson(transactionList, JSON_FILE_PATH);
-        } catch (DataLoadException e) {
-            System.err.println("Lỗi khi lưu file JSON: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Đồng bộ dữ liệu: lấy toàn bộ giao dịch từ DB và ghi đè vào danh sách + file.
-     */
-    public void syncFromDatabase() {
-        List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions();
-        this.transactionList = dbTransactions;
-        saveToFile();
-    }
->>>>>>> eca639ab7522996ea3bb57cfede15bde0dc01d01
 }
