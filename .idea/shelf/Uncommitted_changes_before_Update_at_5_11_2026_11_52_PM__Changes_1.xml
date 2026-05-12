@@ -1,0 +1,49 @@
+<changelist name="Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1" date="1778518402240" recycled="true" deleted="true">
+  <option name="PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/shelved.patch" />
+  <option name="DESCRIPTION" value="Uncommitted changes before Update at 5/11/2026 11:52 PM [Changes]" />
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/entity/Budget.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/entity/Budget.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/Budget.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/util/JsonUtil.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/util/JsonUtil.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/JsonUtil.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/service/FinanceService.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/service/FinanceService.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/FinanceService.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/database/DatabaseUtil.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/database/DatabaseUtil.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/DatabaseUtil.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/entity/Transaction.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/entity/Transaction.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/Transaction.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/entity/Category.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/entity/Category.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/Category.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/service/StatisticsService.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/service/StatisticsService.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/StatisticsService.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/service/BudgetManager.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/service/BudgetManager.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/BudgetManager.class" />
+  </binary>
+  <binary>
+    <option name="BEFORE_PATH" value="target/classes/com/expensemanager/util/JsonUtil$1.class" />
+    <option name="AFTER_PATH" value="target/classes/com/expensemanager/util/JsonUtil$1.class" />
+    <option name="SHELVED_PATH" value="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Update_at_5_11_2026_11_52_PM_[Changes]1/JsonUtil$1.class" />
+  </binary>
+</changelist>
