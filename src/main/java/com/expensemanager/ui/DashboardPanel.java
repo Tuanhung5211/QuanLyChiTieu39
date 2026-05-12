@@ -5,6 +5,7 @@ import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
+import com.expensemanager.service.SessionManager;
 import com.expensemanager.service.StatisticsService;
 
 import javax.swing.*;
@@ -19,38 +20,37 @@ public class DashboardPanel extends JPanel {
 
     private JLabel lblBalance, lblTotalIncome, lblTotalExpense;
     private JLabel lblBudgetStatus;
-    private JLabel lblIncomeThisMonth, lblExpenseThisMonth, lblBalanceThisMonth;
 
     public DashboardPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        // Khởi tạo service (có thể lấy từ MainFrame nếu muốn dùng chung, nhưng tạm thời tạo mới)
         financeService = new FinanceService();
         statsService = new StatisticsService(financeService);
         budgetManager = new BudgetManager(financeService);
 
         setLayout(new BorderLayout());
-        setBackground(new Color(30, 30, 30)); // Dark background
+        setBackground(new Color(30, 30, 30));
 
-        // Tiêu đề
         JLabel title = new JLabel("DASHBOARD", SwingConstants.CENTER);
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
         title.setForeground(Color.WHITE);
         title.setBorder(BorderFactory.createEmptyBorder(20, 0, 20, 0));
         add(title, BorderLayout.NORTH);
 
-        // Panel chứa các thẻ thông tin (Grid 2x2)
         JPanel content = new JPanel(new GridLayout(2, 2, 15, 15));
         content.setBackground(new Color(30, 30, 30));
         content.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
 
-        content.add(createCard("Số dư hiện tại", lblBalance = new JLabel("0 VND", SwingConstants.CENTER)));
-        content.add(createCard("Tổng thu", lblTotalIncome = new JLabel("0 VND", SwingConstants.CENTER)));
-        content.add(createCard("Tổng chi", lblTotalExpense = new JLabel("0 VND", SwingConstants.CENTER)));
-        content.add(createCard("Ngân sách", lblBudgetStatus = new JLabel("Chưa đặt ngân sách", SwingConstants.CENTER)));
+        lblBalance = new JLabel("0 VND", SwingConstants.CENTER);
+        content.add(createCard("Số dư hiện tại", lblBalance));
+        lblTotalIncome = new JLabel("0 VND", SwingConstants.CENTER);
+        content.add(createCard("Tổng thu", lblTotalIncome));
+        lblTotalExpense = new JLabel("0 VND", SwingConstants.CENTER);
+        content.add(createCard("Tổng chi", lblTotalExpense));
+        lblBudgetStatus = new JLabel("Chưa đặt ngân sách", SwingConstants.CENTER);
+        content.add(createCard("Ngân sách", lblBudgetStatus));
 
         add(content, BorderLayout.CENTER);
 
-        // Thêm nút "＋ Thêm giao dịch" ở dưới cùng
         JButton btnAddTransaction = new JButton("＋ Thêm giao dịch");
         btnAddTransaction.setFont(new Font("Segoe UI", Font.BOLD, 16));
         btnAddTransaction.setForeground(Color.WHITE);
@@ -58,10 +58,7 @@ public class DashboardPanel extends JPanel {
         btnAddTransaction.setFocusPainted(false);
         btnAddTransaction.setBorder(BorderFactory.createEmptyBorder(12, 30, 12, 30));
         btnAddTransaction.addActionListener(e -> {
-            // Mở hộp thoại thêm giao dịch
-            AddTransactionDialog dialog = new AddTransactionDialog(mainFrame);
-            dialog.setVisible(true);
-            // Sau khi đóng dialog, làm mới dữ liệu
+            new AddTransactionDialog(mainFrame).setVisible(true);
             refreshData();
         });
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -91,8 +88,13 @@ public class DashboardPanel extends JPanel {
     }
 
     public void refreshData() {
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) {
+            lblBalance.setText("Chưa đăng nhập");
+            return;
+        }
         try {
-            List<Transaction> transactions = DatabaseUtil.getAllTransactions();
+            List<Transaction> transactions = DatabaseUtil.getAllTransactions(userId);
 
             double totalIncome = transactions.stream()
                     .filter(t -> t.getType() == TransactionType.INCOME)

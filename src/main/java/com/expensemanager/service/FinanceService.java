@@ -25,7 +25,7 @@ public class FinanceService {
     }
 
     private void loadInitialData() {
-        // 1. Tải danh mục từ database
+        // 1. Tải danh mục từ database (dùng chung, không cần userId)
         try {
             List<Category> categories = DatabaseUtil.getAllCategories();
             if (categories != null) {
@@ -37,10 +37,9 @@ public class FinanceService {
             }
         } catch (Exception e) {
             System.err.println("Không thể tải danh mục từ database: " + e.getMessage());
-            // Nếu database chưa có dữ liệu, ta vẫn tiếp tục với HashMap rỗng
         }
 
-        // 2. Tải giao dịch từ file JSON (nếu có)
+        // 2. Tải giao dịch từ file JSON (dữ liệu tạm, sau khi đăng nhập sẽ đồng bộ từ DB)
         try {
             List<Transaction> savedTransactions = JsonUtil.loadFromJson(JSON_FILE_PATH);
             if (savedTransactions != null) {
@@ -57,8 +56,13 @@ public class FinanceService {
     // ========== CÁC PHƯƠNG THỨC THAO TÁC VỚI GIAO DỊCH ==========
 
     public void addTransaction(Transaction transaction) {
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) {
+            System.err.println("Lỗi: Chưa đăng nhập, không thể thêm giao dịch.");
+            return;
+        }
         try {
-            DatabaseUtil.insertTransaction(transaction);
+            DatabaseUtil.insertTransaction(transaction, userId);
         } catch (Exception e) {
             System.err.println("Lỗi khi thêm giao dịch vào database: " + e.getMessage());
         }
@@ -133,14 +137,10 @@ public class FinanceService {
     }
 
     public void syncFromDatabase() {
-        try {
-            List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions();
-            if (dbTransactions != null) {
-                this.transactionList = dbTransactions;
-                saveToFile();
-            }
-        } catch (Exception e) {
-            System.err.println("Lỗi khi đồng bộ từ database: " + e.getMessage());
-        }
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) return;
+        List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions(userId);
+        this.transactionList = dbTransactions;
+        saveToFile();
     }
 }
