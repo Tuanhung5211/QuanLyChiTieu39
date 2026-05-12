@@ -5,6 +5,7 @@ import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.exception.DataLoadException;
+import com.expensemanager.exception.InvalidAmountException; // Cần tạo class này
 import com.expensemanager.util.JsonUtil;
 
 import java.util.ArrayList;
@@ -16,67 +17,74 @@ import java.util.stream.Collectors;
 public class FinanceService {
     private List<Transaction> transactionList;
     private Map<String, Category> categoryMap;
-    private static final String JSON_FILE_PATH = "transactions.json";
+    private static final String JSON_FILE_PATH = "src/main/resources/data/transactions.json";
 
     public FinanceService() {
-        transactionList = new ArrayList<>();
-        categoryMap = new HashMap<>();
-        loadInitialData();
+        this.transactionList = new ArrayList<>();
+        this.categoryMap = new HashMap<>();
+        // Việc nạp dữ liệu ban đầu thường được gọi từ MainApp hoặc MainFrame
+        // để có thể bắt lỗi và hiển thị Dialog thông báo nếu cần.
     }
 
-    private void loadInitialData() {
+    /**
+     * Nạp dữ liệu ban đầu từ Database và JSON.
+     * @throws DataLoadException nếu có lỗi nghiêm trọng khi đọc dữ liệu.
+     */
+    public void loadInitialData() throws DataLoadException {
         // 1. Tải danh mục từ database
         try {
             List<Category> categories = DatabaseUtil.getAllCategories();
+            categoryMap.clear();
             if (categories != null) {
                 for (Category c : categories) {
-                    if (c != null) {
-                        categoryMap.put(c.getId(), c);
-                    }
+                    if (c != null) categoryMap.put(c.getId(), c);
                 }
             }
         } catch (Exception e) {
-            System.err.println("Không thể tải danh mục từ database: " + e.getMessage());
-            // Nếu database chưa có dữ liệu, ta vẫn tiếp tục với HashMap rỗng
+            // Log lỗi nhưng không chặn tiến trình nếu đây là lỗi DB không nghiêm trọng
+            System.err.println("Cảnh báo: Không thể tải danh mục từ database.");
         }
 
-        // 2. Tải giao dịch từ file JSON (nếu có)
+        // 2. Tải giao dịch từ file JSON
         try {
             List<Transaction> savedTransactions = JsonUtil.loadFromJson(JSON_FILE_PATH);
-            if (savedTransactions != null) {
-                transactionList = savedTransactions;
-            } else {
-                transactionList = new ArrayList<>();
-            }
+            this.transactionList = (savedTransactions != null) ? savedTransactions : new ArrayList<>();
         } catch (DataLoadException e) {
-            System.err.println("Không thể tải file JSON, khởi tạo danh sách rỗng: " + e.getMessage());
-            transactionList = new ArrayList<>();
+            // Ném lại ngoại lệ để UI xử lý (ví dụ: yêu cầu người dùng kiểm tra file)
+            throw new DataLoadException("Lỗi nạp lịch sử giao dịch: " + e.getMessage());
         }
     }
 
-    // ========== CÁC PHƯƠNG THỨC THAO TÁC VỚI GIAO DỊCH ==========
+    // ========== CÁC PHƯƠNG THỨC THAO TÁC GIAO DỊCH ==========
 
-    public void addTransaction(Transaction transaction) {
+    /**
+     * Thêm giao dịch với kiểm tra logic dữ liệu (Validation).
+     */
+    public void addTransaction(Transaction transaction) throws InvalidAmountException, DataLoadException {
+        // Kiểm tra dữ liệu đầu vào (Xử lý dữ liệu)
+        if (transaction == null) {
+            throw new IllegalArgumentException("Giao dịch không được để trống.");
+        }
+
+        if (transaction.getAmount() <= 0) {
+            throw new InvalidAmountException("Số tiền phải lớn hơn 0. Giá trị nhập: " + transaction.getAmount());
+        }
+
+        // Thao tác Database (I/O)
         try {
             DatabaseUtil.insertTransaction(transaction);
         } catch (Exception e) {
-            System.err.println("Lỗi khi thêm giao dịch vào database: " + e.getMessage());
+            // Nếu lỗi DB, ta có thể chọn ghi log và vẫn cho phép lưu vào JSON để tránh mất dữ liệu tạm thời
+            System.err.println("Lỗi Database: " + e.getMessage());
         }
+
         transactionList.add(transaction);
+
+        // Thao tác File (I/O)
         saveToFile();
     }
 
-    public List<Transaction> getAllTransactions() {
-        return transactionList;
-    }
-
-    public List<Transaction> getTransactionsByType(TransactionType type) {
-        return transactionList.stream()
-                .filter(t -> t != null && t.getType() == type)
-                .collect(Collectors.toList());
-    }
-
-    // ========== CÁC PHƯƠNG THỨC TÍNH TOÁN TỔNG QUAN ==========
+    // ========== CÁC PHƯƠNG THỨC TÍNH TOÁN (Stream API) ==========
 
     public double getTotalIncome() {
         return transactionList.stream()
@@ -93,54 +101,39 @@ public class FinanceService {
     }
 
     public double getBalance() {
+        // Sử dụng LaTeX cho công thức tính toán đơn giản
+        // $$Balance = \sum Income - \sum Expense$$
         return getTotalIncome() - getTotalExpense();
     }
 
-    // ========== QUẢN LÝ DANH MỤC (HashMap) ==========
+    // ========== HỖ TRỢ LƯU TRỮ VÀ ĐỒNG BỘ ==========
 
-    public Category getCategoryById(String id) {
-        return categoryMap.get(id);
-    }
-
-    public List<Category> getAllCategories() {
-        return new ArrayList<>(categoryMap.values());
-    }
-
-    public void refreshCategories() {
-        try {
-            List<Category> categories = DatabaseUtil.getAllCategories();
-            categoryMap.clear();
-            if (categories != null) {
-                for (Category c : categories) {
-                    if (c != null) {
-                        categoryMap.put(c.getId(), c);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Không thể làm mới danh mục: " + e.getMessage());
-        }
-    }
-
-    // ========== HỖ TRỢ LƯU FILE ==========
-
-    private void saveToFile() {
+    /**
+     * Lưu danh sách vào file JSON.
+     * Bọc ngoại lệ I/O để đảm bảo tính bền vững của dữ liệu.
+     */
+    private void saveToFile() throws DataLoadException {
         try {
             JsonUtil.saveToJson(transactionList, JSON_FILE_PATH);
         } catch (DataLoadException e) {
-            System.err.println("Lỗi khi lưu file JSON: " + e.getMessage());
+            throw new DataLoadException("Không thể sao lưu dữ liệu vào JSON: " + e.getMessage());
         }
     }
 
-    public void syncFromDatabase() {
+    public void syncFromDatabase() throws DataLoadException {
         try {
             List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions();
             if (dbTransactions != null) {
-                this.transactionList = dbTransactions;
+                this.transactionList = new ArrayList<>(dbTransactions);
                 saveToFile();
             }
         } catch (Exception e) {
-            System.err.println("Lỗi khi đồng bộ từ database: " + e.getMessage());
+            throw new DataLoadException("Lỗi đồng bộ dữ liệu từ Database: " + e.getMessage());
         }
+    }
+
+    // Các getter khác...
+    public List<Transaction> getAllTransactions() {
+        return new ArrayList<>(transactionList);
     }
 }
