@@ -4,6 +4,7 @@ import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
+import com.expensemanager.service.SessionManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,7 +26,6 @@ public class AddTransactionDialog extends JDialog {
         JPanel panel = new JPanel(new GridLayout(6, 2, 10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        // Loại giao dịch (Thu / Chi)
         panel.add(new JLabel("Loại giao dịch:"));
         rbIncome = new JRadioButton("Thu nhập");
         rbExpense = new JRadioButton("Chi tiêu", true);
@@ -37,23 +37,19 @@ public class AddTransactionDialog extends JDialog {
         typePanel.add(rbExpense);
         panel.add(typePanel);
 
-        // Số tiền
         panel.add(new JLabel("Số tiền (VND):"));
         txtAmount = new JTextField();
         panel.add(txtAmount);
 
-        // Danh mục
         panel.add(new JLabel("Danh mục:"));
         cmbCategory = new JComboBox<>();
         loadCategories();
         panel.add(cmbCategory);
 
-        // Ghi chú
         panel.add(new JLabel("Ghi chú:"));
         txtNote = new JTextField();
         panel.add(txtNote);
 
-        // Nút
         JButton btnSave = new JButton("Lưu");
         btnSave.addActionListener(e -> saveTransaction());
         JButton btnCancel = new JButton("Hủy");
@@ -62,7 +58,7 @@ public class AddTransactionDialog extends JDialog {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.add(btnSave);
         buttonPanel.add(btnCancel);
-        panel.add(new JLabel()); // ô trống
+        panel.add(new JLabel());
         panel.add(buttonPanel);
 
         add(panel);
@@ -87,6 +83,12 @@ public class AddTransactionDialog extends JDialog {
 
     private void saveTransaction() {
         try {
+            String userId = SessionManager.getCurrentUserId();
+            if (userId == null) {
+                JOptionPane.showMessageDialog(this, "Bạn chưa đăng nhập!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
             double amount = Double.parseDouble(txtAmount.getText().trim());
             if (amount <= 0) {
                 JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!", "Lỗi", JOptionPane.ERROR_MESSAGE);
@@ -100,24 +102,14 @@ public class AddTransactionDialog extends JDialog {
                 return;
             }
             String note = txtNote.getText().trim();
-            String id = UUID.randomUUID().toString().substring(0, 8); // Tạo ID ngắn ngẫu nhiên
+            String id = UUID.randomUUID().toString().substring(0, 8);
 
             Transaction t = new Transaction(id, amount, type, category, note);
-
-            // Thêm vào database
-            try {
-                DatabaseUtil.insertTransaction(t);
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(this,
-                        "Lỗi khi lưu giao dịch vào database: " + e.getMessage(),
-                        "Lỗi Database", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+            DatabaseUtil.insertTransaction(t, userId);
 
             JOptionPane.showMessageDialog(this, "Thêm giao dịch thành công!");
             dispose();
 
-            // Yêu cầu MainFrame làm mới các panel
             if (mainFrame != null) {
                 try {
                     mainFrame.refreshAllPanels();

@@ -1,68 +1,73 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.service.StatisticsService;
 import com.expensemanager.service.BudgetManager;
+import com.expensemanager.service.StatisticsService;
+import com.expensemanager.service.SessionManager;
+
 import javax.swing.*;
 import java.awt.*;
 
 public class StatisticsPanel extends JPanel {
     private StatisticsService statsService;
     private BudgetManager budgetManager;
-    private JLabel lblIncome, lblExpense, lblBalance, lblStatus;
+    private JLabel lblIncome, lblExpense, lblBalance, lblBudgetStatus;
 
     public StatisticsPanel(StatisticsService statsService, BudgetManager budgetManager) {
         this.statsService = statsService;
         this.budgetManager = budgetManager;
         setLayout(new BorderLayout());
-        setBackground(new Color(18, 18, 18));
+        setBackground(Color.WHITE);
 
-        JLabel title = new JLabel("PHÂN TÍCH THU CHI", SwingConstants.LEFT);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
-        title.setForeground(Color.WHITE);
-        title.setBorder(BorderFactory.createEmptyBorder(25, 35, 25, 0));
+        JLabel title = new JLabel("THỐNG KÊ THÁNG NÀY", SwingConstants.CENTER);
+        title.setFont(new Font("Arial", Font.BOLD, 20));
         add(title, BorderLayout.NORTH);
 
-        JPanel cardPanel = new JPanel(new GridLayout(1, 3, 30, 0));
-        cardPanel.setOpaque(false);
-        cardPanel.setBorder(BorderFactory.createEmptyBorder(10, 35, 30, 35));
+        JPanel centerPanel = new JPanel(new GridLayout(4, 1, 10, 10));
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(20, 40, 40, 40));
+        centerPanel.setBackground(Color.WHITE);
 
-        lblBalance = new JLabel(); lblIncome = new JLabel(); lblExpense = new JLabel();
+        lblIncome = new JLabel("Tổng thu tháng: 0 VND", SwingConstants.CENTER);
+        lblIncome.setFont(new Font("Arial", Font.PLAIN, 16));
+        lblIncome.setForeground(new Color(0, 153, 0));
 
-        cardPanel.add(createStyledCard("Số dư hiện tại", new Color(52, 152, 219), lblBalance));
-        cardPanel.add(createStyledCard("Tổng thu tháng này", new Color(46, 204, 113), lblIncome));
-        cardPanel.add(createStyledCard("Tổng chi tháng này", new Color(231, 76, 60), lblExpense));
+        lblExpense = new JLabel("Tổng chi tháng: 0 VND", SwingConstants.CENTER);
+        lblExpense.setFont(new Font("Arial", Font.PLAIN, 16));
+        lblExpense.setForeground(Color.RED);
 
-        JPanel centerContainer = new JPanel(new BorderLayout());
-        centerContainer.setOpaque(false);
-        centerContainer.add(cardPanel, BorderLayout.NORTH);
+        lblBalance = new JLabel("Số dư tháng: 0 VND", SwingConstants.CENTER);
+        lblBalance.setFont(new Font("Arial", Font.BOLD, 18));
+        lblBalance.setForeground(Color.BLUE);
 
-        lblStatus = new JLabel("", SwingConstants.CENTER);
-        lblStatus.setFont(new Font("Segoe UI", Font.ITALIC, 18));
-        lblStatus.setForeground(new Color(200, 200, 200));
-        centerContainer.add(lblStatus, BorderLayout.CENTER);
+        lblBudgetStatus = new JLabel("", SwingConstants.CENTER);
+        lblBudgetStatus.setFont(new Font("Arial", Font.ITALIC, 14));
 
-        add(centerContainer, BorderLayout.CENTER);
-        refreshData();
-    }
+        centerPanel.add(lblIncome);
+        centerPanel.add(lblExpense);
+        centerPanel.add(lblBalance);
+        centerPanel.add(lblBudgetStatus);
 
-    private JPanel createStyledCard(String title, Color accentColor, JLabel valueLabel) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(new Color(30, 30, 30));
-        card.setBorder(BorderFactory.createMatteBorder(6, 0, 0, 0, accentColor));
-        JPanel content = new JPanel(new GridLayout(2, 1, 0, 15));
-        content.setOpaque(false);
-        content.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
-        JLabel tLabel = new JLabel(title); tLabel.setForeground(new Color(190, 190, 190));
-        valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 32)); valueLabel.setForeground(accentColor); valueLabel.setText("0 VND");
-        content.add(tLabel); content.add(valueLabel);
-        card.add(content, BorderLayout.CENTER);
-        return card;
+        add(centerPanel, BorderLayout.CENTER);
+
+        JButton btnRefresh = new JButton("Làm mới");
+        btnRefresh.addActionListener(e -> refreshData());
+        add(btnRefresh, BorderLayout.SOUTH);
     }
 
     public void refreshData() {
-        lblIncome.setText(String.format("%,.0f VND", statsService.getTotalIncomeThisMonth()));
-        lblExpense.setText(String.format("%,.0f VND", statsService.getTotalExpenseThisMonth()));
-        lblBalance.setText(String.format("%,.0f VND", statsService.getBalanceThisMonth()));
-        lblStatus.setText(budgetManager.checkBudget());
+        if (statsService == null || budgetManager == null) return;
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) return;
+
+        double income = statsService.getTotalIncomeThisMonth();
+        double expense = statsService.getTotalExpenseThisMonth();
+        double balance = statsService.getBalanceThisMonth();
+
+        lblIncome.setText(String.format("Tổng thu tháng: %,.0f VND", income));
+        lblExpense.setText(String.format("Tổng chi tháng: %,.0f VND", expense));
+        lblBalance.setText(String.format("Số dư tháng: %,.0f VND", balance));
+
+        String budgetMessage = budgetManager.checkBudget();
+        lblBudgetStatus.setText(budgetMessage);
+        lblBudgetStatus.setForeground(budgetMessage.contains("⚠️") ? Color.RED : new Color(0, 153, 0));
     }
 }

@@ -8,20 +8,17 @@ import javax.swing.*;
 import java.awt.*;
 
 public class MainFrame extends JFrame {
-
     private CardLayout cardLayout;
     private JPanel mainPanel;
     private DashboardPanel dashboardPanel;
     private HistoryPanel historyPanel;
     private StatisticsPanel statisticsPanel;
 
-    // Service
     private FinanceService financeService;
     private StatisticsService statsService;
     private BudgetManager budgetManager;
 
     public MainFrame() {
-        // Khởi tạo service với kiểm tra lỗi
         try {
             financeService = new FinanceService();
         } catch (Exception e) {
@@ -41,30 +38,24 @@ public class MainFrame extends JFrame {
         setSize(900, 650);
         setLocationRelativeTo(null);
 
-        // CardLayout để chuyển đổi giữa các màn hình
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // Khởi tạo các Panel con (truyền tham số phù hợp)
         dashboardPanel = new DashboardPanel(this);
         historyPanel = new HistoryPanel();
         if (statsService != null && budgetManager != null) {
             statisticsPanel = new StatisticsPanel(statsService, budgetManager);
         } else {
-            statisticsPanel = null; // sẽ thay bằng panel rỗng nếu lỗi
+            statisticsPanel = null;
         }
 
-        // Thêm các Panel vào mainPanel với key định danh
         mainPanel.add(dashboardPanel, "dashboard");
         mainPanel.add(historyPanel, "history");
         if (statisticsPanel != null) {
             mainPanel.add(statisticsPanel, "statistics");
         }
 
-        // Tạo thanh điều hướng
         JPanel navBar = createNavBar();
-
-        // Thêm vào JFrame
         add(navBar, BorderLayout.NORTH);
         add(mainPanel, BorderLayout.CENTER);
 
@@ -79,7 +70,6 @@ public class MainFrame extends JFrame {
         JButton btnStatistics = new JButton("Thống kê");
         JButton btnBudget = new JButton("Ngân sách");
 
-        // Xử lý sự kiện khi nhấn nút
         btnDashboard.addActionListener(e -> cardLayout.show(mainPanel, "dashboard"));
         btnHistory.addActionListener(e -> cardLayout.show(mainPanel, "history"));
         btnStatistics.addActionListener(e -> {
@@ -107,7 +97,6 @@ public class MainFrame extends JFrame {
         return navPanel;
     }
 
-    // Phương thức để các Panel con có thể yêu cầu làm mới dữ liệu
     public void refreshAllPanels() {
         try {
             dashboardPanel.refreshData();
