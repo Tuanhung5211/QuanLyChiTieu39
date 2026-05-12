@@ -3,33 +3,44 @@ package com.expensemanager.ui;
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
+import com.expensemanager.observer.EventType;
+import com.expensemanager.observer.Observer;
+import com.expensemanager.service.FinanceService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class HistoryPanel extends JPanel {
+public class HistoryPanel extends JPanel implements Observer {
 
-    private JTable table;
-    private DefaultTableModel tableModel;
+    private static final Logger LOGGER = Logger.getLogger(HistoryPanel.class.getName());
 
-    public HistoryPanel() {
+    private final JTable table;
+    private final DefaultTableModel tableModel;
+    private final FinanceService financeService;
+
+    // Constructor nhan 1 tham so FinanceService
+    public HistoryPanel(FinanceService financeService) {
+        this.financeService = financeService;
+
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
 
-        // Tiêu đề
-        JLabel title = new JLabel("LỊCH SỬ GIAO DỊCH", SwingConstants.CENTER);
+        // Tieu de
+        JLabel title = new JLabel("LICH SU GIAO DICH", SwingConstants.CENTER);
         title.setFont(new Font("Arial", Font.BOLD, 20));
         title.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         add(title, BorderLayout.NORTH);
 
-        // Bảng
-        String[] columns = {"ID", "Số tiền", "Loại", "Danh mục", "Ngày giờ", "Ghi chú"};
+        // Bang
+        String[] columns = {"ID", "So tien", "Loai", "Danh muc", "Ngay gio", "Ghi chu"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return false; // Không cho sửa trực tiếp trên bảng
+                return false;
             }
         };
         table = new JTable(tableModel);
@@ -39,17 +50,73 @@ public class HistoryPanel extends JPanel {
         JScrollPane scrollPane = new JScrollPane(table);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Nút làm mới
-        JButton btnRefresh = new JButton("Làm mới");
+        // Nut lam moi
+        JButton btnRefresh = new JButton("Lam moi");
         btnRefresh.addActionListener(e -> refreshData());
         add(btnRefresh, BorderLayout.SOUTH);
 
-        // Tải dữ liệu lần đầu
+        // Dang ky observer
+        financeService.attach(this);
+
+        // Tai du lieu lan dau
         refreshData();
     }
 
+    @Override
+    public void update(EventType eventType, Object data) {
+        SwingUtilities.invokeLater(() -> {
+            switch (eventType) {
+                case TRANSACTION_ADDED:
+                    if (data instanceof Transaction) {
+                        addTransactionToTable((Transaction) data);
+                        int lastRow = tableModel.getRowCount() - 1;
+                        table.scrollRectToVisible(table.getCellRect(lastRow, 0, true));
+                    }
+                    break;
+
+                case TRANSACTION_DELETED:
+                    if (data instanceof Transaction) {
+                        removeTransactionFromTable((Transaction) data);
+                    }
+                    break;
+
+                case TRANSACTION_UPDATED:
+                case DATA_LOADED:
+                    refreshData();
+                    break;
+
+                default:
+                    break;
+            }
+        });
+    }
+
+    private void addTransactionToTable(Transaction t) {
+        if (t == null) return;
+
+        String categoryName = (t.getCategory() != null) ? t.getCategory().getName() : "Khong co";
+        String typeStr = (t.getType() == TransactionType.INCOME) ? "Thu" : "Chi";
+        Object[] row = {
+                t.getId(),
+                String.format("%,.0f VND", t.getAmount()),
+                typeStr,
+                categoryName,
+                t.getDateTime().toString().replace("T", " "),
+                t.getNote() != null ? t.getNote() : ""
+        };
+        tableModel.addRow(row);
+    }
+
+    private void removeTransactionFromTable(Transaction t) {
+        for (int i = 0; i < tableModel.getRowCount(); i++) {
+            if (tableModel.getValueAt(i, 0).equals(t.getId())) {
+                tableModel.removeRow(i);
+                break;
+            }
+        }
+    }
+
     public void refreshData() {
-        // Xóa dữ liệu cũ
         tableModel.setRowCount(0);
 
         try {
@@ -57,7 +124,7 @@ public class HistoryPanel extends JPanel {
             if (transactions != null) {
                 for (Transaction t : transactions) {
                     if (t != null) {
-                        String categoryName = (t.getCategory() != null) ? t.getCategory().getName() : "Không có";
+                        String categoryName = (t.getCategory() != null) ? t.getCategory().getName() : "Khong co";
                         String typeStr = (t.getType() == TransactionType.INCOME) ? "Thu" : "Chi";
                         Object[] row = {
                                 t.getId(),
@@ -72,9 +139,10 @@ public class HistoryPanel extends JPanel {
                 }
             }
         } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Loi tai du lieu giao dich", e);
             JOptionPane.showMessageDialog(this,
-                    "Lỗi khi tải dữ liệu giao dịch: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    "Loi khi tai du lieu giao dich: " + e.getMessage(),
+                    "Loi", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
