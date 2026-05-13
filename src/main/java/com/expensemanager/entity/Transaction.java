@@ -29,6 +29,7 @@ public class Transaction {
 
     public void setAmount(double amount) { this.amount = amount; }
     public void setNote(String note) { this.note = note; }
+    public void setDateTime(LocalDateTime dateTime) { this.dateTime = dateTime; }
 
     @Override
     public String toString() {

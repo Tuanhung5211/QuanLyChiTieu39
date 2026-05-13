@@ -3,146 +3,106 @@ package com.expensemanager.ui;
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
-import com.expensemanager.observer.EventType;
-import com.expensemanager.observer.Observer;
-import com.expensemanager.service.FinanceService;
-
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.*;
 import java.awt.*;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
-public class HistoryPanel extends JPanel implements Observer {
+public class HistoryPanel extends JPanel {
+    private JTable table;
+    private DefaultTableModel model;
+    private JLabel lblCurrentView;
+    private int filterMonth = -1, filterYear = -1;
+    private MainFrame mainFrame;
 
-    private static final Logger LOGGER = Logger.getLogger(HistoryPanel.class.getName());
-
-    private final JTable table;
-    private final DefaultTableModel tableModel;
-    private final FinanceService financeService;
-
-    // Constructor nhan 1 tham so FinanceService
-    public HistoryPanel(FinanceService financeService) {
-        this.financeService = financeService;
-
+    public HistoryPanel(MainFrame mainFrame) {
+        this.mainFrame = mainFrame;
         setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+        setBackground(new Color(18, 18, 18));
+        setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
 
-        // Tieu de
-        JLabel title = new JLabel("LICH SU GIAO DICH", SwingConstants.CENTER);
-        title.setFont(new Font("Arial", Font.BOLD, 20));
-        title.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        add(title, BorderLayout.NORTH);
+        JPanel nav = new JPanel(new FlowLayout(FlowLayout.CENTER, 35, 15));
+        nav.setOpaque(false);
+        JButton btnP = new JButton("<"); 
+        JButton btnN = new JButton(">");
+        lblCurrentView = new JLabel("Đang xem: Tất cả thời gian");
+        lblCurrentView.setFont(new Font("Segoe UI", Font.BOLD, 17));
+        lblCurrentView.setForeground(Color.WHITE);
+        JButton btnA = new JButton("Xem tất cả");
+        nav.add(btnP); nav.add(lblCurrentView); nav.add(btnN); nav.add(btnA);
+        add(nav, BorderLayout.NORTH);
 
-        // Bang
-        String[] columns = {"ID", "So tien", "Loai", "Danh muc", "Ngay gio", "Ghi chu"};
-        tableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
+        String[] cols = {"ID", "Số tiền", "Loại", "Danh mục", "Ngày", "Ghi chú"};
+        model = new DefaultTableModel(cols, 0) { @Override public boolean isCellEditable(int r, int c) { return false; } };
+        table = new JTable(model);
+        table.setBackground(new Color(30, 30, 30));
+        table.setForeground(Color.WHITE);
+        table.setRowHeight(38);
+        table.setGridColor(new Color(55, 55, 55));
+        table.getTableHeader().setBackground(new Color(45, 45, 45));
+        table.getTableHeader().setForeground(Color.WHITE);
+        table.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 15));
+
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+        center.setHorizontalAlignment(JLabel.CENTER);
+        for(int i=0; i<6; i++) table.getColumnModel().getColumn(i).setCellRenderer(center);
+        add(new JScrollPane(table), BorderLayout.CENTER);
+
+        JPanel bp = new JPanel(new FlowLayout(FlowLayout.CENTER, 25, 15));
+        bp.setOpaque(false);
+        JButton bAdd = new JButton("Thêm mới");
+        JButton bEdit = new JButton("Sửa");
+        JButton bDel = new JButton("Xóa");
+        bp.add(bAdd); bp.add(bEdit); bp.add(bDel);
+        add(bp, BorderLayout.SOUTH);
+
+        btnP.addActionListener(e -> changeMonth(-1));
+        btnN.addActionListener(e -> changeMonth(1));
+        btnA.addActionListener(e -> { filterMonth = -1; refreshData(); });
+        bAdd.addActionListener(e -> new AddTransactionDialog(mainFrame).setVisible(true));
+        
+        bDel.addActionListener(e -> {
+            int r = table.getSelectedRow();
+            if (r != -1) {
+                String id = model.getValueAt(r, 0).toString();
+                if (JOptionPane.showConfirmDialog(this, "Xóa giao dịch này?", "Xác nhận", 0) == 0) {
+                    DatabaseUtil.deleteTransaction(id);
+                    mainFrame.refreshAllPanels();
+                }
             }
-        };
-        table = new JTable(tableModel);
-        table.setRowHeight(25);
-        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 13));
+        });
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        add(scrollPane, BorderLayout.CENTER);
+        bEdit.addActionListener(e -> {
+            int r = table.getSelectedRow();
+            if (r != -1) {
+                String id = model.getValueAt(r, 0).toString();
+                Transaction t = DatabaseUtil.getAllTransactions().stream().filter(i -> i.getId().equals(id)).findFirst().orElse(null);
+                if (t != null) new AddTransactionDialog(mainFrame, t).setVisible(true);
+            }
+        });
 
-        // Nut lam moi
-        JButton btnRefresh = new JButton("Lam moi");
-        btnRefresh.addActionListener(e -> refreshData());
-        add(btnRefresh, BorderLayout.SOUTH);
-
-        // Dang ky observer
-        financeService.attach(this);
-
-        // Tai du lieu lan dau
         refreshData();
     }
 
-    @Override
-    public void update(EventType eventType, Object data) {
-        SwingUtilities.invokeLater(() -> {
-            switch (eventType) {
-                case TRANSACTION_ADDED:
-                    if (data instanceof Transaction) {
-                        addTransactionToTable((Transaction) data);
-                        int lastRow = tableModel.getRowCount() - 1;
-                        table.scrollRectToVisible(table.getCellRect(lastRow, 0, true));
-                    }
-                    break;
-
-                case TRANSACTION_DELETED:
-                    if (data instanceof Transaction) {
-                        removeTransactionFromTable((Transaction) data);
-                    }
-                    break;
-
-                case TRANSACTION_UPDATED:
-                case DATA_LOADED:
-                    refreshData();
-                    break;
-
-                default:
-                    break;
-            }
-        });
-    }
-
-    private void addTransactionToTable(Transaction t) {
-        if (t == null) return;
-
-        String categoryName = (t.getCategory() != null) ? t.getCategory().getName() : "Khong co";
-        String typeStr = (t.getType() == TransactionType.INCOME) ? "Thu" : "Chi";
-        Object[] row = {
-                t.getId(),
-                String.format("%,.0f VND", t.getAmount()),
-                typeStr,
-                categoryName,
-                t.getDateTime().toString().replace("T", " "),
-                t.getNote() != null ? t.getNote() : ""
-        };
-        tableModel.addRow(row);
-    }
-
-    private void removeTransactionFromTable(Transaction t) {
-        for (int i = 0; i < tableModel.getRowCount(); i++) {
-            if (tableModel.getValueAt(i, 0).equals(t.getId())) {
-                tableModel.removeRow(i);
-                break;
-            }
-        }
+    private void changeMonth(int d) {
+        if (filterMonth == -1) { filterMonth = LocalDate.now().getMonthValue(); filterYear = LocalDate.now().getYear(); }
+        else { filterMonth += d; if (filterMonth > 12) { filterMonth = 1; filterYear++; } else if (filterMonth < 1) { filterMonth = 12; filterYear--; } }
+        refreshData();
     }
 
     public void refreshData() {
-        tableModel.setRowCount(0);
-
-        try {
-            List<Transaction> transactions = DatabaseUtil.getAllTransactions();
-            if (transactions != null) {
-                for (Transaction t : transactions) {
-                    if (t != null) {
-                        String categoryName = (t.getCategory() != null) ? t.getCategory().getName() : "Khong co";
-                        String typeStr = (t.getType() == TransactionType.INCOME) ? "Thu" : "Chi";
-                        Object[] row = {
-                                t.getId(),
-                                String.format("%,.0f VND", t.getAmount()),
-                                typeStr,
-                                categoryName,
-                                t.getDateTime().toString().replace("T", " "),
-                                t.getNote() != null ? t.getNote() : ""
-                        };
-                        tableModel.addRow(row);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Loi tai du lieu giao dich", e);
-            JOptionPane.showMessageDialog(this,
-                    "Loi khi tai du lieu giao dich: " + e.getMessage(),
-                    "Loi", JOptionPane.ERROR_MESSAGE);
+        if (filterMonth == -1) lblCurrentView.setText("Đang xem: Tất cả thời gian");
+        else lblCurrentView.setText(String.format("Tháng %02d / %d", filterMonth, filterYear));
+        model.setRowCount(0);
+        List<Transaction> list = DatabaseUtil.getAllTransactions();
+        List<Transaction> filtered = list.stream().filter(t -> {
+            if (filterMonth == -1) return true;
+            return t.getDateTime().getMonthValue() == filterMonth && t.getDateTime().getYear() == filterYear;
+        }).collect(Collectors.toList());
+        for (Transaction t : filtered) {
+            model.addRow(new Object[]{t.getId(), String.format("%,.0f VND", t.getAmount()), t.getType() == TransactionType.INCOME ? "Thu" : "Chi", t.getCategory().getName(), t.getDateTime().toLocalDate().toString(), t.getNote()});
         }
     }
 }

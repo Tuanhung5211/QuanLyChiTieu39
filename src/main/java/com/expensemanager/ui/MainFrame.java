@@ -1,183 +1,147 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.observer.EventType;
-import com.expensemanager.observer.Observer;
-import com.expensemanager.service.BudgetManager;
-import com.expensemanager.service.FinanceService;
-import com.expensemanager.service.StatisticsService;
-
+import com.expensemanager.service.*;
+import com.expensemanager.database.DatabaseUtil;
+import com.expensemanager.entity.*;
 import javax.swing.*;
 import java.awt.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.UUID;
 
-public class MainFrame extends JFrame implements Observer {
-
-    private static final Logger LOGGER = Logger.getLogger(MainFrame.class.getName());
-
-    private final CardLayout cardLayout;
-    private final JPanel mainPanel;
-    private final DashboardPanel dashboardPanel;
-    private final HistoryPanel historyPanel;
-    private final StatisticsPanel statisticsPanel;
-
-    // Services
-    private final FinanceService financeService;
-    private final StatisticsService statsService;
-    private final BudgetManager budgetManager;
+public class MainFrame extends JFrame {
+    private CardLayout cardLayout;
+    private JPanel mainPanel;
+    private DashboardPanel dashboardPanel;
+    private HistoryPanel historyPanel;
+    private StatisticsPanel statisticsPanel;
+    private FinanceService financeService;
+    private StatisticsService statsService;
+    private BudgetManager budgetManager;
 
     public MainFrame() {
-        // Khoi tao service
+        initCategories(); // Nạp danh mục mẫu vào DB nếu trống
+        
         financeService = new FinanceService();
-        financeService.attach(this);
-
         statsService = new StatisticsService(financeService);
         budgetManager = new BudgetManager(financeService);
 
-        setTitle("Quan Ly Chi Tieu");
+        setTitle("Quản Lý Chi Tiêu - Dark Mode");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 650);
+        setSize(1250, 850);
         setLocationRelativeTo(null);
+        getContentPane().setBackground(new Color(18, 18, 18));
+        setLayout(new BorderLayout());
 
-        // CardLayout de chuyen doi giua cac man hinh
+        JPanel leftSidebar = new JPanel();
+        leftSidebar.setLayout(new BoxLayout(leftSidebar, BoxLayout.Y_AXIS));
+        leftSidebar.setBackground(new Color(25, 25, 25));
+        leftSidebar.setPreferredSize(new Dimension(280, 0));
+        leftSidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(50, 50, 50)));
+
+        JPanel profileHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 25));
+        profileHeader.setOpaque(false);
+        profileHeader.setMaximumSize(new Dimension(280, 100));
+        profileHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
+        
+        JLabel avatar = new JLabel("T") {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(100, 100, 100));
+                g2.fillOval(0, 0, 60, 60);
+                super.paintComponent(g);
+            }
+        };
+        avatar.setPreferredSize(new Dimension(60, 60));
+        avatar.setFont(new Font("Segoe UI", Font.BOLD, 25));
+        avatar.setForeground(Color.WHITE);
+        avatar.setHorizontalAlignment(SwingConstants.CENTER);
+
+        JPanel profileText = new JPanel(new GridLayout(2, 1));
+        profileText.setOpaque(false);
+        JLabel lblName = new JLabel("Test"); 
+        lblName.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblName.setForeground(Color.WHITE);
+        JLabel lblID = new JLabel("ID: 20260401"); 
+        lblID.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblID.setForeground(new Color(160, 160, 160));
+        profileText.add(lblName); profileText.add(lblID);
+        profileHeader.add(avatar); profileHeader.add(profileText);
+        leftSidebar.add(profileHeader);
+
+        leftSidebar.add(Box.createVerticalStrut(20));
+        leftSidebar.add(createSidebarBtn("Thành viên Premium", new Color(255, 165, 0)));
+        leftSidebar.add(createSidebarBtn("Giới thiệu bạn bè", Color.WHITE));
+        leftSidebar.add(createSidebarBtn("Chặn quảng cáo", Color.WHITE));
+        leftSidebar.add(createSidebarBtn("Khu vườn", Color.WHITE));
+        leftSidebar.add(createSidebarBtn("Cài đặt", Color.WHITE));
+        leftSidebar.add(createSidebarBtn("Ứng dụng khác", Color.WHITE));
+        leftSidebar.add(Box.createVerticalGlue());
+
+        JPanel topBar = new JPanel(new BorderLayout());
+        topBar.setBackground(new Color(18, 18, 18));
+        topBar.setPreferredSize(new Dimension(0, 75));
+        topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(50, 50, 50)));
+
+        JPanel navButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 20));
+        navButtons.setOpaque(false);
+        JButton b1 = navBtn("Tổng quan"); JButton b2 = navBtn("Lịch sử"); 
+        JButton b3 = navBtn("Thống kê"); JButton b4 = navBtn("Ngân sách");
+        navButtons.add(b1); navButtons.add(b2); navButtons.add(b3); navButtons.add(b4);
+        topBar.add(navButtons, BorderLayout.EAST);
+
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
-
-        // Khoi tao cac Panel con
+        mainPanel.setOpaque(false);
         dashboardPanel = new DashboardPanel(this);
-        historyPanel = new HistoryPanel(financeService);  // ✅ DA SUA: truyen financeService
+        historyPanel = new HistoryPanel(this);
         statisticsPanel = new StatisticsPanel(statsService, budgetManager);
-
-        // Them cac Panel vao mainPanel
         mainPanel.add(dashboardPanel, "dashboard");
         mainPanel.add(historyPanel, "history");
         mainPanel.add(statisticsPanel, "statistics");
 
-        // Tao thanh dieu huong
-        JPanel navBar = createNavBar();
+        b1.addActionListener(e -> cardLayout.show(mainPanel, "dashboard"));
+        b2.addActionListener(e -> { historyPanel.refreshData(); cardLayout.show(mainPanel, "history"); });
+        b3.addActionListener(e -> { statisticsPanel.refreshData(); cardLayout.show(mainPanel, "statistics"); });
+        b4.addActionListener(e -> new BudgetDialog(this, budgetManager).setVisible(true));
 
-        add(navBar, BorderLayout.NORTH);
-        add(mainPanel, BorderLayout.CENTER);
-
-        // Tai du lieu ban dau
-        loadInitialData();
-
+        JPanel rightSide = new JPanel(new BorderLayout());
+        rightSide.setOpaque(false);
+        rightSide.add(topBar, BorderLayout.NORTH);
+        rightSide.add(mainPanel, BorderLayout.CENTER);
+        add(leftSidebar, BorderLayout.WEST);
+        add(rightSide, BorderLayout.CENTER);
         setVisible(true);
     }
 
-    private JPanel createNavBar() {
-        JPanel navPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-
-        JButton btnDashboard = new JButton("Tong quan");
-        JButton btnHistory = new JButton("Lich su");
-        JButton btnStatistics = new JButton("Thong ke");
-        JButton btnBudget = new JButton("Ngan sach");
-
-        btnDashboard.addActionListener(e -> cardLayout.show(mainPanel, "dashboard"));
-        btnHistory.addActionListener(e -> cardLayout.show(mainPanel, "history"));
-        btnStatistics.addActionListener(e -> {
-            statisticsPanel.refreshData();
-            cardLayout.show(mainPanel, "statistics");
-        });
-        btnBudget.addActionListener(e -> {
-            new BudgetDialog(this, budgetManager).setVisible(true);
-            refreshAllPanels();
-        });
-
-        navPanel.add(btnDashboard);
-        navPanel.add(btnHistory);
-        navPanel.add(btnStatistics);
-        navPanel.add(btnBudget);
-
-        return navPanel;
-    }
-
-    private void loadInitialData() {
-        try {
-            financeService.loadInitialData();
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Loi tai du lieu", e);
-            JOptionPane.showMessageDialog(this,
-                    "Loi tai du lieu: " + e.getMessage(),
-                    "Loi", JOptionPane.ERROR_MESSAGE);
+    private void initCategories() {
+        if (DatabaseUtil.getAllCategories().isEmpty()) {
+            String[] inc = {"Lương", "Thưởng", "Lãi tiết kiệm", "Thu nhập phụ"};
+            String[] exp = {"Ăn uống", "Xăng xe", "Tiền trọ", "Điện nước", "Internet", "Mua sắm", "Giải trí", "Học phí", "Sức khỏe"};
+            for (String s : inc) DatabaseUtil.insertCategory(new Category(UUID.randomUUID().toString().substring(0,8), s, TransactionType.INCOME));
+            for (String s : exp) DatabaseUtil.insertCategory(new Category(UUID.randomUUID().toString().substring(0,8), s, TransactionType.EXPENSE));
         }
     }
 
-    @Override
-    public void update(EventType eventType, Object data) {
-        SwingUtilities.invokeLater(() -> {
-            switch (eventType) {
-                case TRANSACTION_ADDED:
-                    showNotification("Da them giao dich moi!");
-                    break;
-                case TRANSACTION_DELETED:
-                    showNotification("Da xoa giao dich!");
-                    break;
-                case TRANSACTION_UPDATED:
-                    showNotification("Da cap nhat giao dich!");
-                    break;
-                case BUDGET_CHANGED:
-                    if (data instanceof FinanceService.BudgetAlert) {
-                        showBudgetWarning((FinanceService.BudgetAlert) data);
-                    }
-                    break;
-                case DATA_LOADED:
-                    showNotification("Da tai du lieu thanh cong!");
-                    break;
-                default:
-                    break;
-            }
-        });
+    private JButton createSidebarBtn(String t, Color c) {
+        JButton b = new JButton(t); b.setMaximumSize(new Dimension(280, 45));
+        b.setFont(new Font("Segoe UI", Font.PLAIN, 15)); b.setForeground(c);
+        b.setContentAreaFilled(false); b.setBorderPainted(false); b.setFocusPainted(false);
+        b.setHorizontalAlignment(SwingConstants.LEFT); 
+        b.setAlignmentX(Component.LEFT_ALIGNMENT);
+        b.setMargin(new Insets(0, 20, 0, 0));
+        return b;
     }
 
-    private void showNotification(String message) {
-        JDialog notification = new JDialog(this);
-        notification.setUndecorated(true);
-        notification.setAlwaysOnTop(true);
-
-        JLabel label = new JLabel(" " + message + " ");
-        label.setFont(new Font("Arial", Font.PLAIN, 14));
-        label.setForeground(Color.WHITE);
-        label.setBackground(new Color(0, 0, 0, 200));
-        label.setOpaque(true);
-        label.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-
-        notification.add(label);
-        notification.pack();
-
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        int x = screenSize.width - notification.getWidth() - 20;
-        int y = screenSize.height - notification.getHeight() - 50;
-        notification.setLocation(x, y);
-
-        Timer timer = new Timer(2000, e -> notification.dispose());
-        timer.setRepeats(false);
-        timer.start();
-
-        notification.setVisible(true);
-    }
-
-    private void showBudgetWarning(FinanceService.BudgetAlert alert) {
-        String message = String.format("""
-            CANH BAO NGAN SACH!
-            
-            Da chi: %,.0f VND
-            Gioi han: %,.0f VND
-            Vuot: %,.0f VND (%.0f%%)
-            
-            Hay kiem tra lai chi tieu!
-            """,
-                alert.getCurrentSpent(), alert.getLimit(),
-                alert.getExcess(), alert.getPercentage()
-        );
-
-        JOptionPane.showMessageDialog(this, message, "Canh bao ngan sach",
-                JOptionPane.WARNING_MESSAGE);
+    private JButton navBtn(String t) {
+        JButton b = new JButton(t); b.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        b.setForeground(new Color(210, 210, 210)); b.setContentAreaFilled(false);
+        b.setBorderPainted(false); b.setFocusPainted(false);
+        return b;
     }
 
     public void refreshAllPanels() {
-        dashboardPanel.refreshData();
-        historyPanel.refreshData();
-        statisticsPanel.refreshData();
+        dashboardPanel.refreshData(); historyPanel.refreshData(); statisticsPanel.refreshData();
     }
+    
+    public FinanceService getFinanceService() { return financeService; }
 }
