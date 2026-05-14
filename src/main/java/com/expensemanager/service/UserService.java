@@ -33,7 +33,8 @@ public class UserService {
         return null;
     }
 
-    private static String hashPassword(String password) {
+    // Đổi thành public static để ProfilePanel có thể gọi
+    public static String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(password.getBytes());

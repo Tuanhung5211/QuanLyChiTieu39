@@ -2,26 +2,21 @@ package com.expensemanager.util;
 
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.exception.DataLoadException;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import java.io.*;
 import java.lang.reflect.Type;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class JsonUtil {
     private static final Gson gson = new GsonBuilder()
-            .setPrettyPrinting()  // In JSON đẹp, dễ đọc
+            .setPrettyPrinting()
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .create();
 
-    /**
-     * Lưu danh sách giao dịch vào file JSON.
-     * @param transactions danh sách giao dịch cần lưu
-     * @param filePath đường dẫn file (vd: "transactions.json")
-     */
-    public static void saveToJson(List<Transaction> transactions, String filePath)
-            throws DataLoadException {
+    public static void saveToJson(List<Transaction> transactions, String filePath) throws DataLoadException {
         try (Writer writer = new FileWriter(filePath)) {
             gson.toJson(transactions, writer);
         } catch (IOException e) {
@@ -29,22 +24,41 @@ public class JsonUtil {
         }
     }
 
-    /**
-     * Tải danh sách giao dịch từ file JSON.
-     * @param filePath đường dẫn file
-     * @return danh sách giao dịch, hoặc danh sách rỗng nếu file không tồn tại
-     */
-    public static List<Transaction> loadFromJson(String filePath)
-            throws DataLoadException {
+    public static List<Transaction> loadFromJson(String filePath) throws DataLoadException {
         File file = new File(filePath);
         if (!file.exists()) {
-            return new ArrayList<>(); // Trả về list rỗng nếu file chưa có
+            return new ArrayList<>();
         }
         try (Reader reader = new FileReader(filePath)) {
             Type listType = new TypeToken<ArrayList<Transaction>>(){}.getType();
-            return gson.fromJson(reader, listType);
-        } catch (IOException e) {
-            throw new DataLoadException("Lỗi khi đọc file JSON: " + filePath, e);
+            List<Transaction> list = gson.fromJson(reader, listType);
+            return list != null ? list : new ArrayList<>();
+        } catch (JsonSyntaxException | IOException e) {
+            // File bị hỏng hoặc không đúng định dạng → reset thành mảng rỗng
+            System.err.println("File JSON bị lỗi, sẽ tạo file mới: " + e.getMessage());
+            try {
+                // Ghi đè file bằng mảng rỗng
+                try (Writer writer = new FileWriter(filePath)) {
+                    gson.toJson(new ArrayList<Transaction>(), writer);
+                }
+            } catch (IOException ex) {
+                throw new DataLoadException("Không thể khôi phục file JSON: " + filePath, ex);
+            }
+            return new ArrayList<>();
+        }
+    }
+
+    // Adapter cho LocalDateTime
+    private static class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
+        @Override
+        public JsonElement serialize(LocalDateTime src, Type typeOfSrc, JsonSerializationContext context) {
+            return new JsonPrimitive(src.toString());
+        }
+
+        @Override
+        public LocalDateTime deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+                throws JsonParseException {
+            return LocalDateTime.parse(json.getAsString());
         }
     }
 }
