@@ -13,7 +13,7 @@ public class MainFrame extends JFrame {
     private DashboardPanel dashboardPanel;
     private HistoryPanel historyPanel;
     private StatisticsPanel statisticsPanel;
-    private AccountPanel accountPanel;          // <-- THÊM KHAI BÁO
+    private AccountPanel accountPanel;
 
     private FinanceService financeService;
     private StatisticsService statsService;
@@ -23,6 +23,7 @@ public class MainFrame extends JFrame {
         // Khởi tạo service
         try {
             financeService = new FinanceService();
+            financeService.syncFromDatabase(); // lấy dữ liệu mới nhất từ DB
         } catch (Exception e) {
             e.printStackTrace();
             financeService = null;
@@ -37,20 +38,21 @@ public class MainFrame extends JFrame {
 
         setTitle("Quản Lý Chi Tiêu Mini");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1100, 650); // đủ rộng cho sidebar
+        setSize(1100, 650);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
         // Sidebar bên trái
-        accountPanel = new AccountPanel(this);  // <-- SỬA LẠI TÊN BIẾN
+        accountPanel = new AccountPanel(this);
         add(accountPanel, BorderLayout.WEST);
 
         // Panel trung tâm (CardLayout)
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        dashboardPanel = new DashboardPanel(this);
-        historyPanel = new HistoryPanel();
+        // Quan trọng: truyền FinanceService và BudgetManager vào DashboardPanel
+        dashboardPanel = new DashboardPanel(this, financeService, budgetManager);
+        historyPanel = new HistoryPanel(financeService);
         if (statsService != null && budgetManager != null) {
             statisticsPanel = new StatisticsPanel(statsService, budgetManager);
         } else {
@@ -77,8 +79,14 @@ public class MainFrame extends JFrame {
         JButton btnStatistics = new JButton("Thống kê");
         JButton btnBudget = new JButton("Ngân sách");
 
-        btnDashboard.addActionListener(e -> cardLayout.show(mainPanel, "dashboard"));
-        btnHistory.addActionListener(e -> cardLayout.show(mainPanel, "history"));
+        btnDashboard.addActionListener(e -> {
+            dashboardPanel.refreshData();
+            cardLayout.show(mainPanel, "dashboard");
+        });
+        btnHistory.addActionListener(e -> {
+            historyPanel.refreshData();
+            cardLayout.show(mainPanel, "history");
+        });
         btnStatistics.addActionListener(e -> {
             if (statisticsPanel != null) {
                 statisticsPanel.refreshData();
@@ -104,23 +112,19 @@ public class MainFrame extends JFrame {
         return navPanel;
     }
 
+    /** Đồng bộ dữ liệu từ DB, sau đó refresh tất cả panel */
     public void refreshAllPanels() {
-        try {
-            dashboardPanel.refreshData();
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (financeService != null) {
+            financeService.syncFromDatabase();
         }
-        try {
-            historyPanel.refreshData();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        try { dashboardPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
+        try { historyPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
         if (statisticsPanel != null) {
-            try {
-                statisticsPanel.refreshData();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            try { statisticsPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
         }
     }
+
+    // Các getter để các thành phần khác sử dụng
+    public FinanceService getFinanceService() { return financeService; }
+    public BudgetManager getBudgetManager() { return budgetManager; }
 }

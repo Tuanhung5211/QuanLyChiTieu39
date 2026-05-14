@@ -84,4 +84,7 @@ public class StatisticsService {
                 .filter(t -> t.getAmount() > threshold)
                 .collect(Collectors.toList());
     }
+    public FinanceService getFinanceService() {
+        return financeService;
+    }
 }

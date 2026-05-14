@@ -1,21 +1,21 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
-import com.expensemanager.service.SessionManager;
+import com.expensemanager.service.FinanceService;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.util.List;
 
 public class HistoryPanel extends JPanel {
-
     private JTable table;
     private DefaultTableModel tableModel;
+    private FinanceService financeService;
 
-    public HistoryPanel() {
+    // Constructor nhận FinanceService
+    public HistoryPanel(FinanceService financeService) {
+        this.financeService = financeService;
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
 
@@ -47,31 +47,22 @@ public class HistoryPanel extends JPanel {
 
     public void refreshData() {
         tableModel.setRowCount(0);
+        if (financeService == null) return;
 
-        String userId = SessionManager.getCurrentUserId();
-        if (userId == null) return;
-
-        try {
-            List<Transaction> transactions = DatabaseUtil.getAllTransactions(userId);
-            for (Transaction t : transactions) {
-                if (t != null) {
-                    String categoryName = (t.getCategory() != null) ? t.getCategory().getName() : "Không có";
-                    String typeStr = (t.getType() == TransactionType.INCOME) ? "Thu" : "Chi";
-                    Object[] row = {
-                            t.getId(),
-                            String.format("%,.0f VND", t.getAmount()),
-                            typeStr,
-                            categoryName,
-                            t.getDateTime().toString().replace("T", " "),
-                            t.getNote() != null ? t.getNote() : ""
-                    };
-                    tableModel.addRow(row);
-                }
+        for (Transaction t : financeService.getAllTransactions()) {
+            if (t != null) {
+                String categoryName = (t.getCategory() != null) ? t.getCategory().getName() : "Không có";
+                String typeStr = (t.getType() == TransactionType.INCOME) ? "Thu" : "Chi";
+                Object[] row = {
+                        t.getId(),
+                        String.format("%,.0f VND", t.getAmount()),
+                        typeStr,
+                        categoryName,
+                        t.getDateTime().toString().replace("T", " "),
+                        t.getNote() != null ? t.getNote() : ""
+                };
+                tableModel.addRow(row);
             }
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Lỗi khi tải dữ liệu giao dịch: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
