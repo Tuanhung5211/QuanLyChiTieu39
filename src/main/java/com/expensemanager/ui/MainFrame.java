@@ -13,6 +13,7 @@ public class MainFrame extends JFrame {
     private DashboardPanel dashboardPanel;
     private HistoryPanel historyPanel;
     private StatisticsPanel statisticsPanel;
+    private SettingsPanel settingsPanel;       // <-- THÊM MỚI
     private AccountPanel accountPanel;
 
     private FinanceService financeService;
@@ -50,7 +51,7 @@ public class MainFrame extends JFrame {
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // Quan trọng: truyền FinanceService và BudgetManager vào DashboardPanel
+        // Truyền FinanceService và BudgetManager vào DashboardPanel
         dashboardPanel = new DashboardPanel(this, financeService, budgetManager);
         historyPanel = new HistoryPanel(financeService);
         if (statsService != null && budgetManager != null) {
@@ -58,12 +59,14 @@ public class MainFrame extends JFrame {
         } else {
             statisticsPanel = null;
         }
+        settingsPanel = new SettingsPanel(this);    // <-- THÊM MỚI
 
         mainPanel.add(dashboardPanel, "dashboard");
         mainPanel.add(historyPanel, "history");
         if (statisticsPanel != null) {
             mainPanel.add(statisticsPanel, "statistics");
         }
+        mainPanel.add(settingsPanel, "settings");   // <-- THÊM MỚI
 
         add(mainPanel, BorderLayout.CENTER);
         add(createNavBar(), BorderLayout.NORTH);
@@ -78,6 +81,7 @@ public class MainFrame extends JFrame {
         JButton btnHistory = new JButton("Lịch sử");
         JButton btnStatistics = new JButton("Thống kê");
         JButton btnBudget = new JButton("Ngân sách");
+        JButton btnSettings = new JButton("Cài đặt");    // <-- THÊM MỚI
 
         btnDashboard.addActionListener(e -> {
             dashboardPanel.refreshData();
@@ -103,11 +107,16 @@ public class MainFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Chức năng ngân sách chưa sẵn sàng.");
             }
         });
+        btnSettings.addActionListener(e -> {             // <-- THÊM MỚI
+            settingsPanel.refreshData();
+            cardLayout.show(mainPanel, "settings");
+        });
 
         navPanel.add(btnDashboard);
         navPanel.add(btnHistory);
         navPanel.add(btnStatistics);
         navPanel.add(btnBudget);
+        navPanel.add(btnSettings);                       // <-- THÊM MỚI
 
         return navPanel;
     }
@@ -122,6 +131,7 @@ public class MainFrame extends JFrame {
         if (statisticsPanel != null) {
             try { statisticsPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
         }
+        try { settingsPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }  // <-- THÊM MỚI
     }
 
     // Các getter để các thành phần khác sử dụng

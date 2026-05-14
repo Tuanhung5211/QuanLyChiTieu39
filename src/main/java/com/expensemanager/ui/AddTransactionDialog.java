@@ -8,7 +8,9 @@ import com.expensemanager.service.SessionManager;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class AddTransactionDialog extends JDialog {
@@ -16,6 +18,35 @@ public class AddTransactionDialog extends JDialog {
     private JComboBox<Category> cmbCategory;
     private JRadioButton rbIncome, rbExpense;
     private MainFrame mainFrame;
+
+    // Map chứa emoji tùy chỉnh (dùng chung)
+    public static Map<String, String> customEmojiMap = new HashMap<>();
+    private static final Map<String, String> CATEGORY_EMOJI = new HashMap<>();
+    static {
+        CATEGORY_EMOJI.put("Mua sắm", "🛍️");
+        CATEGORY_EMOJI.put("Ăn uống", "🍔");
+        CATEGORY_EMOJI.put("Điện thoại", "📱");
+        CATEGORY_EMOJI.put("Giải trí", "🎮");
+        CATEGORY_EMOJI.put("Giáo dục", "📚");
+        CATEGORY_EMOJI.put("Làm đẹp", "💄");
+        CATEGORY_EMOJI.put("Thể thao", "⚽");
+        CATEGORY_EMOJI.put("Xã hội", "👥");
+        CATEGORY_EMOJI.put("Di chuyển", "🚗");
+        CATEGORY_EMOJI.put("Quần áo", "👗");
+        CATEGORY_EMOJI.put("Xe cộ", "🏍️");
+        CATEGORY_EMOJI.put("Điện tử", "💻");
+        CATEGORY_EMOJI.put("Du lịch", "✈️");
+        CATEGORY_EMOJI.put("Sức khỏe", "🏥");
+        CATEGORY_EMOJI.put("Sửa chữa", "🔧");
+        CATEGORY_EMOJI.put("Nhà cửa", "🏠");
+        CATEGORY_EMOJI.put("Quà tặng", "🎁");
+        CATEGORY_EMOJI.put("Từ thiện", "💖");
+        CATEGORY_EMOJI.put("Ăn vặt", "🍿");
+        CATEGORY_EMOJI.put("Trái cây", "🍎");
+        CATEGORY_EMOJI.put("Lương", "💰");
+        CATEGORY_EMOJI.put("Học bổng", "🎓");
+        CATEGORY_EMOJI.put("Tiền được cho", "💵");
+    }
 
     public AddTransactionDialog(MainFrame mainFrame) {
         super(mainFrame, "Thêm giao dịch mới", true);
@@ -120,5 +151,10 @@ public class AddTransactionDialog extends JDialog {
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    // Phương thức tĩnh để thêm emoji tùy chỉnh (gọi từ CategorySettingsPanel)
+    public static void addCustomEmoji(String categoryName, String emoji) {
+        customEmojiMap.put(categoryName, emoji);
     }
 }

@@ -104,12 +104,10 @@ public class DashboardPanel extends JPanel {
         header.setBackground(new Color(40, 40, 40));
         header.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
-        // Tháng năm
         lblMonthYear = new JLabel(getCurrentMonthYear());
         lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblMonthYear.setForeground(Color.WHITE);
 
-        // Tổng quan thu chi
         JPanel summaryPanel = new JPanel(new GridLayout(1, 3, 20, 0));
         summaryPanel.setBackground(new Color(40, 40, 40));
         summaryPanel.setOpaque(false);
@@ -159,11 +157,8 @@ public class DashboardPanel extends JPanel {
         financeService.syncFromDatabase();
 
         List<Transaction> transactions = financeService.getAllTransactions();
-
-        // Sắp xếp giảm dần theo ngày
         transactions.sort((a, b) -> b.getDateTime().compareTo(a.getDateTime()));
 
-        // Cập nhật header
         double totalIncome = transactions.stream()
                 .filter(t -> t.getType() == TransactionType.INCOME)
                 .mapToDouble(Transaction::getAmount).sum();
@@ -177,11 +172,10 @@ public class DashboardPanel extends JPanel {
         lblBalance.setText(String.format("%,.0f VND", balance));
         lblMonthYear.setText(getCurrentMonthYear());
 
-        // Xây dựng danh sách giao dịch nhóm theo ngày
         transactionListPanel.removeAll();
 
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy");
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
         String currentDate = "";
         JPanel dateGroup = null;
@@ -189,7 +183,6 @@ public class DashboardPanel extends JPanel {
         for (Transaction t : transactions) {
             String transactionDate = t.getDateTime().format(dateFormatter);
 
-            // Nếu sang ngày mới, tạo nhóm mới
             if (!transactionDate.equals(currentDate)) {
                 currentDate = transactionDate;
                 dateGroup = new JPanel();
@@ -197,7 +190,6 @@ public class DashboardPanel extends JPanel {
                 dateGroup.setBackground(new Color(30, 30, 30));
                 dateGroup.setBorder(BorderFactory.createEmptyBorder(10, 0, 5, 0));
 
-                // Label ngày
                 JLabel lblDate = new JLabel(transactionDate);
                 lblDate.setFont(new Font("Segoe UI", Font.BOLD, 14));
                 lblDate.setForeground(new Color(180, 180, 180));
@@ -205,7 +197,6 @@ public class DashboardPanel extends JPanel {
                 lblDate.setAlignmentX(Component.LEFT_ALIGNMENT);
                 dateGroup.add(lblDate);
 
-                // Separator mỏng
                 JSeparator sep = new JSeparator();
                 sep.setForeground(new Color(80, 80, 80));
                 sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
@@ -215,12 +206,10 @@ public class DashboardPanel extends JPanel {
                 transactionListPanel.add(dateGroup);
             }
 
-            // Tạo một dòng giao dịch
-            JPanel row = createTransactionRow(t, timeFormatter);
+            JPanel row = createTransactionRow(t, dateTimeFormatter);
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
             dateGroup.add(row);
 
-            // Separator nhẹ giữa các giao dịch
             JSeparator rowSep = new JSeparator();
             rowSep.setForeground(new Color(50, 50, 50));
             rowSep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
@@ -232,11 +221,12 @@ public class DashboardPanel extends JPanel {
         transactionListPanel.repaint();
     }
 
-    private JPanel createTransactionRow(Transaction t, DateTimeFormatter timeFormatter) {
+    private JPanel createTransactionRow(Transaction t, DateTimeFormatter dateTimeFormatter) {
         JPanel row = new JPanel(new BorderLayout());
         row.setBackground(new Color(30, 30, 30));
         row.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 45));
+        row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); // con trỏ tay
 
         // Icon danh mục
         Category cat = t.getCategory();
@@ -245,20 +235,16 @@ public class DashboardPanel extends JPanel {
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
         lblIcon.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
 
-        // Tên danh mục và ghi chú
-        JPanel textPanel = new JPanel(new GridLayout(2, 1));
-        textPanel.setOpaque(false);
-
-        JLabel lblCategory = new JLabel(cat != null ? cat.getName() : "Không có danh mục");
-        lblCategory.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        lblCategory.setForeground(Color.WHITE);
-
-        JLabel lblNote = new JLabel(t.getNote() != null && !t.getNote().isEmpty() ? t.getNote() : timeFormatter.format(t.getDateTime()));
-        lblNote.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblNote.setForeground(Color.GRAY);
-
-        textPanel.add(lblCategory);
-        textPanel.add(lblNote);
+        // Chỉ hiển thị một dòng: ghi chú (nếu có) hoặc ngày giờ đầy đủ
+        String description;
+        if (t.getNote() != null && !t.getNote().trim().isEmpty()) {
+            description = t.getNote().trim();
+        } else {
+            description = t.getDateTime().format(dateTimeFormatter);
+        }
+        JLabel lblDescription = new JLabel(description);
+        lblDescription.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblDescription.setForeground(Color.WHITE);
 
         // Số tiền
         String amountStr = String.format("%s%,.0f VND",
@@ -269,8 +255,16 @@ public class DashboardPanel extends JPanel {
         lblAmount.setForeground(t.getType() == TransactionType.INCOME ? new Color(0, 200, 0) : new Color(255, 80, 80));
 
         row.add(lblIcon, BorderLayout.WEST);
-        row.add(textPanel, BorderLayout.CENTER);
+        row.add(lblDescription, BorderLayout.CENTER);
         row.add(lblAmount, BorderLayout.EAST);
+
+        // Thêm sự kiện click
+        row.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                new TransactionDetailDialog(mainFrame, t).setVisible(true);
+            }
+        });
 
         return row;
     }

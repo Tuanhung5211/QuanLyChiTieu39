@@ -16,7 +16,7 @@ public class DatabaseUtil {
         );
     }
 
-    // ========== CATEGORIES (dùng chung) ==========
+    // ========== CATEGORIES ==========
     public static void insertCategory(Category category) {
         String sql = "INSERT INTO categories (id, name, type) VALUES (?, ?, ?)";
         try (Connection conn = getConnection();
@@ -86,7 +86,8 @@ public class DatabaseUtil {
                 LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
                 String note = rs.getString("note");
 
-                Transaction transaction = new Transaction(id, amount, type, category, note);
+                // Sử dụng constructor có dateTime để giữ nguyên thời gian gốc
+                Transaction transaction = new Transaction(id, amount, type, category, note, dateTime);
                 list.add(transaction);
             }
         } catch (SQLException e) {
@@ -190,7 +191,6 @@ public class DatabaseUtil {
         }
     }
 
-    // Trong getUserByUsername
     public static User getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = getConnection();
@@ -217,17 +217,21 @@ public class DatabaseUtil {
     }
 
     public static void updateUser(User user) {
-        String sql = "UPDATE users SET nickname=?, avatar=? WHERE id=?";
+        String sql = "UPDATE users SET nickname=?, avatar=?, email=?, gender=? WHERE id=?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user.getNickname());
             stmt.setString(2, user.getAvatar());
-            stmt.setString(3, user.getId());
+            stmt.setString(3, user.getEmail());
+            stmt.setString(4, user.getGender());
+            stmt.setString(5, user.getId());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
+
+    // ========== XÓA DỮ LIỆU THEO USER (cho Delete Account) ==========
     public static void deleteTransactionsByUser(String userId) {
         String sql = "DELETE FROM transactions WHERE user_id = ?";
         try (Connection conn = getConnection();
@@ -255,6 +259,16 @@ public class DatabaseUtil {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void deleteCategory(String id) {
+        String sql = "DELETE FROM categories WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
