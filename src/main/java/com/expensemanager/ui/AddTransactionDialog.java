@@ -18,9 +18,9 @@ public class AddTransactionDialog extends JDialog {
     private Category selectedCategory;
     private JTextField txtAmount, txtNote;
     private JPanel categoryPanel;
-    private JToggleButton activeCategoryButton;
     private JButton btnExpense, btnIncome;
 
+    // Khôi phục lại Map để lưu Emoji do người dùng tự định nghĩa
     public static Map<String, String> customEmojiMap = new HashMap<>();
     private static final Map<String, String> CATEGORY_EMOJI = new HashMap<>();
     static {
@@ -49,145 +49,147 @@ public class AddTransactionDialog extends JDialog {
         CATEGORY_EMOJI.put("Tiền được cho", "💵");
     }
 
-    public AddTransactionDialog(MainFrame mainFrame) {
-        super(mainFrame, "Thêm giao dịch", true);
-        this.mainFrame = mainFrame;
-        setSize(480, 620);
-        setLocationRelativeTo(mainFrame);
+    private final Color BG_COLOR = new Color(18, 18, 18);
+    private final Color SURFACE_COLOR = new Color(30, 30, 30);
+    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
+    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
+
+    public AddTransactionDialog(MainFrame parent) {
+        super(parent, "Thêm giao dịch", true);
+        this.mainFrame = parent;
+        setSize(450, 600);
+        setLocationRelativeTo(parent);
+        getContentPane().setBackground(BG_COLOR);
         setLayout(new BorderLayout());
-        getContentPane().setBackground(new Color(245, 245, 245));
 
-        // Tiêu đề
-        JLabel title = new JLabel("Thêm giao dịch", SwingConstants.CENTER);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        title.setBorder(BorderFactory.createEmptyBorder(15, 0, 10, 0));
-        add(title, BorderLayout.NORTH);
+        // --- HEADER: Chọn Thu hoặc Chi ---
+        JPanel header = new JPanel(new GridLayout(1, 2, 10, 0));
+        header.setBackground(BG_COLOR);
+        header.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
 
-        // Tab chọn loại
-        JPanel typeTabs = new JPanel(new GridLayout(1, 2, 0, 0));
-        typeTabs.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
-        btnExpense = new JButton("Chi tiêu");
-        btnExpense.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnExpense.setBackground(new Color(0, 153, 76));
-        btnExpense.setForeground(Color.WHITE);
+        btnExpense = createTypeButton("CHI TIÊU", true);
+        btnIncome = createTypeButton("THU NHẬP", false);
+
         btnExpense.addActionListener(e -> switchType(TransactionType.EXPENSE));
-        btnIncome = new JButton("Thu nhập");
-        btnIncome.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnIncome.setBackground(Color.LIGHT_GRAY);
-        btnIncome.setForeground(Color.BLACK);
         btnIncome.addActionListener(e -> switchType(TransactionType.INCOME));
-        typeTabs.add(btnExpense);
-        typeTabs.add(btnIncome);
 
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.setBackground(new Color(245, 245, 245));
-        centerPanel.add(typeTabs, BorderLayout.NORTH);
-        centerPanel.add(createCategoryGrid(), BorderLayout.CENTER);
-        add(centerPanel, BorderLayout.CENTER);
-        add(createBottomPanel(), BorderLayout.SOUTH);
-    }
+        header.add(btnExpense);
+        header.add(btnIncome);
+        add(header, BorderLayout.NORTH);
 
-    private JScrollPane createCategoryGrid() {
+        // --- CENTER: Form nhập liệu ---
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
+        centerPanel.setBackground(BG_COLOR);
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        centerPanel.add(createLabel("Số tiền"));
+        txtAmount = new JTextField();
+        styleTextField(txtAmount, "0");
+        centerPanel.add(txtAmount);
+
+        centerPanel.add(Box.createVerticalStrut(15));
+        centerPanel.add(createLabel("Danh mục"));
+
         categoryPanel = new JPanel(new GridLayout(0, 4, 10, 10));
-        categoryPanel.setBackground(new Color(245, 245, 245));
-        categoryPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        loadCategories(selectedType);
-        JScrollPane scrollPane = new JScrollPane(categoryPanel);
-        scrollPane.setBorder(null);
-        return scrollPane;
+        categoryPanel.setBackground(BG_COLOR);
+        JScrollPane scroll = new JScrollPane(categoryPanel);
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(BG_COLOR);
+        centerPanel.add(scroll);
+
+        centerPanel.add(Box.createVerticalStrut(15));
+        centerPanel.add(createLabel("Ghi chú"));
+        txtNote = new JTextField();
+        styleTextField(txtNote, "Nhập ghi chú...");
+        centerPanel.add(txtNote);
+
+        add(centerPanel, BorderLayout.CENTER);
+
+        // --- FOOTER: Nút Lưu và Hủy (Khôi phục) ---
+        JPanel footer = new JPanel(new GridLayout(1, 2, 10, 0));
+        footer.setBackground(BG_COLOR);
+        footer.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
+
+        JButton btnCancel = new JButton("HỦY");
+        btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnCancel.setBackground(SURFACE_COLOR);
+        btnCancel.setForeground(TEXT_PRIMARY);
+        btnCancel.setFocusPainted(false);
+        btnCancel.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
+        btnCancel.addActionListener(e -> dispose());
+
+        JButton btnSave = new JButton("LƯU");
+        btnSave.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnSave.setBackground(ACCENT_YELLOW);
+        btnSave.setForeground(BG_COLOR);
+        btnSave.setFocusPainted(false);
+        btnSave.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
+        btnSave.addActionListener(e -> saveTransaction());
+
+        footer.add(btnCancel);
+        footer.add(btnSave);
+        add(footer, BorderLayout.SOUTH);
+
+        refreshCategories();
     }
 
-    private void loadCategories(TransactionType type) {
+    private void switchType(TransactionType type) {
+        this.selectedType = type;
+        btnExpense.setBackground(type == TransactionType.EXPENSE ? new Color(244, 67, 54) : SURFACE_COLOR);
+        btnIncome.setBackground(type == TransactionType.INCOME ? new Color(76, 175, 80) : SURFACE_COLOR);
+        btnExpense.setForeground(Color.WHITE);
+        btnIncome.setForeground(Color.WHITE);
+        refreshCategories();
+    }
+
+    private void refreshCategories() {
         categoryPanel.removeAll();
-        List<Category> categories = DatabaseUtil.getAllCategories();
-        for (Category c : categories) {
-            if (c.getType() == type) {
-                String emoji = customEmojiMap.getOrDefault(c.getName(),
-                        CATEGORY_EMOJI.getOrDefault(c.getName(), "📌"));
-                JToggleButton btn = new JToggleButton("<html><center>" + emoji + "<br>" + c.getName() + "</center></html>");
-                btn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-                btn.setHorizontalTextPosition(SwingConstants.CENTER);
-                btn.setVerticalTextPosition(SwingConstants.BOTTOM);
-                btn.setPreferredSize(new Dimension(90, 70));
-                btn.setBackground(Color.WHITE);
-                btn.addActionListener(e -> {
-                    if (activeCategoryButton != null) activeCategoryButton.setSelected(false);
-                    activeCategoryButton = btn;
-                    btn.setSelected(true);
-                    selectedCategory = c;
-                });
-                categoryPanel.add(btn);
+        List<Category> list = DatabaseUtil.getAllCategories();
+        for (Category c : list) {
+            if (c.getType() == selectedType) {
+                categoryPanel.add(createCategoryItem(c));
             }
         }
-        JButton btnAdd = new JButton("+");
-        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        btnAdd.setPreferredSize(new Dimension(90, 70));
-        btnAdd.setBackground(Color.WHITE);
-        btnAdd.addActionListener(e -> {
-            AddCategoryDialog dlg = new AddCategoryDialog(mainFrame, () -> loadCategories(selectedType));
-            dlg.setVisible(true);
-        });
-        categoryPanel.add(btnAdd);
         categoryPanel.revalidate();
         categoryPanel.repaint();
     }
 
-    private void switchType(TransactionType type) {
-        selectedType = type;
-        if (type == TransactionType.EXPENSE) {
-            btnExpense.setBackground(new Color(0, 153, 76));
-            btnExpense.setForeground(Color.WHITE);
-            btnIncome.setBackground(Color.LIGHT_GRAY);
-            btnIncome.setForeground(Color.BLACK);
-        } else {
-            btnIncome.setBackground(new Color(0, 102, 204));
-            btnIncome.setForeground(Color.WHITE);
-            btnExpense.setBackground(Color.LIGHT_GRAY);
-            btnExpense.setForeground(Color.BLACK);
-        }
-        loadCategories(type);
-        selectedCategory = null;
-        if (activeCategoryButton != null) {
-            activeCategoryButton.setSelected(false);
-            activeCategoryButton = null;
-        }
+    private JPanel createCategoryItem(Category c) {
+        JPanel item = new JPanel(new BorderLayout());
+        item.setBackground(BG_COLOR);
+        item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        // Khôi phục logic ưu tiên lấy Custom Emoji
+        String emoji = customEmojiMap.containsKey(c.getName()) ? customEmojiMap.get(c.getName()) : CATEGORY_EMOJI.getOrDefault(c.getName(), "📌");
+
+        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+        lblIcon.setOpaque(true);
+        lblIcon.setBackground(SURFACE_COLOR);
+        lblIcon.setPreferredSize(new Dimension(50, 50));
+
+        JLabel lblName = new JLabel(c.getName(), SwingConstants.CENTER);
+        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblName.setForeground(TEXT_PRIMARY);
+
+        item.add(lblIcon, BorderLayout.CENTER);
+        item.add(lblName, BorderLayout.SOUTH);
+
+        item.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                selectedCategory = c;
+                for (Component comp : categoryPanel.getComponents()) {
+                    ((JPanel)comp).getComponent(0).setBackground(SURFACE_COLOR);
+                }
+                lblIcon.setBackground(ACCENT_YELLOW);
+            }
+        });
+
+        return item;
     }
 
-    private JPanel createBottomPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(new Color(245, 245, 245));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 15, 20));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
-
-        gbc.gridx = 0; gbc.gridy = 0;
-        panel.add(new JLabel("Số tiền:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 0; gbc.gridwidth = 2;
-        txtAmount = new JTextField();
-        panel.add(txtAmount, gbc);
-
-        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1;
-        panel.add(new JLabel("Ghi chú:"), gbc);
-        gbc.gridx = 1; gbc.gridy = 1; gbc.gridwidth = 2;
-        txtNote = new JTextField();
-        panel.add(txtNote, gbc);
-
-        gbc.gridx = 1; gbc.gridy = 2; gbc.gridwidth = 1;
-        JButton btnSave = new JButton("Lưu");
-        btnSave.setBackground(new Color(0, 153, 76));
-        btnSave.setForeground(Color.WHITE);
-        btnSave.addActionListener(e -> saveTransaction());
-        panel.add(btnSave, gbc);
-
-        gbc.gridx = 2;
-        JButton btnCancel = new JButton("Hủy");
-        btnCancel.addActionListener(e -> dispose());
-        panel.add(btnCancel, gbc);
-
-        return panel;
-    }
-
+    // Khôi phục đầy đủ logic Save Transaction từ file gốc
     private void saveTransaction() {
         try {
             String userId = SessionManager.getCurrentUserId();
@@ -208,6 +210,7 @@ public class AddTransactionDialog extends JDialog {
             String id = UUID.randomUUID().toString().substring(0, 8);
             Transaction t = new Transaction(id, amount, selectedType, selectedCategory, note);
             DatabaseUtil.insertTransaction(t, userId);
+
             JOptionPane.showMessageDialog(this, "Thêm thành công!");
             dispose();
             if (mainFrame != null) mainFrame.refreshAllPanels();
@@ -216,7 +219,35 @@ public class AddTransactionDialog extends JDialog {
         }
     }
 
+    // Khôi phục hàm tĩnh (Static method) bị xóa
     public static void addCustomEmoji(String categoryName, String emoji) {
         customEmojiMap.put(categoryName, emoji);
+    }
+
+    private JButton createTypeButton(String text, boolean active) {
+        JButton b = new JButton(text);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setFocusPainted(false);
+        b.setBackground(active ? (text.contains("CHI") ? new Color(244, 67, 54) : new Color(76, 175, 80)) : SURFACE_COLOR);
+        b.setForeground(Color.WHITE);
+        b.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        return b;
+    }
+
+    private JLabel createLabel(String text) {
+        JLabel l = new JLabel(text);
+        l.setForeground(new Color(150, 150, 150));
+        l.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        return l;
+    }
+
+    private void styleTextField(JTextField tf, String placeholder) {
+        tf.setBackground(SURFACE_COLOR);
+        tf.setForeground(TEXT_PRIMARY);
+        tf.setCaretColor(ACCENT_YELLOW);
+        tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(50, 50, 50)),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
     }
 }
