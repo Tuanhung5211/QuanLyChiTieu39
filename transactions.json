@@ -1,0 +1,38 @@
+[
+  {
+    "id": "c7268095",
+    "amount": 1000000.0,
+    "type": "INCOME",
+    "category": {
+      "id": "4772ac2e",
+      "name": "Work",
+      "type": "INCOME"
+    },
+    "dateTime": "2026-05-15T20:00:41",
+    "note": "Di lam"
+  },
+  {
+    "id": "c96f3d9c",
+    "amount": 1.0E9,
+    "type": "EXPENSE",
+    "category": {
+      "id": "5a04969c",
+      "name": "sdsadasd",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-15T20:01:32",
+    "note": "test"
+  },
+  {
+    "id": "d7096b0d",
+    "amount": 1.0E10,
+    "type": "INCOME",
+    "category": {
+      "id": "5402513d",
+      "name": "Hien tai",
+      "type": "INCOME"
+    },
+    "dateTime": "2026-05-15T20:03:40",
+    "note": ""
+  }
+]
