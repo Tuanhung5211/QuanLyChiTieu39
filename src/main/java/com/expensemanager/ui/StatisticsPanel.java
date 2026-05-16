@@ -2,12 +2,17 @@ package com.expensemanager.ui;
 
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
+import com.expensemanager.observer.EventType;
+import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.service.StatisticsService;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -18,7 +23,7 @@ import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class StatisticsPanel extends JPanel {
+public class StatisticsPanel extends JPanel implements Observer {
     private StatisticsService statsService;
     private BudgetManager budgetManager;
     private FinanceService financeService;
@@ -28,25 +33,41 @@ public class StatisticsPanel extends JPanel {
     private String currentChartType = "pie";
 
     private static final Color[] PIE_COLORS = {
-            new Color(0x34, 0x98, 0xDB), new Color(0xE7, 0x4C, 0x3C), new Color(0xF1, 0xC4, 0x0F),
-            new Color(0x2E, 0xCC, 0x71), new Color(0x9B, 0x59, 0xB6), new Color(0xE6, 0x7E, 0x22),
-            new Color(0x1A, 0xBC, 0x9C), new Color(0x34, 0x49, 0x5E), new Color(0xC0, 0x39, 0x2B),
-            new Color(0x7F, 0x8C, 0x8D)
+            new Color(46, 204, 113),  // Xanh lá neon
+            new Color(52, 152, 219),  // Xanh dương dịu
+            new Color(230, 126, 34),  // Cam rực
+            new Color(241, 196, 15),  // Vàng hổ phách
+            new Color(155, 89, 182),  // Tím ánh quang
+            new Color(231, 76, 60),   // Đỏ phản quang
+            new Color(26, 188, 156),  // Xanh ngọc
+            new Color(0, 153, 76),    // Xanh lá đậm
+            new Color(255, 159, 243), // Hồng dạ quang
+            new Color(149, 165, 166)  // Xám khói
     };
 
-    private JLabel lblTotalExpense;
     private JPanel pieChartPanel;
     private JPanel lineChartPanel;
     private JPanel legendPanel;
     private JLabel lblTimeRange;
-    private JButton btnPrevTime, btnNextTime, btnPrevChart, btnNextChart;
+    private JButton btnPrevTime, btnNextTime;
+    private JButton btnPrevChart, btnNextChart;
     private JButton btnWeek, btnMonth, btnYear;
 
     private Map<String, Double> categoryExpenses;
     private double totalExpense;
     private Map<String, Double> timeSeriesData;
+
     private JPanel chartSwitcher;
     private CardLayout chartCardLayout;
+
+    // Hệ màu sắc phẳng Flat Dark Mode đồng bộ hệ thống chính
+    private final Color BG_COLOR = new Color(18, 18, 18);
+    private final Color SURFACE_COLOR = new Color(30, 30, 30);
+    private final Color INPUT_BG = new Color(45, 45, 45);
+    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
+    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
+    private final Color TEXT_MUTED = new Color(150, 150, 150);
+    private final Color BORDER_COLOR = new Color(55, 55, 55);
 
     public StatisticsPanel(StatisticsService statsService, BudgetManager budgetManager) {
         this.statsService = statsService;
@@ -54,108 +75,137 @@ public class StatisticsPanel extends JPanel {
         this.financeService = statsService.getFinanceService();
 
         setLayout(new BorderLayout());
-        setBackground(new Color(18, 18, 18));
-        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        setBackground(BG_COLOR);
+        setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
 
-        // Header
+        // --- KHU VỰC TIÊU ĐỀ TRÊN CÙNG ---
         JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(new Color(18, 18, 18));
+        headerPanel.setBackground(BG_COLOR);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 5, 15, 5));
 
-        JLabel title = new JLabel("Thống kê chi tiêu");
-        title.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        title.setForeground(Color.WHITE);
+        JLabel title = new JLabel("Phân tích thống kê chi tiêu", SwingConstants.LEFT);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        title.setForeground(TEXT_PRIMARY);
         headerPanel.add(title, BorderLayout.WEST);
 
-        JPanel chartTogglePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
-        chartTogglePanel.setBackground(new Color(18, 18, 18));
-        btnPrevChart = createArrowButton("<"); btnNextChart = createArrowButton(">");
+        JPanel chartTogglePanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        chartTogglePanel.setBackground(BG_COLOR);
+        btnPrevChart = createArrowButton("<  Biểu đồ tròn");
+        btnNextChart = createArrowButton("Biểu đồ đường  >");
         btnPrevChart.addActionListener(e -> switchChartType("pie"));
         btnNextChart.addActionListener(e -> switchChartType("line"));
-        chartTogglePanel.add(btnPrevChart); chartTogglePanel.add(btnNextChart);
+        chartTogglePanel.add(btnPrevChart);
+        chartTogglePanel.add(btnNextChart);
         headerPanel.add(chartTogglePanel, BorderLayout.EAST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Control Panel
-        JPanel timeControlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 20));
-        timeControlPanel.setBackground(new Color(18, 18, 18));
+        // --- KHU VỰC KHỐI NỘI DUNG CHÍNH (Đã mở rộng tối đa không gian biểu đồ) ---
+        JPanel mainPanel = new JPanel(new BorderLayout(25, 0));
+        mainPanel.setOpaque(false);
 
-        btnWeek = createModeButton("Tuần");
-        btnMonth = createModeButton("Tháng");
-        btnYear = createModeButton("Năm");
-        updateModeButtonStyle(btnMonth, true);
-        btnWeek.addActionListener(e -> switchMode("week"));
-        btnMonth.addActionListener(e -> switchMode("month"));
-        btnYear.addActionListener(e -> switchMode("year"));
+        // 🌟 KHỐI TRÁI UNIFIED CARD: Gom Header thời gian nằm TRÙNG khít khung biểu đồ
+        JPanel leftCard = new JPanel(new BorderLayout());
+        leftCard.setBackground(SURFACE_COLOR);
+        leftCard.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1, true));
+
+        JPanel leftHeaderBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 8)); // Căn GIỮA tuyệt đối
+        leftHeaderBox.setBackground(SURFACE_COLOR);
+        leftHeaderBox.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
 
         btnPrevTime = createArrowButton("◀");
         btnNextTime = createArrowButton("▶");
         btnPrevTime.addActionListener(e -> { currentOffset--; refreshData(); });
         btnNextTime.addActionListener(e -> { currentOffset++; refreshData(); });
 
-        lblTimeRange = new JLabel();
-        lblTimeRange.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblTimeRange.setForeground(Color.LIGHT_GRAY);
+        lblTimeRange = new JLabel("", SwingConstants.CENTER);
+        lblTimeRange.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTimeRange.setForeground(ACCENT_YELLOW);
+        lblTimeRange.setPreferredSize(new Dimension(280, 30));
 
-        timeControlPanel.add(btnWeek); timeControlPanel.add(btnMonth); timeControlPanel.add(btnYear);
-        timeControlPanel.add(Box.createHorizontalStrut(30));
-        timeControlPanel.add(btnPrevTime); timeControlPanel.add(lblTimeRange); timeControlPanel.add(btnNextTime);
-        add(timeControlPanel, BorderLayout.CENTER);
+        leftHeaderBox.add(btnPrevTime);
+        leftHeaderBox.add(lblTimeRange);
+        leftHeaderBox.add(btnNextTime);
+        leftCard.add(leftHeaderBox, BorderLayout.NORTH);
 
-        // Main Chart Area
-        JPanel mainPanel = new JPanel(new BorderLayout(20, 0));
-        mainPanel.setBackground(new Color(18, 18, 18));
-
+        // CardLayout chuyển đổi biểu đồ lồng bên trong khối trái
         chartCardLayout = new CardLayout();
         chartSwitcher = new JPanel(chartCardLayout);
-        chartSwitcher.setBackground(new Color(18, 18, 18));
+        chartSwitcher.setOpaque(false);
 
-        // Pie (Donut)
         pieChartPanel = new JPanel() {
-            @Override protected void paintComponent(Graphics g) { super.paintComponent(g); drawDonutChart(g); }
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                drawDonutChart(g);
+            }
         };
-        pieChartPanel.setPreferredSize(new Dimension(400, 400));
-        pieChartPanel.setBackground(new Color(18, 18, 18));
+        pieChartPanel.setBackground(SURFACE_COLOR);
 
-        lblTotalExpense = new JLabel("", SwingConstants.CENTER);
-        lblTotalExpense.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblTotalExpense.setForeground(Color.WHITE);
-
-        JLayeredPane layeredPane = new JLayeredPane();
-        layeredPane.setPreferredSize(new Dimension(400, 400));
-        pieChartPanel.setBounds(0, 0, 400, 400);
-        lblTotalExpense.setBounds(0, 0, 400, 400);
-        layeredPane.add(pieChartPanel, Integer.valueOf(0));
-        layeredPane.add(lblTotalExpense, Integer.valueOf(1));
-
-        // Line Chart
         lineChartPanel = new JPanel() {
-            @Override protected void paintComponent(Graphics g) { super.paintComponent(g); drawLineChart(g); }
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                drawLineChart(g);
+            }
         };
-        lineChartPanel.setBackground(new Color(18, 18, 18));
+        lineChartPanel.setBackground(SURFACE_COLOR);
 
-        chartSwitcher.add(layeredPane, "pie");
+        chartSwitcher.add(pieChartPanel, "pie");
         chartSwitcher.add(lineChartPanel, "line");
+        leftCard.add(chartSwitcher, BorderLayout.CENTER);
 
+        // 🌟 KHỐI PHẢI UNIFIED CARD: Gom Header Tuần/Tháng/Năm TRÙNG khít khung danh mục
+        JPanel rightCard = new JPanel(new BorderLayout());
+        rightCard.setBackground(SURFACE_COLOR);
+        rightCard.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1, true));
+        rightCard.setPreferredSize(new Dimension(340, 0)); // Khống chế chiều rộng vừa vặn mẫu
+
+        JPanel rightHeaderBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 8)); // Căn GIỮA tuyệt đối
+        rightHeaderBox.setBackground(SURFACE_COLOR);
+        rightHeaderBox.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
+
+        btnWeek = createModeButton("Tuần");
+        btnMonth = createModeButton("Tháng");
+        btnYear = createModeButton("Năm");
+        updateModeButtonStyle(btnMonth, true);
+
+        btnWeek.addActionListener(e -> switchMode("week"));
+        btnMonth.addActionListener(e -> switchMode("month"));
+        btnYear.addActionListener(e -> switchMode("year"));
+
+        rightHeaderBox.add(btnWeek);
+        rightHeaderBox.add(btnMonth);
+        rightHeaderBox.add(btnYear);
+        rightCard.add(rightHeaderBox, BorderLayout.NORTH);
+
+        // Danh sách cuốn dọc danh mục lồng bên trong khối phải
         legendPanel = new JPanel();
         legendPanel.setLayout(new BoxLayout(legendPanel, BoxLayout.Y_AXIS));
-        legendPanel.setBackground(new Color(18, 18, 18));
-        JScrollPane legendScroll = new JScrollPane(legendPanel);
-        legendScroll.setBorder(null);
-        legendScroll.setPreferredSize(new Dimension(300, 0));
+        legendPanel.setBackground(SURFACE_COLOR);
+        legendPanel.setBorder(BorderFactory.createEmptyBorder(15, 18, 15, 18));
 
-        mainPanel.add(chartSwitcher, BorderLayout.CENTER);
-        mainPanel.add(legendScroll, BorderLayout.EAST);
-        add(mainPanel, BorderLayout.SOUTH);
+        JScrollPane legendScroll = new JScrollPane(legendPanel);
+        legendScroll.setBorder(null); // Gỡ viền trùng lặp
+        legendScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        legendScroll.getViewport().setBackground(SURFACE_COLOR);
+        rightCard.add(legendScroll, BorderLayout.CENTER);
+
+        // Đẩy vào luồng phân bổ (Khối trái bung rộng ở CENTER, Khối phải thu gọn ở EAST)
+        mainPanel.add(leftCard, BorderLayout.CENTER);
+        mainPanel.add(rightCard, BorderLayout.EAST);
+        add(mainPanel, BorderLayout.CENTER);
 
         refreshData();
     }
 
     private JButton createModeButton(String text) {
         JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setForeground(Color.GRAY);
-        btn.setBackground(new Color(30, 30, 30));
-        btn.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 20));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btn.setForeground(TEXT_MUTED);
+        btn.setBackground(INPUT_BG);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(60, 60, 60), 1),
+                BorderFactory.createEmptyBorder(6, 18, 6, 18)));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
@@ -163,27 +213,39 @@ public class StatisticsPanel extends JPanel {
 
     private void updateModeButtonStyle(JButton btn, boolean active) {
         if (active) {
-            btn.setBackground(Color.WHITE);
-            btn.setForeground(Color.BLACK);
+            btn.setBackground(ACCENT_YELLOW);
+            btn.setForeground(BG_COLOR);
+            btn.setBorder(BorderFactory.createEmptyBorder(7, 19, 7, 19));
         } else {
-            btn.setBackground(new Color(30, 30, 30));
-            btn.setForeground(Color.GRAY);
+            btn.setBackground(INPUT_BG);
+            btn.setForeground(TEXT_MUTED);
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(60, 60, 60), 1),
+                    BorderFactory.createEmptyBorder(6, 18, 6, 18)));
         }
     }
 
     private JButton createArrowButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(new Color(30, 30, 30));
-        btn.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
+        btn.setForeground(TEXT_PRIMARY);
+        btn.setBackground(SURFACE_COLOR);
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(55, 55, 55), 1),
+                BorderFactory.createEmptyBorder(6, 14, 6, 14)
+        ));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent evt) { btn.setBackground(INPUT_BG); btn.setForeground(ACCENT_YELLOW); }
+            @Override public void mouseExited(MouseEvent evt) { btn.setBackground(SURFACE_COLOR); btn.setForeground(TEXT_PRIMARY); }
+        });
         return btn;
     }
 
     private void switchMode(String mode) {
-        this.currentMode = mode; this.currentOffset = 0;
+        this.currentMode = mode;
+        this.currentOffset = 0;
         updateModeButtonStyle(btnWeek, mode.equals("week"));
         updateModeButtonStyle(btnMonth, mode.equals("month"));
         updateModeButtonStyle(btnYear, mode.equals("year"));
@@ -203,82 +265,117 @@ public class StatisticsPanel extends JPanel {
         String timeLabel = "";
 
         switch (currentMode) {
-            case "week":
+            case "week": {
                 start = now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(currentOffset);
                 end = start.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
-                timeLabel = String.format("Tuần %s - %s", start.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")), end.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")));
+                int weekNumber = start.get(WeekFields.of(Locale.getDefault()).weekOfYear());
+                timeLabel = String.format("Tuần %d (%s - %s)", weekNumber,
+                        start.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM")),
+                        end.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
                 break;
-            case "year":
+            }
+            case "year": {
                 start = now.withDayOfYear(1).plusYears(currentOffset);
                 end = start.withDayOfYear(start.lengthOfYear());
                 timeLabel = String.format("Năm %d", start.getYear());
                 break;
-            default:
+            }
+            default: {
                 YearMonth ym = YearMonth.of(now.getYear(), now.getMonthValue()).plusMonths(currentOffset);
-                start = ym.atDay(1); end = ym.atEndOfMonth();
+                start = ym.atDay(1);
+                end = ym.atEndOfMonth();
                 timeLabel = String.format("Tháng %d/%d", ym.getMonthValue(), ym.getYear());
                 break;
+            }
         }
 
         lblTimeRange.setText(timeLabel);
 
         List<Transaction> filtered = allTransactions.stream()
-                .filter(t -> t.getType() == TransactionType.EXPENSE)
-                .filter(t -> !t.getDateTime().toLocalDate().isBefore(start) && !t.getDateTime().toLocalDate().isAfter(end))
+                .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
+                .filter(t -> !t.getDateTime().toLocalDate().isBefore(start))
+                .filter(t -> !t.getDateTime().toLocalDate().isAfter(end))
                 .collect(Collectors.toList());
 
         totalExpense = filtered.stream().mapToDouble(Transaction::getAmount).sum();
-        lblTotalExpense.setText(String.format("<html><center><span style='font-size:14px; color:#AAA;'>Tổng chi</span><br><span style='font-size:22px; font-weight:bold; color:#FFF;'>%,.0f đ</span></center></html>", totalExpense));
 
-        categoryExpenses = filtered.stream().collect(Collectors.groupingBy(
-                t -> t.getCategory() != null ? t.getCategory().getName() : "Khác",
-                Collectors.summingDouble(Transaction::getAmount)));
+        categoryExpenses = filtered.stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.getCategory() != null ? t.getCategory().getName() : "Khác",
+                        Collectors.summingDouble(Transaction::getAmount)));
 
         timeSeriesData = new LinkedHashMap<>();
-        if (currentMode.equals("week")) {
-            for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) timeSeriesData.put(d.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.getDefault()), 0.0);
-        } else if (currentMode.equals("year")) {
-            for (int m = 1; m <= 12; m++) timeSeriesData.put("T" + m, 0.0);
-        } else {
-            for (int d = 1; d <= end.getDayOfMonth(); d++) timeSeriesData.put(String.valueOf(d), 0.0);
+        switch (currentMode) {
+            case "week":
+                for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1))
+                    timeSeriesData.put(d.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.getDefault()), 0.0);
+                break;
+            case "year":
+                for (int m = 1; m <= 12; m++) timeSeriesData.put("T" + m, 0.0);
+                break;
+            default:
+                for (int d = 1; d <= end.getDayOfMonth(); d++) timeSeriesData.put(String.valueOf(d), 0.0);
         }
 
         for (Transaction t : filtered) {
-            String key; LocalDate date = t.getDateTime().toLocalDate();
+            String key;
+            LocalDate date = t.getDateTime().toLocalDate();
             if (currentMode.equals("week")) key = date.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.getDefault());
             else if (currentMode.equals("year")) key = "T" + date.getMonthValue();
             else key = String.valueOf(date.getDayOfMonth());
             timeSeriesData.merge(key, t.getAmount(), Double::sum);
         }
 
-        pieChartPanel.repaint(); lineChartPanel.repaint(); updateLegend();
+        pieChartPanel.repaint();
+        lineChartPanel.repaint();
+        updateLegend();
     }
 
     private void drawDonutChart(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         int w = pieChartPanel.getWidth(), h = pieChartPanel.getHeight();
-        int size = Math.min(w, h) - 40;
+        int size = Math.min(w, h) - 50;
         int x = (w - size) / 2, y = (h - size) / 2;
 
         if (categoryExpenses == null || categoryExpenses.isEmpty() || totalExpense == 0) {
-            g2d.setColor(new Color(50, 50, 50));
+            g2d.setColor(BORDER_COLOR);
             g2d.fillArc(x, y, size, size, 0, 360);
-        } else {
-            double startAngle = 90.0; int ci = 0;
-            for (Map.Entry<String, Double> e : categoryExpenses.entrySet()) {
-                double pct = e.getValue() / totalExpense;
-                int arc = (int) Math.round(pct * 360);
-                g2d.setColor(PIE_COLORS[ci % PIE_COLORS.length]);
-                g2d.fillArc(x, y, size, size, (int) startAngle, -arc);
-                startAngle -= arc; ci++;
-            }
+            drawDonutHoleAndText(g2d, x, y, size, 0);
+            return;
         }
-        // Vẽ vòng tròn Đen ở giữa để tạo Donut
-        int innerSize = size - 100; // Độ dày vành
-        int ix = (w - innerSize) / 2, iy = (h - innerSize) / 2;
-        g2d.setColor(new Color(18, 18, 18));
-        g2d.fillOval(ix, iy, innerSize, innerSize);
+
+        double startAngle = 90.0;
+        int ci = 0;
+        for (Map.Entry<String, Double> e : categoryExpenses.entrySet()) {
+            double pct = e.getValue() / totalExpense;
+            int arc = (int) Math.round(pct * 360);
+            g2d.setColor(PIE_COLORS[ci % PIE_COLORS.length]);
+            g2d.fillArc(x, y, size, size, (int) startAngle, -arc);
+            startAngle -= arc;
+            ci++;
+        }
+        drawDonutHoleAndText(g2d, x, y, size, totalExpense);
+    }
+
+    private void drawDonutHoleAndText(Graphics2D g2d, int x, int y, int size, double amount) {
+        int holeSize = (int) (size * 0.58);
+        int hx = x + (size - holeSize) / 2;
+        int hy = y + (size - holeSize) / 2;
+        g2d.setColor(SURFACE_COLOR);
+        g2d.fillOval(hx, hy, holeSize, holeSize);
+
+        g2d.setColor(TEXT_MUTED);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        String titleStr = "Tổng chi tiêu";
+        int titleW = g2d.getFontMetrics().stringWidth(titleStr);
+        g2d.drawString(titleStr, x + size / 2 - titleW / 2, y + size / 2 - 5);
+
+        g2d.setColor(new Color(255, 82, 82));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        String amountStr = String.format("-%,.0f đ", amount);
+        int amountW = g2d.getFontMetrics().stringWidth(amountStr);
+        g2d.drawString(amountStr, x + size / 2 - amountW / 2, y + size / 2 + 20);
     }
 
     private void drawLineChart(Graphics g) {
@@ -292,80 +389,164 @@ public class StatisticsPanel extends JPanel {
         double maxVal = values.stream().mapToDouble(Double::doubleValue).max().orElse(1);
         if (maxVal == 0) maxVal = 1;
 
-        int marginLeft = 40, marginRight = 20, marginTop = 20, marginBottom = 40;
+        int marginLeft = 65, marginRight = 25, marginTop = 40, marginBottom = 50;
         int chartW = w - marginLeft - marginRight;
         int chartH = h - marginTop - marginBottom;
 
-        g2d.setColor(new Color(40, 40, 40));
-        for (int i = 0; i < 5; i++) {
-            int y = marginTop + (chartH * i / 4);
-            g2d.drawLine(marginLeft, y, w - marginRight, y);
-        }
-
-        int[] xs = new int[labels.size()], ys = new int[labels.size()];
-        for (int i = 0; i < labels.size(); i++) {
-            xs[i] = marginLeft + (int)((double)i / (labels.size() - 1) * chartW);
-            ys[i] = marginTop + (int)((1 - values.get(i) / maxVal) * chartH);
-        }
-
-        g2d.setColor(new Color(255, 193, 7)); // Đường Line màu Vàng
-        g2d.setStroke(new BasicStroke(3f));
-        g2d.drawPolyline(xs, ys, labels.size());
-
-        g2d.setStroke(new BasicStroke(1f));
+        g2d.setColor(TEXT_PRIMARY);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        g2d.drawString(String.format("Tổng: %,.0f đ", totalExpense), marginLeft, marginTop - 15);
+        double avg = labels.isEmpty() ? 0 : totalExpense / labels.size();
+        g2d.setColor(TEXT_MUTED);
         g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        for (int i = 0; i < labels.size(); i++) {
-            g2d.setColor(new Color(18, 18, 18));
-            g2d.fillOval(xs[i] - 5, ys[i] - 5, 10, 10);
-            g2d.setColor(new Color(255, 193, 7));
-            g2d.drawOval(xs[i] - 5, ys[i] - 5, 10, 10);
+        g2d.drawString(String.format("Trung bình: %,.1f đ", avg), marginLeft + 180, marginTop - 15);
 
-            if (labels.size() <= 15 || i % (labels.size()/10) == 0) {
-                g2d.setColor(Color.LIGHT_GRAY);
-                int sw = g2d.getFontMetrics().stringWidth(labels.get(i));
-                g2d.drawString(labels.get(i), xs[i] - sw / 2, h - 15);
+        g2d.setColor(new Color(60, 60, 60));
+        g2d.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[]{4.0f}, 0.0f));
+        for (int i = 0; i <= 5; i++) {
+            int y = marginTop + (chartH * i / 5);
+            g2d.drawLine(marginLeft, y, w - marginRight, y);
+
+            double valY = maxVal - (maxVal * i / 5);
+            String valStr = String.format("%,.0f", valY);
+            g2d.setColor(TEXT_MUTED);
+            g2d.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            int strW = g2d.getFontMetrics().stringWidth(valStr);
+            g2d.drawString(valStr, marginLeft - strW - 8, y + 4);
+            g2d.setColor(new Color(60, 60, 60));
+        }
+
+        g2d.setStroke(new BasicStroke(2.0f));
+        g2d.setColor(BORDER_COLOR);
+        g2d.drawLine(marginLeft, h - marginBottom, w - marginRight, h - marginBottom);
+
+        g2d.setColor(TEXT_MUTED);
+        g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        int step = (labels.size() > 15) ? Math.max(1, labels.size() / 12) : 1;
+        for (int i = 0; i < labels.size(); i += step) {
+            int x = marginLeft + (int) ((double) i / (labels.size() - 1) * chartW);
+            String lbl = labels.get(i);
+            int sw = g2d.getFontMetrics().stringWidth(lbl);
+
+            Graphics2D g2dRotated = (Graphics2D) g2d.create();
+            g2dRotated.translate(x - sw / 2, h - marginBottom + 16);
+            g2dRotated.rotate(Math.toRadians(-30));
+            g2dRotated.drawString(lbl, 0, 0);
+            g2dRotated.dispose();
+        }
+
+        if (labels.size() > 1) {
+            int[] xs = new int[labels.size()];
+            int[] ys = new int[labels.size()];
+            for (int i = 0; i < labels.size(); i++) {
+                xs[i] = marginLeft + (int) ((double) i / (labels.size() - 1) * chartW);
+                ys[i] = marginTop + (int) ((1 - values.get(i) / maxVal) * chartH);
+            }
+
+            g2d.setColor(ACCENT_YELLOW);
+            g2d.setStroke(new BasicStroke(2.5f));
+            g2d.drawPolyline(xs, ys, labels.size());
+
+            for (int i = 0; i < xs.length; i++) {
+                g2d.setColor(SURFACE_COLOR);
+                g2d.fillOval(xs[i] - 4, ys[i] - 4, 8, 8);
+                g2d.setColor(ACCENT_YELLOW);
+                g2d.setStroke(new BasicStroke(1.5f));
+                g2d.drawOval(xs[i] - 4, ys[i] - 4, 8, 8);
             }
         }
     }
 
     private void updateLegend() {
         legendPanel.removeAll();
-        if (categoryExpenses == null || categoryExpenses.isEmpty()) return;
-        List<Map.Entry<String, Double>> sorted = new ArrayList<>(categoryExpenses.entrySet());
-        sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
-        int ci = 0;
-        for (Map.Entry<String, Double> e : sorted) {
-            double pct = totalExpense > 0 ? (e.getValue() / totalExpense * 100) : 0;
-            JPanel row = new JPanel(new BorderLayout(10, 0));
-            row.setBackground(new Color(18, 18, 18));
-            row.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        if (categoryExpenses == null || categoryExpenses.isEmpty()) {
+            JLabel empty = new JLabel("Chưa có dữ liệu chi tiêu");
+            empty.setFont(new Font("Segoe UI", Font.ITALIC, 15));
+            empty.setForeground(TEXT_MUTED);
+            legendPanel.add(empty);
+        } else {
+            List<Map.Entry<String, Double>> sorted = new ArrayList<>(categoryExpenses.entrySet());
+            sorted.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
+            int ci = 0;
+            for (Map.Entry<String, Double> e : sorted) {
+                double pct = totalExpense > 0 ? (e.getValue() / totalExpense * 100) : 0;
 
-            JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-            left.setBackground(new Color(18, 18, 18));
-            JPanel colorBox = new JPanel();
-            colorBox.setBackground(PIE_COLORS[ci % PIE_COLORS.length]);
-            colorBox.setPreferredSize(new Dimension(15, 15));
-            left.add(colorBox);
-            JLabel lblName = new JLabel(e.getKey());
-            lblName.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-            lblName.setForeground(Color.WHITE);
-            left.add(lblName);
-            row.add(left, BorderLayout.WEST);
+                // Khối bao bọc một hàng thông tin danh mục
+                JPanel rowWrapper = new JPanel();
+                rowWrapper.setLayout(new BoxLayout(rowWrapper, BoxLayout.Y_AXIS));
+                rowWrapper.setOpaque(false);
+                rowWrapper.setBorder(BorderFactory.createEmptyBorder(6, 5, 6, 5));
+                // 🌟 QUAN TRỌNG: Khống chế cứng chiều cao tối đa của hàng tránh lỗi giãn cách
+                rowWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
 
-            JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-            right.setBackground(new Color(18, 18, 18));
-            JLabel lblPct = new JLabel(String.format("%.1f%%", pct));
-            lblPct.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            lblPct.setForeground(PIE_COLORS[ci % PIE_COLORS.length]);
-            right.add(lblPct);
-            JLabel lblAmount = new JLabel(String.format("%,.0f", e.getValue()));
-            lblAmount.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-            lblAmount.setForeground(Color.LIGHT_GRAY);
-            right.add(lblAmount);
-            row.add(right, BorderLayout.EAST);
+                // Hàng trên cùng (Tên + % nằm trái, Số tiền nằm phải)
+                JPanel topRow = new JPanel(new BorderLayout());
+                topRow.setOpaque(false);
 
-            legendPanel.add(row); ci++;
+                JPanel leftBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+                leftBox.setOpaque(false);
+
+                JPanel colorBox = new JPanel();
+                colorBox.setBackground(PIE_COLORS[ci % PIE_COLORS.length]);
+                colorBox.setPreferredSize(new Dimension(14, 14));
+                leftBox.add(colorBox);
+
+                JLabel lblName = new JLabel(String.format("%s  %.1f%%", e.getKey(), pct));
+                lblName.setFont(new Font("Segoe UI", Font.BOLD, 15));
+                lblName.setForeground(TEXT_PRIMARY);
+                leftBox.add(lblName);
+                topRow.add(leftBox, BorderLayout.WEST);
+
+                JLabel lblAmount = new JLabel(String.format("%,.0f đ", e.getValue()));
+                lblAmount.setFont(new Font("Segoe UI", Font.BOLD, 15));
+                lblAmount.setForeground(TEXT_PRIMARY);
+                topRow.add(lblAmount, BorderLayout.EAST);
+
+                rowWrapper.add(topRow);
+                rowWrapper.add(Box.createVerticalStrut(6)); // Tạo khoảng đệm nhỏ tinh tế giữa chữ và thanh progress
+
+                // Thanh tiến trình màu vàng ôm khít ngay dưới dòng chữ
+                final double percentValue = pct;
+                JPanel barPanel = new JPanel(null) {
+                    @Override
+                    protected void paintComponent(Graphics g) {
+                        super.paintComponent(g);
+                        Graphics2D g2 = (Graphics2D) g;
+                        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                        g2.setColor(new Color(50, 50, 50));
+                        g2.fillRoundRect(0, 0, getWidth(), getHeight(), 6, 6);
+                        g2.setColor(ACCENT_YELLOW);
+                        int fillWidth = (int) (getWidth() * (percentValue / 100.0));
+                        g2.fillRoundRect(0, 0, fillWidth, getHeight(), 6, 6);
+                    }
+                };
+                barPanel.setPreferredSize(new Dimension(0, 6));
+                barPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 6));
+                barPanel.setOpaque(false);
+                rowWrapper.add(barPanel);
+
+                JSeparator separator = new JSeparator();
+                separator.setForeground(new Color(45, 45, 45));
+                separator.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+
+                legendPanel.add(rowWrapper);
+                legendPanel.add(separator);
+                ci++;
+            }
+            // 🌟 LÒ XO ĐỆM: Hút toàn bộ khoảng trống thừa dồn xuống đáy panel, giữ danh sách luôn khít ở top trên
+            legendPanel.add(Box.createVerticalGlue());
         }
-        legendPanel.revalidate(); legendPanel.repaint();
+        legendPanel.revalidate();
+        legendPanel.repaint();
+    }
+
+    @Override
+    public void update(EventType eventType, Object data) {
+        if (eventType == EventType.TRANSACTION_ADDED ||
+                eventType == EventType.TRANSACTION_UPDATED ||
+                eventType == EventType.TRANSACTION_DELETED ||
+                eventType == EventType.DATA_LOADED) {
+            SwingUtilities.invokeLater(() -> refreshData());
+        }
     }
 }

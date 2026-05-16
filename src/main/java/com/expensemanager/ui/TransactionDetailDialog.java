@@ -3,114 +3,97 @@ package com.expensemanager.ui;
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
-import com.expensemanager.service.SessionManager;
+import com.expensemanager.entity.TransactionType;
+import com.expensemanager.util.EmojiUtil;
 
 import javax.swing.*;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.Map;
 
 public class TransactionDetailDialog extends JDialog {
-
-    private static final Map<String, String> CATEGORY_EMOJI = new HashMap<>();
-    static {
-        CATEGORY_EMOJI.put("Mua sắm", "🛍️");
-        CATEGORY_EMOJI.put("Ăn uống", "🍔");
-        CATEGORY_EMOJI.put("Điện thoại", "📱");
-        CATEGORY_EMOJI.put("Giải trí", "🎮");
-        CATEGORY_EMOJI.put("Giáo dục", "📚");
-        CATEGORY_EMOJI.put("Làm đẹp", "💄");
-        CATEGORY_EMOJI.put("Thể thao", "⚽");
-        CATEGORY_EMOJI.put("Xã hội", "👥");
-        CATEGORY_EMOJI.put("Di chuyển", "🚗");
-        CATEGORY_EMOJI.put("Quần áo", "👗");
-        CATEGORY_EMOJI.put("Xe cộ", "🏍️");
-        CATEGORY_EMOJI.put("Điện tử", "💻");
-        CATEGORY_EMOJI.put("Du lịch", "✈️");
-        CATEGORY_EMOJI.put("Sức khỏe", "🏥");
-        CATEGORY_EMOJI.put("Sửa chữa", "🔧");
-        CATEGORY_EMOJI.put("Nhà cửa", "🏠");
-        CATEGORY_EMOJI.put("Quà tặng", "🎁");
-        CATEGORY_EMOJI.put("Từ thiện", "💖");
-        CATEGORY_EMOJI.put("Ăn vặt", "🍿");
-        CATEGORY_EMOJI.put("Trái cây", "🍎");
-        CATEGORY_EMOJI.put("Lương", "💰");
-        CATEGORY_EMOJI.put("Học bổng", "🎓");
-        CATEGORY_EMOJI.put("Tiền được cho", "💵");
-    }
-
     private MainFrame mainFrame;
     private Transaction transaction;
+
+    // Định nghĩa bảng màu Dark Mode phẳng đồng bộ
+    private final Color BG_COLOR = new Color(18, 18, 18);
+    private final Color SURFACE_COLOR = new Color(30, 30, 30);
+    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
+    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
+    private final Color TEXT_MUTED = new Color(150, 150, 150);
 
     public TransactionDetailDialog(MainFrame mainFrame, Transaction transaction) {
         super(mainFrame, "Chi tiết giao dịch", true);
         this.mainFrame = mainFrame;
         this.transaction = transaction;
-        setSize(400, 350);
+
+        setSize(420, 420);
         setLocationRelativeTo(mainFrame);
+        getContentPane().setBackground(BG_COLOR);
         setLayout(new BorderLayout());
 
-        // Panel tiêu đề: icon + ghi chú + ngày
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        headerPanel.setBackground(Color.WHITE);
+        // --- HEADER PANEL ---
+        JPanel headerPanel = new JPanel(new BorderLayout(15, 0));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 15, 25));
+        headerPanel.setBackground(BG_COLOR);
 
         Category cat = transaction.getCategory();
-        String emoji = (cat != null) ? CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
+        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
+
         JLabel lblIcon = new JLabel(emoji);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 40));
+        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 44)); // Sửa font phẳng chuẩn tránh lỗi ô vuông
         headerPanel.add(lblIcon, BorderLayout.WEST);
 
-        JPanel textPanel = new JPanel(new GridLayout(2, 1, 5, 5));
+        JPanel textPanel = new JPanel(new GridLayout(2, 1, 0, 4));
         textPanel.setOpaque(false);
-
         String note = transaction.getNote();
         JLabel lblNote = new JLabel(note != null && !note.isEmpty() ? note : "Không có ghi chú");
-        lblNote.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblNote.setForeground(Color.BLACK);
+        lblNote.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblNote.setForeground(TEXT_PRIMARY);
 
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
         JLabel lblDate = new JLabel(transaction.getDateTime().format(dtf));
         lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        lblDate.setForeground(Color.GRAY);
+        lblDate.setForeground(TEXT_MUTED);
 
         textPanel.add(lblNote);
         textPanel.add(lblDate);
-
         headerPanel.add(textPanel, BorderLayout.CENTER);
         add(headerPanel, BorderLayout.NORTH);
 
-        // Panel thông tin chi tiết
+        // --- DETAILS PANEL (Khối Grid dữ liệu phẳng) ---
         JPanel detailPanel = new JPanel(new GridBagLayout());
-        detailPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        detailPanel.setBackground(Color.WHITE);
+        detailPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
+        detailPanel.setBackground(BG_COLOR);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(8, 5, 8, 5);
+        gbc.weightx = 1.0;
 
         addDetailRow(detailPanel, gbc, "Danh mục:", cat != null ? cat.getName() : "Không có", 0);
-        addDetailRow(detailPanel, gbc, "Số tiền:", String.format("%,.0f VND", transaction.getAmount()), 1);
-        addDetailRow(detailPanel, gbc, "Loại:", transaction.getType().name(), 2);
-        addDetailRow(detailPanel, gbc, "Ngày giờ:", transaction.getDateTime().format(dtf), 3);
 
+        String amountStr = String.format("%,.0f VND", transaction.getAmount());
+        addDetailRow(detailPanel, gbc, "Số tiền:", amountStr, 1);
+        // Tô màu số tiền dựa theo loại giao dịch thu/chi
+        JLabel amountLabelValue = (JLabel) detailPanel.getComponent(3);
+        amountLabelValue.setForeground(transaction.getType() == TransactionType.INCOME ? new Color(76, 175, 80) : new Color(244, 67, 54));
+        amountLabelValue.setFont(new Font("Segoe UI", Font.BOLD, 15));
+
+        addDetailRow(detailPanel, gbc, "Loại hành động:", transaction.getType().name(), 2);
+        addDetailRow(detailPanel, gbc, "Thời gian lưu:", transaction.getDateTime().format(dtf), 3);
         add(detailPanel, BorderLayout.CENTER);
 
-        // Panel nút Sửa, Xóa, Đóng
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
-        buttonPanel.setBackground(Color.WHITE);
+        // --- BUTTON FOOTER PANEL (Hệ thống nút phẳng hoàn toàn) ---
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 12, 0));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 25, 25));
+        buttonPanel.setBackground(BG_COLOR);
 
-        JButton btnEdit = new JButton("Sửa");
-        btnEdit.setBackground(new Color(0, 153, 76));
-        btnEdit.setForeground(Color.WHITE);
+        JButton btnEdit = createFlatButton("Sửa", new Color(0, 153, 76), Color.WHITE);
         btnEdit.addActionListener(e -> editTransaction());
 
-        JButton btnDelete = new JButton("Xóa");
-        btnDelete.setBackground(Color.RED);
-        btnDelete.setForeground(Color.WHITE);
+        JButton btnDelete = createFlatButton("Xóa", new Color(244, 67, 54), Color.WHITE);
         btnDelete.addActionListener(e -> deleteTransaction());
 
-        JButton btnClose = new JButton("Đóng");
+        JButton btnClose = createFlatButton("Đóng", SURFACE_COLOR, TEXT_PRIMARY);
         btnClose.addActionListener(e -> dispose());
 
         buttonPanel.add(btnEdit);
@@ -120,28 +103,39 @@ public class TransactionDetailDialog extends JDialog {
     }
 
     private void addDetailRow(JPanel panel, GridBagConstraints gbc, String label, String value, int row) {
-        gbc.gridx = 0;
-        gbc.gridy = row;
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3;
         JLabel lblLabel = new JLabel(label);
-        lblLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblLabel.setForeground(TEXT_MUTED);
         panel.add(lblLabel, gbc);
 
-        gbc.gridx = 1;
-        gbc.gridy = row;
+        gbc.gridx = 1; gbc.weightx = 0.7;
         JLabel lblValue = new JLabel(value);
-        lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblValue.setForeground(TEXT_PRIMARY);
         panel.add(lblValue, gbc);
+    }
+
+    private JButton createFlatButton(String text, Color bg, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 
     private void editTransaction() {
         JTextField txtAmount = new JTextField(String.valueOf(transaction.getAmount()));
         JTextField txtNote = new JTextField(transaction.getNote());
 
-        JPanel panel = new JPanel(new GridLayout(2, 2, 10, 10));
-        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        panel.add(new JLabel("Số tiền:"));
+        // Custom Panel cho form sửa có giao diện tối giản
+        JPanel panel = new JPanel(new GridLayout(4, 1, 5, 5));
+        panel.add(new JLabel("Số tiền mới:"));
         panel.add(txtAmount);
-        panel.add(new JLabel("Ghi chú:"));
+        panel.add(new JLabel("Ghi chú mới:"));
         panel.add(txtNote);
 
         int result = JOptionPane.showConfirmDialog(this, panel, "Sửa giao dịch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -149,30 +143,37 @@ public class TransactionDetailDialog extends JDialog {
             try {
                 double newAmount = Double.parseDouble(txtAmount.getText().trim());
                 if (newAmount <= 0) {
-                    JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!");
                     return;
                 }
                 transaction.setAmount(newAmount);
                 transaction.setNote(txtNote.getText().trim());
-                DatabaseUtil.updateTransaction(transaction);
+
+                if (mainFrame != null && mainFrame.getFinanceService() != null) {
+                    mainFrame.getFinanceService().updateTransaction(transaction);
+                } else {
+                    DatabaseUtil.updateTransaction(transaction);
+                }
                 JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
                 dispose();
-                mainFrame.refreshAllPanels();
             } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!");
             }
         }
     }
 
     private void deleteTransaction() {
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc muốn xóa giao dịch này?",
-                "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                "Bạn có chắc muốn xóa giao dịch này?", "Xác nhận xóa",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
-            DatabaseUtil.deleteTransaction(transaction.getId());
+            if (mainFrame != null && mainFrame.getFinanceService() != null) {
+                mainFrame.getFinanceService().deleteTransaction(transaction.getId());
+            } else {
+                DatabaseUtil.deleteTransaction(transaction.getId());
+            }
             JOptionPane.showMessageDialog(this, "Đã xóa giao dịch!");
             dispose();
-            mainFrame.refreshAllPanels();
         }
     }
 }

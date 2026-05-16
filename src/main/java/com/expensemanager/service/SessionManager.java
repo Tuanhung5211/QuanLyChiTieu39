@@ -30,7 +30,4 @@ public class SessionManager {
     public static void setLanguage(String lang) {
         language = lang;
     }
-    public static void setCurrentUserId(String id) {
-    	currentUserId=id;
-    }
 }

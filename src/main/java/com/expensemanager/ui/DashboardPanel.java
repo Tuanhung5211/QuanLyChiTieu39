@@ -3,42 +3,39 @@ package com.expensemanager.ui;
 import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
+import com.expensemanager.observer.EventType;
+import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
+import com.expensemanager.util.EmojiUtil;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
-public class DashboardPanel extends JPanel {
+public class DashboardPanel extends JPanel implements Observer {
     private MainFrame mainFrame;
     private FinanceService financeService;
     private BudgetManager budgetManager;
 
-    private JLabel lblMonthYear;
-    private JLabel lblIncome;
-    private JLabel lblExpense;
-    private JLabel lblBalance;
+    private JLabel lblMonthYear, lblIncome, lblExpense, lblBalance;
     private JPanel transactionListPanel;
     private JScrollPane scrollPane;
 
-    public static final Map<String, String> CATEGORY_EMOJI = new HashMap<>();
-    static {
-        CATEGORY_EMOJI.put("Mua sắm", "🛍️"); CATEGORY_EMOJI.put("Ăn uống", "🍔");
-        CATEGORY_EMOJI.put("Điện thoại", "📱"); CATEGORY_EMOJI.put("Giải trí", "🎮");
-        CATEGORY_EMOJI.put("Giáo dục", "📚"); CATEGORY_EMOJI.put("Làm đẹp", "💄");
-        CATEGORY_EMOJI.put("Thể thao", "⚽"); CATEGORY_EMOJI.put("Xã hội", "👥");
-        CATEGORY_EMOJI.put("Di chuyển", "🚗"); CATEGORY_EMOJI.put("Quần áo", "👗");
-        CATEGORY_EMOJI.put("Xe cộ", "🏍️"); CATEGORY_EMOJI.put("Điện tử", "💻");
-        CATEGORY_EMOJI.put("Du lịch", "✈️"); CATEGORY_EMOJI.put("Sức khỏe", "🏥");
-        CATEGORY_EMOJI.put("Sửa chữa", "🔧"); CATEGORY_EMOJI.put("Nhà cửa", "🏠");
-        CATEGORY_EMOJI.put("Quà tặng", "🎁"); CATEGORY_EMOJI.put("Từ thiện", "💖");
-        CATEGORY_EMOJI.put("Ăn vặt", "🍿"); CATEGORY_EMOJI.put("Trái cây", "🍎");
-        CATEGORY_EMOJI.put("Lương", "💰"); CATEGORY_EMOJI.put("Học bổng", "🎓");
-        CATEGORY_EMOJI.put("Tiền được cho", "💵");
-    }
+    // Khai báo thêm các thành phần tìm kiếm và lọc của Lịch sử
+    private JTextField txtSearch;
+    private JComboBox<String> cmbFilter;
+
+    private final Color BG_COLOR = new Color(30, 30, 30);
+    private final Color SURFACE_COLOR = new Color(40, 40, 40);
+    private final Color INPUT_BG = new Color(45, 45, 45);
+    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
+    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
 
     public DashboardPanel(MainFrame mainFrame, FinanceService financeService, BudgetManager budgetManager) {
         this.mainFrame = mainFrame;
@@ -46,121 +43,209 @@ public class DashboardPanel extends JPanel {
         this.budgetManager = budgetManager;
 
         setLayout(new BorderLayout());
-        setBackground(new Color(18, 18, 18)); // Đen sâu chuẩn App
+        setBackground(BG_COLOR);
 
-        add(createHeader(), BorderLayout.NORTH);
+        // --- Khối thẻ thông tin tổng quát phía trên ---
+        JPanel topContainer = new JPanel();
+        topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
+        topContainer.setOpaque(false);
 
+        JPanel headerPanel = createHeader();
+        topContainer.add(headerPanel);
+
+        // --- THANH TÌM KIẾM & BỘ LỌC (Bê từ HistoryPanel sang) ---
+        JPanel filterBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        filterBar.setBackground(BG_COLOR);
+        filterBar.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
+        JLabel lblSearchIcon = new JLabel("🔍");
+        lblSearchIcon.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        lblSearchIcon.setForeground(Color.LIGHT_GRAY);
+        filterBar.add(lblSearchIcon);
+
+        txtSearch = new JTextField(20);
+        txtSearch.setBackground(INPUT_BG);
+        txtSearch.setForeground(TEXT_PRIMARY);
+        txtSearch.setCaretColor(ACCENT_YELLOW);
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtSearch.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(60, 60, 60)),
+                BorderFactory.createEmptyBorder(6, 10, 6, 10)
+        ));
+        // Lắng nghe sự kiện gõ phím để lọc tức thì
+        txtSearch.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { refreshData(); }
+            public void removeUpdate(DocumentEvent e) { refreshData(); }
+            public void changedUpdate(DocumentEvent e) { refreshData(); }
+        });
+        filterBar.add(txtSearch);
+
+        cmbFilter = new JComboBox<>(new String[]{"Tất cả", "Thu nhập", "Chi tiêu"});
+        cmbFilter.setBackground(INPUT_BG);
+        cmbFilter.setForeground(TEXT_PRIMARY);
+        cmbFilter.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        cmbFilter.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)));
+        cmbFilter.addActionListener(e -> refreshData());
+        filterBar.add(cmbFilter);
+
+        topContainer.add(filterBar);
+        add(topContainer, BorderLayout.NORTH);
+
+        // --- Danh sách hiển thị giao dịch ở giữa ---
         transactionListPanel = new JPanel();
         transactionListPanel.setLayout(new BoxLayout(transactionListPanel, BoxLayout.Y_AXIS));
-        transactionListPanel.setBackground(new Color(18, 18, 18));
-        transactionListPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        transactionListPanel.setBackground(BG_COLOR);
+        transactionListPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
         scrollPane = new JScrollPane(transactionListPanel);
         scrollPane.setBorder(null);
-        scrollPane.getViewport().setBackground(new Color(18, 18, 18));
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setBackground(BG_COLOR);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Nút thêm bự ở dưới (Giống ảnh 1)
-        JButton btnAdd = new JButton("+ Thêm giao dịch");
+        // --- Nút thêm giao dịch phía dưới cùng ---
+        JButton btnAdd = new JButton("＋ Thêm giao dịch mới");
         btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btnAdd.setForeground(new Color(18, 18, 18));
-        btnAdd.setBackground(new Color(255, 193, 7)); // Vàng Money Tracker
+        btnAdd.setForeground(BG_COLOR);
+        btnAdd.setBackground(ACCENT_YELLOW);
         btnAdd.setFocusPainted(false);
-        btnAdd.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
+        btnAdd.setBorder(BorderFactory.createEmptyBorder(12, 40, 12, 40));
         btnAdd.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnAdd.addActionListener(e -> {
             new AddTransactionDialog(mainFrame).setVisible(true);
-            refreshData();
         });
 
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.setBackground(new Color(18, 18, 18));
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(20, 50, 20, 50));
-        bottomPanel.add(btnAdd, BorderLayout.CENTER);
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        bottomPanel.setBackground(BG_COLOR);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 15, 0));
+        bottomPanel.add(btnAdd);
         add(bottomPanel, BorderLayout.SOUTH);
 
         refreshData();
     }
 
     private JPanel createHeader() {
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(new Color(18, 18, 18));
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(SURFACE_COLOR);
+        header.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
-        lblMonthYear = new JLabel("Tháng " + java.time.LocalDate.now().getMonthValue() + "/" + java.time.LocalDate.now().getYear());
-        lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        lblMonthYear = new JLabel(getCurrentMonthYear());
+        lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblMonthYear.setForeground(Color.WHITE);
-        headerPanel.add(lblMonthYear, BorderLayout.NORTH);
 
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 3, 20, 0));
-        cardsPanel.setBackground(new Color(18, 18, 18));
-        cardsPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
+        JPanel summaryPanel = new JPanel(new GridLayout(1, 3, 25, 0));
+        summaryPanel.setBackground(SURFACE_COLOR);
 
-        lblIncome = createStatCard("Thu nhập", "0", new Color(76, 175, 80), cardsPanel);
-        lblExpense = createStatCard("Chi tiêu", "0", new Color(244, 67, 54), cardsPanel);
-        lblBalance = createStatCard("Số dư", "0", Color.WHITE, cardsPanel);
+        lblIncome = createSummaryLabel(summaryPanel, "Tổng thu nhập", "0 đ", new Color(76, 175, 80));
+        lblExpense = createSummaryLabel(summaryPanel, "Tổng chi tiêu", "0 đ", new Color(244, 67, 54));
+        lblBalance = createSummaryLabel(summaryPanel, "Số dư hiện tại", "0 đ", Color.WHITE);
 
-        headerPanel.add(cardsPanel, BorderLayout.CENTER);
-        return headerPanel;
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(SURFACE_COLOR);
+        rightPanel.add(summaryPanel, BorderLayout.EAST);
+
+        header.add(lblMonthYear, BorderLayout.WEST);
+        header.add(rightPanel, BorderLayout.CENTER);
+        return header;
     }
 
-    private JLabel createStatCard(String title, String value, Color color, JPanel parent) {
-        JPanel card = new JPanel(new BorderLayout());
-        card.setBackground(new Color(30, 30, 30));
-        card.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+    private JLabel createSummaryLabel(JPanel parent, String title, String value, Color valueColor) {
+        JPanel panel = new JPanel(new GridLayout(2, 1, 0, 2));
+        panel.setOpaque(false);
 
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        lblTitle.setForeground(new Color(170, 170, 170));
+        JLabel lblTitle = new JLabel(title, SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblTitle.setForeground(Color.LIGHT_GRAY);
 
-        JLabel lblValue = new JLabel(value);
-        lblValue.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        lblValue.setForeground(color);
+        JLabel lblValue = new JLabel(value, SwingConstants.CENTER);
+        lblValue.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblValue.setForeground(valueColor);
 
-        card.add(lblTitle, BorderLayout.NORTH);
-        card.add(lblValue, BorderLayout.SOUTH);
-        parent.add(card);
+        panel.add(lblTitle);
+        panel.add(lblValue);
+        parent.add(panel);
 
         return lblValue;
     }
 
     public void refreshData() {
         if (financeService == null) return;
-        financeService.syncFromDatabase();
 
-        List<Transaction> transactions = financeService.getAllTransactions();
-        transactions.sort((a, b) -> b.getDateTime().compareTo(a.getDateTime()));
+        String searchText = txtSearch != null ? txtSearch.getText().trim().toLowerCase() : "";
+        String filterType = cmbFilter != null ? (String) cmbFilter.getSelectedItem() : "Tất cả";
 
-        double totalIncome = transactions.stream().filter(t -> t.getType() == TransactionType.INCOME).mapToDouble(Transaction::getAmount).sum();
-        double totalExpense = transactions.stream().filter(t -> t.getType() == TransactionType.EXPENSE).mapToDouble(Transaction::getAmount).sum();
-        double balance = totalIncome - totalExpense;
+        // Áp dụng bộ lọc tìm kiếm nâng cao trực tiếp bằng Stream API
+        List<Transaction> transactions = financeService.getAllTransactions().stream()
+                .filter(t -> {
+                    if (t == null) return false;
+                    // 1. Lọc theo Loại (Thu / Chi)
+                    if ("Thu nhập".equals(filterType) && t.getType() != TransactionType.INCOME) return false;
+                    if ("Chi tiêu".equals(filterType) && t.getType() != TransactionType.EXPENSE) return false;
 
-        lblIncome.setText(String.format("%,.0f", totalIncome));
-        lblExpense.setText(String.format("%,.0f", totalExpense));
-        lblBalance.setText(String.format("%,.0f", balance));
+                    // 2. Lọc theo chuỗi tìm kiếm (Ghi chú, Tên danh mục, Số tiền)
+                    if (!searchText.isEmpty()) {
+                        String note = t.getNote() != null ? t.getNote().toLowerCase() : "";
+                        String catName = t.getCategory() != null ? t.getCategory().getName().toLowerCase() : "";
+                        String amountStr = String.valueOf(t.getAmount());
+                        return note.contains(searchText) || catName.contains(searchText) || amountStr.contains(searchText);
+                    }
+                    return true;
+                })
+                .sorted((a, b) -> b.getDateTime().compareTo(a.getDateTime()))
+                .collect(Collectors.toList());
+
+        // Tính toán lại số liệu dựa trên toàn bộ danh bạ gốc để thẻ tổng quan không bị thay đổi khi tìm kiếm
+        double totalIncome = financeService.getAllTransactions().stream()
+                .filter(t -> t != null && t.getType() == TransactionType.INCOME)
+                .mapToDouble(Transaction::getAmount).sum();
+        double totalExpense = financeService.getAllTransactions().stream()
+                .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
+                .mapToDouble(Transaction::getAmount).sum();
+
+        lblIncome.setText(String.format("%,.0f đ", totalIncome));
+        lblExpense.setText(String.format("%,.0f đ", totalExpense));
+        lblBalance.setText(String.format("%,.0f đ", totalIncome - totalExpense));
+        lblMonthYear.setText(getCurrentMonthYear());
 
         transactionListPanel.removeAll();
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM");
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy");
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
         String currentDate = "";
+        JPanel dateGroup = null;
+
         for (Transaction t : transactions) {
             String transactionDate = t.getDateTime().format(dateFormatter);
-
             if (!transactionDate.equals(currentDate)) {
                 currentDate = transactionDate;
+                dateGroup = new JPanel();
+                dateGroup.setLayout(new BoxLayout(dateGroup, BoxLayout.Y_AXIS));
+                dateGroup.setBackground(BG_COLOR);
+                dateGroup.setBorder(BorderFactory.createEmptyBorder(12, 0, 5, 0));
+
                 JLabel lblDate = new JLabel(transactionDate);
                 lblDate.setFont(new Font("Segoe UI", Font.BOLD, 14));
-                lblDate.setForeground(new Color(150, 150, 150));
-                lblDate.setBorder(BorderFactory.createEmptyBorder(15, 0, 5, 0));
+                lblDate.setForeground(new Color(180, 180, 180));
+                lblDate.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 0));
                 lblDate.setAlignmentX(Component.LEFT_ALIGNMENT);
-                transactionListPanel.add(lblDate);
+                dateGroup.add(lblDate);
+
+                JSeparator sep = new JSeparator();
+                sep.setForeground(new Color(70, 70, 70));
+                sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+                sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+                dateGroup.add(sep);
+                transactionListPanel.add(dateGroup);
             }
 
             JPanel row = createTransactionRow(t, dateTimeFormatter);
             row.setAlignmentX(Component.LEFT_ALIGNMENT);
-            transactionListPanel.add(row);
+            dateGroup.add(row);
+
+            JSeparator rowSep = new JSeparator();
+            rowSep.setForeground(new Color(45, 45, 45));
+            rowSep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+            rowSep.setAlignmentX(Component.LEFT_ALIGNMENT);
+            dateGroup.add(rowSep);
         }
 
         transactionListPanel.revalidate();
@@ -168,32 +253,31 @@ public class DashboardPanel extends JPanel {
     }
 
     private JPanel createTransactionRow(Transaction t, DateTimeFormatter dateTimeFormatter) {
-        JPanel row = new JPanel(new BorderLayout(15, 0));
-        row.setBackground(new Color(18, 18, 18));
-        row.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        JPanel row = new JPanel(new BorderLayout());
+        row.setBackground(BG_COLOR);
+        row.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         Category cat = t.getCategory();
-        String emoji = (cat != null) ? CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
+        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
 
-        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
-        lblIcon.setOpaque(true);
-        // Tái tạo màu nền xanh lơ/hồng nhẹ từ app gốc
-        lblIcon.setBackground(new Color(40, 50, 60));
-        lblIcon.setPreferredSize(new Dimension(45, 45));
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
-        lblIcon.setBorder(BorderFactory.createLineBorder(new Color(18,18,18), 1, true)); // Trick bo tròn nhẹ
+        JLabel lblIcon = new JLabel(emoji);
+        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 22));
+        lblIcon.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 15));
 
-        String description = (t.getNote() != null && !t.getNote().trim().isEmpty()) ? t.getNote().trim() : (cat != null ? cat.getName() : "Khác");
+        String description = (t.getNote() != null && !t.getNote().trim().isEmpty())
+                ? t.getNote().trim() : t.getDateTime().format(dateTimeFormatter);
         JLabel lblDescription = new JLabel(description);
-        lblDescription.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        lblDescription.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         lblDescription.setForeground(Color.WHITE);
 
-        String amountStr = String.format("%s%,.0f", t.getType() == TransactionType.INCOME ? "+" : "-", t.getAmount());
+        String amountStr = String.format("%s%,.0f VND",
+                t.getType() == TransactionType.INCOME ? "+" : "-", t.getAmount());
         JLabel lblAmount = new JLabel(amountStr);
-        lblAmount.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        lblAmount.setForeground(t.getType() == TransactionType.INCOME ? new Color(76, 175, 80) : new Color(244, 67, 54));
+        lblAmount.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblAmount.setForeground(t.getType() == TransactionType.INCOME
+                ? new Color(76, 175, 80) : new Color(244, 67, 54));
 
         row.add(lblIcon, BorderLayout.WEST);
         row.add(lblDescription, BorderLayout.CENTER);
@@ -204,12 +288,22 @@ public class DashboardPanel extends JPanel {
             public void mouseClicked(java.awt.event.MouseEvent e) {
                 new TransactionDetailDialog(mainFrame, t).setVisible(true);
             }
-            @Override
-            public void mouseEntered(java.awt.event.MouseEvent e) { row.setBackground(new Color(30, 30, 30)); }
-            @Override
-            public void mouseExited(java.awt.event.MouseEvent e) { row.setBackground(new Color(18, 18, 18)); }
         });
-
         return row;
+    }
+
+    private String getCurrentMonthYear() {
+        java.time.LocalDate now = java.time.LocalDate.now();
+        return "Tháng " + now.getMonthValue() + "/" + now.getYear();
+    }
+
+    @Override
+    public void update(EventType eventType, Object data) {
+        if (eventType == EventType.TRANSACTION_ADDED ||
+                eventType == EventType.TRANSACTION_UPDATED ||
+                eventType == EventType.TRANSACTION_DELETED ||
+                eventType == EventType.DATA_LOADED) {
+            SwingUtilities.invokeLater(() -> refreshData());
+        }
     }
 }

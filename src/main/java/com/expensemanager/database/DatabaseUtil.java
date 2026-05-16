@@ -49,7 +49,7 @@ public class DatabaseUtil {
     }
 
     // ========== TRANSACTIONS (có user_id) ==========
-    public static void insertTransaction(Transaction transaction, String Id) {
+    public static void insertTransaction(Transaction transaction, String userId) {
         String sql = "INSERT INTO transactions (id, amount, type, category_id, date_time, note, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -59,7 +59,7 @@ public class DatabaseUtil {
             stmt.setString(4, transaction.getCategory().getId());
             stmt.setTimestamp(5, Timestamp.valueOf(transaction.getDateTime()));
             stmt.setString(6, transaction.getNote());
-            stmt.setString(7, Id);
+            stmt.setString(7, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -70,7 +70,7 @@ public class DatabaseUtil {
         List<Transaction> list = new ArrayList<>();
         String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
                 "FROM transactions t JOIN categories c ON t.category_id = c.id " +
-                "WHERE user_id = ?";
+                "WHERE t.user_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
@@ -152,7 +152,7 @@ public class DatabaseUtil {
     }
 
     public static Budget getBudget(int month, int year, String userId) {
-        String sql = "SELECT * FROM budgets WHERE month=? AND year=? AND id=?";
+        String sql = "SELECT * FROM budgets WHERE month=? AND year=? AND user_id=?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, month);
@@ -175,7 +175,7 @@ public class DatabaseUtil {
 
     // ========== USERS ==========
     public static void insertUser(User user) {
-        String sql = "INSERT INTO users (user_id, username, password_hash, nickname, avatar, email, gender) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO users (id, username, password_hash, nickname, avatar, email, gender) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user.getId());
@@ -198,7 +198,7 @@ public class DatabaseUtil {
             stmt.setString(1, username);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                String id = rs.getString("user_id");
+                String id = rs.getString("id");
                 String passwordHash = rs.getString("password_hash");
                 String nickname = rs.getString("nickname");
                 String avatar = rs.getString("avatar");
@@ -217,7 +217,7 @@ public class DatabaseUtil {
     }
 
     public static void updateUser(User user) {
-        String sql = "UPDATE users SET nickname=?, avatar=?, email=?, gender=? WHERE user_id=?";
+        String sql = "UPDATE users SET nickname=?, avatar=?, email=?, gender=? WHERE id=?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user.getNickname());
@@ -255,7 +255,7 @@ public class DatabaseUtil {
     }
 
     public static void deleteUser(String userId) {
-        String sql = "DELETE FROM users WHERE user_id = ?";
+        String sql = "DELETE FROM users WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);

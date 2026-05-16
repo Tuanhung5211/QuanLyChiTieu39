@@ -5,6 +5,8 @@ import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.exception.DataLoadException;
+import com.expensemanager.observer.EventType;
+import com.expensemanager.observer.Subject;
 import com.expensemanager.util.JsonUtil;
 
 import java.util.ArrayList;
@@ -13,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class FinanceService {
+public class FinanceService extends Subject {
     private List<Transaction> transactionList;
     private Map<String, Category> categoryMap;
     private static final String JSON_FILE_PATH = "transactions.json";
@@ -52,6 +54,7 @@ public class FinanceService {
         if (dbTransactions != null) {
             this.transactionList = dbTransactions;
             saveToFile();
+            notifyObservers(EventType.DATA_LOADED, null);
         }
     }
 
@@ -65,8 +68,29 @@ public class FinanceService {
             DatabaseUtil.insertTransaction(transaction, userId);
             transactionList.add(transaction);
             saveToFile();
+            notifyObservers(EventType.TRANSACTION_ADDED, transaction);
         } catch (Exception e) {
             System.err.println("Lỗi khi thêm giao dịch: " + e.getMessage());
+        }
+    }
+
+    public void updateTransaction(Transaction transaction) {
+        try {
+            DatabaseUtil.updateTransaction(transaction);
+            notifyObservers(EventType.TRANSACTION_UPDATED, transaction);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi cập nhật giao dịch: " + e.getMessage());
+        }
+    }
+
+    public void deleteTransaction(String transactionId) {
+        try {
+            DatabaseUtil.deleteTransaction(transactionId);
+            transactionList.removeIf(t -> t.getId().equals(transactionId));
+            saveToFile();
+            notifyObservers(EventType.TRANSACTION_DELETED, transactionId);
+        } catch (Exception e) {
+            System.err.println("Lỗi khi xóa giao dịch: " + e.getMessage());
         }
     }
 

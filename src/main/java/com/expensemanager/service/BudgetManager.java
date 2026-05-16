@@ -11,6 +11,10 @@ public class BudgetManager {
         this.financeService = financeService;
     }
 
+    public FinanceService getFinanceService() {
+        return financeService;
+    }
+
     public void setBudget(int month, int year, double limit) throws InvalidAmountException {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) throw new InvalidAmountException("Chưa đăng nhập");
