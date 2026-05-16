@@ -19,7 +19,6 @@ public class BudgetDialog extends JDialog {
         JPanel p = new JPanel(new GridLayout(2, 1, 10, 10));
         p.setOpaque(false);
         p.setBorder(BorderFactory.createEmptyBorder(20, 30, 10, 30));
-
         JLabel lbl = new JLabel("Hạn mức (VND):");
         lbl.setForeground(Color.WHITE);
         txtLimit = new JTextField();

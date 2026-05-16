@@ -48,9 +48,9 @@ public class DatabaseUtil {
         return list;
     }
 
-    // ========== TRANSACTIONS ==========
-    public static void insertTransaction(Transaction transaction) {
-        String sql = "INSERT INTO transactions (id, amount, type, category_id, date_time, note) VALUES (?, ?, ?, ?, ?, ?)";
+    // ========== TRANSACTIONS (có user_id) ==========
+    public static void insertTransaction(Transaction transaction, String Id) {
+        String sql = "INSERT INTO transactions (id, amount, type, category_id, date_time, note, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, transaction.getId());
@@ -59,19 +59,22 @@ public class DatabaseUtil {
             stmt.setString(4, transaction.getCategory().getId());
             stmt.setTimestamp(5, Timestamp.valueOf(transaction.getDateTime()));
             stmt.setString(6, transaction.getNote());
+            stmt.setString(7, Id);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public static List<Transaction> getAllTransactions() {
+    public static List<Transaction> getAllTransactions(String userId) {
         List<Transaction> list = new ArrayList<>();
         String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
-                "FROM transactions t JOIN categories c ON t.category_id = c.id";
+                "FROM transactions t JOIN categories c ON t.category_id = c.id " +
+                "WHERE user_id = ?";
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            ResultSet rs = stmt.executeQuery();
             while (rs.next()) {
                 String id = rs.getString("id");
                 double amount = rs.getDouble("amount");
@@ -83,7 +86,8 @@ public class DatabaseUtil {
                 LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
                 String note = rs.getString("note");
 
-                Transaction transaction = new Transaction(id, amount, type, category, note);
+                // Sử dụng constructor có dateTime để giữ nguyên thời gian gốc
+                Transaction transaction = new Transaction(id, amount, type, category, note, dateTime);
                 list.add(transaction);
             }
         } catch (SQLException e) {
@@ -118,9 +122,9 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== BUDGETS ==========
-    public static void insertBudget(Budget budget) {
-        String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent) VALUES (?, ?, ?, ?, ?)";
+    // ========== BUDGETS (có user_id) ==========
+    public static void insertBudget(Budget budget, String userId) {
+        String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, budget.getId());
@@ -128,6 +132,7 @@ public class DatabaseUtil {
             stmt.setInt(3, budget.getYear());
             stmt.setDouble(4, budget.getLimit());
             stmt.setDouble(5, budget.getSpent());
+            stmt.setString(6, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -146,12 +151,13 @@ public class DatabaseUtil {
         }
     }
 
-    public static Budget getBudget(int month, int year) {
-        String sql = "SELECT * FROM budgets WHERE month=? AND year=?";
+    public static Budget getBudget(int month, int year, String userId) {
+        String sql = "SELECT * FROM budgets WHERE month=? AND year=? AND id=?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, month);
             stmt.setInt(2, year);
+            stmt.setString(3, userId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 String id = rs.getString("id");
@@ -165,5 +171,107 @@ public class DatabaseUtil {
             e.printStackTrace();
         }
         return null;
+    }
+
+    // ========== USERS ==========
+    public static void insertUser(User user) {
+        String sql = "INSERT INTO users (user_id, username, password_hash, nickname, avatar, email, gender) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, user.getId());
+            stmt.setString(2, user.getUsername());
+            stmt.setString(3, user.getPasswordHash());
+            stmt.setString(4, user.getNickname());
+            stmt.setString(5, user.getAvatar());
+            stmt.setString(6, user.getEmail());
+            stmt.setString(7, user.getGender());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static User getUserByUsername(String username) {
+        String sql = "SELECT * FROM users WHERE username = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String id = rs.getString("user_id");
+                String passwordHash = rs.getString("password_hash");
+                String nickname = rs.getString("nickname");
+                String avatar = rs.getString("avatar");
+                String email = rs.getString("email");
+                String gender = rs.getString("gender");
+                User user = new User(id, username, passwordHash, nickname);
+                user.setAvatar(avatar);
+                user.setEmail(email);
+                user.setGender(gender);
+                return user;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static void updateUser(User user) {
+        String sql = "UPDATE users SET nickname=?, avatar=?, email=?, gender=? WHERE user_id=?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, user.getNickname());
+            stmt.setString(2, user.getAvatar());
+            stmt.setString(3, user.getEmail());
+            stmt.setString(4, user.getGender());
+            stmt.setString(5, user.getId());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ========== XÓA DỮ LIỆU THEO USER (cho Delete Account) ==========
+    public static void deleteTransactionsByUser(String userId) {
+        String sql = "DELETE FROM transactions WHERE user_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void deleteBudgetsByUser(String userId) {
+        String sql = "DELETE FROM budgets WHERE user_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void deleteUser(String userId) {
+        String sql = "DELETE FROM users WHERE user_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public static void deleteCategory(String id) {
+        String sql = "DELETE FROM categories WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
