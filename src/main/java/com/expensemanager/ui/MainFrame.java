@@ -31,7 +31,7 @@ public class MainFrame extends JFrame {
         return this.isVietnamese;
     }
 
-    // 🌟 KÍCH HOẠT ĐỒNG BỘ: Hàm điều phối dịch thuật thời gian thực trên toàn app
+    // 🌟 KÍCH HOẠT ĐỒNG BỘ: Hàm điều phối dịch thuật thời gian thực trên toàn bộ ứng dụng
     public void updateGlobalLanguage(boolean isVN) {
         this.isVietnamese = isVN;
 
@@ -44,6 +44,11 @@ public class MainFrame extends JFrame {
             accountPanel.updateLanguage(isVN);
         }
 
+        // 🌟 ĐỒNG BỘ: Ép SettingsPanel và các Sub-panel con bóc tách tự lật ngôn ngữ ngay lập tức
+        if (settingsPanel != null) {
+            settingsPanel.updateLanguageText();
+        }
+
         if (statisticsPanel != null) statisticsPanel.refreshData();
         if (dashboardPanel != null) dashboardPanel.refreshData();
         if (budgetPanel != null) budgetPanel.refreshData();
@@ -52,13 +57,18 @@ public class MainFrame extends JFrame {
         this.repaint();
     }
 
-    // 🌟 TÍNH NĂNG MỚI: Hàm thay đổi kích thước ứng dụng cố định 🌟
+    // 🌟 ĐÃ CẬP NHẬT: Hàm thay đổi kích thước ứng dụng cố định & kích hoạt chuỗi phản hồi giao diện thích ứng 🌟
     public void changeWindowSize(int width, int height) {
-        // Cho phép thay đổi kích thước, gán size mới, căn giữa màn hình rồi khóa lại lập tức
+        // Cho phép thay đổi kích thước, gán kích thước mới, căn giữa màn hình rồi khóa cứng lập tức
         setResizable(true);
         setSize(width, height);
         setLocationRelativeTo(null);
         setResizable(false);
+
+        // 🌟 CHUỖI PHẢN HỒI THÍCH ỨNG: Ép SettingsPanel và các sub-panel con tính toán lại ma trận tỷ lệ vàng form
+        if (settingsPanel != null) {
+            settingsPanel.updateLanguageText();
+        }
 
         this.revalidate();
         this.repaint();
@@ -83,7 +93,7 @@ public class MainFrame extends JFrame {
         setTitle("Money Tracker Desktop");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // 🌟 KHÓA UI CHÍ SẠM: Đặt kích thước mặc định ban đầu và khóa cứng việc kéo giãn tự do bằng chuột
+        // 🌟 KHÓA CHÍ SẠM: Đặt độ phân giải mặc định ban đầu và khóa cứng tính năng kéo giãn tự do bằng chuột
         setSize(1200, 750);
         setResizable(false);
 
@@ -129,10 +139,10 @@ public class MainFrame extends JFrame {
         navPanel.setBackground(new Color(40, 40, 40));
         navPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(60, 60, 60)));
 
-        btnDashboard = createNavButton("Tổng quan");
-        btnStatistics = createNavButton("Thống kê");
-        btnBudget = createNavButton("Ngân sách");
-        btnSettings = createNavButton("Cài đặt");
+        btnDashboard = createNavButton(isVietnamese ? "Tổng quan" : "Overview");
+        btnStatistics = createNavButton(isVietnamese ? "Thống kê" : "Statistics");
+        btnBudget = createNavButton(isVietnamese ? "Ngân sách" : "Budget");
+        btnSettings = createNavButton(isVietnamese ? "Cài đặt" : "Settings");
 
         btnDashboard.addActionListener(e -> { dashboardPanel.refreshData(); cardLayout.show(mainPanel, "dashboard"); });
         btnStatistics.addActionListener(e -> {
