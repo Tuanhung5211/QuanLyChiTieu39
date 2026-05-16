@@ -1,147 +1,161 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.service.*;
-import com.expensemanager.database.DatabaseUtil;
-import com.expensemanager.entity.*;
+import com.expensemanager.service.BudgetManager;
+import com.expensemanager.service.FinanceService;
+import com.expensemanager.service.SessionManager;
+import com.expensemanager.service.StatisticsService;
+
 import javax.swing.*;
 import java.awt.*;
-import java.util.UUID;
 
 public class MainFrame extends JFrame {
     private CardLayout cardLayout;
     private JPanel mainPanel;
+    private JPanel sidebar;
     private DashboardPanel dashboardPanel;
     private HistoryPanel historyPanel;
     private StatisticsPanel statisticsPanel;
+    private SettingsPanel settingsPanel;
+
     private FinanceService financeService;
     private StatisticsService statsService;
     private BudgetManager budgetManager;
 
     public MainFrame() {
-        initCategories(); // Nạp danh mục mẫu vào DB nếu trống
-        
-        financeService = new FinanceService();
-        statsService = new StatisticsService(financeService);
-        budgetManager = new BudgetManager(financeService);
+        try {
+            financeService = new FinanceService();
+            financeService.syncFromDatabase();
+        } catch (Exception e) {
+            e.printStackTrace();
+            financeService = null;
+        }
+        if (financeService != null) {
+            statsService = new StatisticsService(financeService);
+            budgetManager = new BudgetManager(financeService);
+        } else {
+            statsService = null;
+            budgetManager = null;
+        }
 
-        setTitle("Quản Lý Chi Tiêu - Dark Mode");
+        setTitle("Money Tracker Desktop");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1250, 850);
+        setSize(1200, 750);
         setLocationRelativeTo(null);
         getContentPane().setBackground(new Color(18, 18, 18));
         setLayout(new BorderLayout());
 
-        JPanel leftSidebar = new JPanel();
-        leftSidebar.setLayout(new BoxLayout(leftSidebar, BoxLayout.Y_AXIS));
-        leftSidebar.setBackground(new Color(25, 25, 25));
-        leftSidebar.setPreferredSize(new Dimension(280, 0));
-        leftSidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(50, 50, 50)));
+        // Sidebar bên trái
+        sidebar = createSidebar();
+        add(sidebar, BorderLayout.WEST);
 
-        JPanel profileHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 25));
-        profileHeader.setOpaque(false);
-        profileHeader.setMaximumSize(new Dimension(280, 100));
-        profileHeader.setAlignmentX(Component.LEFT_ALIGNMENT);
-        
-        JLabel avatar = new JLabel("T") {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(100, 100, 100));
-                g2.fillOval(0, 0, 60, 60);
-                super.paintComponent(g);
-            }
-        };
-        avatar.setPreferredSize(new Dimension(60, 60));
-        avatar.setFont(new Font("Segoe UI", Font.BOLD, 25));
-        avatar.setForeground(Color.WHITE);
-        avatar.setHorizontalAlignment(SwingConstants.CENTER);
-
-        JPanel profileText = new JPanel(new GridLayout(2, 1));
-        profileText.setOpaque(false);
-        JLabel lblName = new JLabel("Test"); 
-        lblName.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblName.setForeground(Color.WHITE);
-        JLabel lblID = new JLabel("ID: 20260401"); 
-        lblID.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblID.setForeground(new Color(160, 160, 160));
-        profileText.add(lblName); profileText.add(lblID);
-        profileHeader.add(avatar); profileHeader.add(profileText);
-        leftSidebar.add(profileHeader);
-
-        leftSidebar.add(Box.createVerticalStrut(20));
-        leftSidebar.add(createSidebarBtn("Thành viên Premium", new Color(255, 165, 0)));
-        leftSidebar.add(createSidebarBtn("Giới thiệu bạn bè", Color.WHITE));
-        leftSidebar.add(createSidebarBtn("Chặn quảng cáo", Color.WHITE));
-        leftSidebar.add(createSidebarBtn("Khu vườn", Color.WHITE));
-        leftSidebar.add(createSidebarBtn("Cài đặt", Color.WHITE));
-        leftSidebar.add(createSidebarBtn("Ứng dụng khác", Color.WHITE));
-        leftSidebar.add(Box.createVerticalGlue());
-
-        JPanel topBar = new JPanel(new BorderLayout());
-        topBar.setBackground(new Color(18, 18, 18));
-        topBar.setPreferredSize(new Dimension(0, 75));
-        topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(50, 50, 50)));
-
-        JPanel navButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 20, 20));
-        navButtons.setOpaque(false);
-        JButton b1 = navBtn("Tổng quan"); JButton b2 = navBtn("Lịch sử"); 
-        JButton b3 = navBtn("Thống kê"); JButton b4 = navBtn("Ngân sách");
-        navButtons.add(b1); navButtons.add(b2); navButtons.add(b3); navButtons.add(b4);
-        topBar.add(navButtons, BorderLayout.EAST);
-
+        // Main Panel dùng CardLayout
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
-        mainPanel.setOpaque(false);
-        dashboardPanel = new DashboardPanel(this);
-        historyPanel = new HistoryPanel(this);
-        statisticsPanel = new StatisticsPanel(statsService, budgetManager);
+        mainPanel.setBackground(new Color(18, 18, 18));
+
+        dashboardPanel = new DashboardPanel(this, financeService, budgetManager);
+        historyPanel = new HistoryPanel(financeService);
+        if (statsService != null && budgetManager != null) {
+            statisticsPanel = new StatisticsPanel(statsService, budgetManager);
+        } else {
+            statisticsPanel = null;
+        }
+        settingsPanel = new SettingsPanel(this);
+
         mainPanel.add(dashboardPanel, "dashboard");
         mainPanel.add(historyPanel, "history");
-        mainPanel.add(statisticsPanel, "statistics");
+        if (statisticsPanel != null) mainPanel.add(statisticsPanel, "statistics");
+        mainPanel.add(settingsPanel, "settings");
 
-        b1.addActionListener(e -> cardLayout.show(mainPanel, "dashboard"));
-        b2.addActionListener(e -> { historyPanel.refreshData(); cardLayout.show(mainPanel, "history"); });
-        b3.addActionListener(e -> { statisticsPanel.refreshData(); cardLayout.show(mainPanel, "statistics"); });
-        b4.addActionListener(e -> new BudgetDialog(this, budgetManager).setVisible(true));
+        add(mainPanel, BorderLayout.CENTER);
 
-        JPanel rightSide = new JPanel(new BorderLayout());
-        rightSide.setOpaque(false);
-        rightSide.add(topBar, BorderLayout.NORTH);
-        rightSide.add(mainPanel, BorderLayout.CENTER);
-        add(leftSidebar, BorderLayout.WEST);
-        add(rightSide, BorderLayout.CENTER);
         setVisible(true);
     }
 
-    private void initCategories() {
-        if (DatabaseUtil.getAllCategories().isEmpty()) {
-            String[] inc = {"Lương", "Thưởng", "Lãi tiết kiệm", "Thu nhập phụ"};
-            String[] exp = {"Ăn uống", "Xăng xe", "Tiền trọ", "Điện nước", "Internet", "Mua sắm", "Giải trí", "Học phí", "Sức khỏe"};
-            for (String s : inc) DatabaseUtil.insertCategory(new Category(UUID.randomUUID().toString().substring(0,8), s, TransactionType.INCOME));
-            for (String s : exp) DatabaseUtil.insertCategory(new Category(UUID.randomUUID().toString().substring(0,8), s, TransactionType.EXPENSE));
-        }
+    private JPanel createSidebar() {
+        JPanel p = new JPanel();
+        p.setPreferredSize(new Dimension(220, 800));
+        p.setBackground(new Color(25, 25, 25));
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(45, 45, 45)));
+
+        String username = SessionManager.getCurrentUsername().trim();
+        String firstLetter = username.substring(0,1).toUpperCase();
+        // Profile Avatar (Mô phỏng ảnh 10)
+        JLabel lblAvatar = new JLabel(firstLetter, SwingConstants.CENTER);
+        lblAvatar.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        lblAvatar.setForeground(Color.WHITE);
+        lblAvatar.setOpaque(true);
+        lblAvatar.setBackground(new Color(138, 107, 95));
+        lblAvatar.setPreferredSize(new Dimension(60, 60));
+        lblAvatar.setMaximumSize(new Dimension(60, 60));
+        lblAvatar.setAlignmentX(Component.CENTER_ALIGNMENT);
+        lblAvatar.setBorder(BorderFactory.createLineBorder(new Color(25, 25, 25), 2, true));
+        
+        
+        JLabel lblUser = new JLabel(username, SwingConstants.CENTER);
+        lblUser.setForeground(Color.WHITE);
+        lblUser.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblUser.setAlignmentX(Component.CENTER_ALIGNMENT);
+        lblUser.setBorder(BorderFactory.createEmptyBorder(10, 0, 30, 0));
+
+        p.add(Box.createRigidArea(new Dimension(0, 30)));
+        p.add(lblAvatar);
+        p.add(lblUser);
+
+        p.add(createSideBtn("Tổng quan", "dashboard", "🏠"));
+        p.add(createSideBtn("Biểu đồ", "statistics", "📊"));
+        p.add(createSideBtn("Lịch sử", "history", "📅"));
+        p.add(createSideBtn("Ngân sách", "budget", "💰"));
+        p.add(createSideBtn("Cài đặt", "settings", "⚙️"));
+
+        return p;
     }
 
-    private JButton createSidebarBtn(String t, Color c) {
-        JButton b = new JButton(t); b.setMaximumSize(new Dimension(280, 45));
-        b.setFont(new Font("Segoe UI", Font.PLAIN, 15)); b.setForeground(c);
-        b.setContentAreaFilled(false); b.setBorderPainted(false); b.setFocusPainted(false);
-        b.setHorizontalAlignment(SwingConstants.LEFT); 
-        b.setAlignmentX(Component.LEFT_ALIGNMENT);
-        b.setMargin(new Insets(0, 20, 0, 0));
-        return b;
-    }
+    private JButton createSideBtn(String text, String cardName, String icon) {
+        JButton btn = new JButton(icon + "   " + text);
+        btn.setMaximumSize(new Dimension(220, 50));
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        btn.setForeground(new Color(200, 200, 200));
+        btn.setBackground(new Color(25, 25, 25));
+        btn.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 10));
+        btn.setFocusPainted(false);
+        btn.setHorizontalAlignment(SwingConstants.LEFT);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-    private JButton navBtn(String t) {
-        JButton b = new JButton(t); b.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        b.setForeground(new Color(210, 210, 210)); b.setContentAreaFilled(false);
-        b.setBorderPainted(false); b.setFocusPainted(false);
-        return b;
+        btn.addActionListener(e -> {
+            if ("budget".equals(cardName)) {
+                if (budgetManager != null) {
+                    new BudgetDialog(this, budgetManager).setVisible(true);
+                    refreshAllPanels();
+                } else JOptionPane.showMessageDialog(this, "Ngân sách chưa sẵn sàng.");
+            } else {
+                refreshAllPanels();
+                cardLayout.show(mainPanel, cardName);
+            }
+        });
+
+        btn.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                btn.setBackground(new Color(40, 40, 40));
+                btn.setForeground(new Color(255, 193, 7)); // Vàng Money Tracker
+            }
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                btn.setBackground(new Color(25, 25, 25));
+                btn.setForeground(new Color(200, 200, 200));
+            }
+        });
+        return btn;
     }
 
     public void refreshAllPanels() {
-        dashboardPanel.refreshData(); historyPanel.refreshData(); statisticsPanel.refreshData();
+        if (financeService != null) financeService.syncFromDatabase();
+        try { dashboardPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
+        try { historyPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
+        if (statisticsPanel != null) try { statisticsPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
+        try { settingsPanel.refreshData(); } catch (Exception e) { e.printStackTrace(); }
     }
-    
+
     public FinanceService getFinanceService() { return financeService; }
+    public BudgetManager getBudgetManager() { return budgetManager; }
 }

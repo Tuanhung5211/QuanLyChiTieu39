@@ -7,25 +7,19 @@ import com.google.gson.reflect.TypeToken;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 public class JsonUtil {
-    // Thêm Adapter để xử lý LocalDateTime từ class của Bạn A
     private static final Gson gson = new GsonBuilder()
-            .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, typeOfSrc, context) ->
-                    new JsonPrimitive(src.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
-            .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, typeOfT, context) ->
-                    LocalDateTime.parse(json.getAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME))
             .setPrettyPrinting()
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
             .create();
 
     public static void saveToJson(List<Transaction> transactions, String filePath) throws DataLoadException {
         try (Writer writer = new FileWriter(filePath)) {
             gson.toJson(transactions, writer);
         } catch (IOException e) {
-            // Đảm bảo DataLoadException có constructor (String, Throwable)
             throw new DataLoadException("Lỗi khi ghi file JSON: " + filePath, e);
         }
     }
@@ -37,11 +31,34 @@ public class JsonUtil {
         }
         try (Reader reader = new FileReader(filePath)) {
             Type listType = new TypeToken<ArrayList<Transaction>>(){}.getType();
-            List<Transaction> result = gson.fromJson(reader, listType);
-            // Tránh trả về null để FinanceService không bị lỗi
-            return (result != null) ? result : new ArrayList<>();
-        } catch (IOException | JsonSyntaxException e) {
-            throw new DataLoadException("Lỗi khi đọc file JSON: " + filePath, e);
+            List<Transaction> list = gson.fromJson(reader, listType);
+            return list != null ? list : new ArrayList<>();
+        } catch (JsonSyntaxException | IOException e) {
+            // File bị hỏng hoặc không đúng định dạng → reset thành mảng rỗng
+            System.err.println("File JSON bị lỗi, sẽ tạo file mới: " + e.getMessage());
+            try {
+                // Ghi đè file bằng mảng rỗng
+                try (Writer writer = new FileWriter(filePath)) {
+                    gson.toJson(new ArrayList<Transaction>(), writer);
+                }
+            } catch (IOException ex) {
+                throw new DataLoadException("Không thể khôi phục file JSON: " + filePath, ex);
+            }
+            return new ArrayList<>();
+        }
+    }
+
+    // Adapter cho LocalDateTime
+    private static class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
+        @Override
+        public JsonElement serialize(LocalDateTime src, Type typeOfSrc, JsonSerializationContext context) {
+            return new JsonPrimitive(src.toString());
+        }
+
+        @Override
+        public LocalDateTime deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+                throws JsonParseException {
+            return LocalDateTime.parse(json.getAsString());
         }
     }
 }

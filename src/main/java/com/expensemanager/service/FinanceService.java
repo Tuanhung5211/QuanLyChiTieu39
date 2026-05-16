@@ -7,7 +7,10 @@ import com.expensemanager.entity.TransactionType;
 import com.expensemanager.exception.DataLoadException;
 import com.expensemanager.util.JsonUtil;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class FinanceService {
@@ -16,87 +19,92 @@ public class FinanceService {
     private static final String JSON_FILE_PATH = "transactions.json";
 
     public FinanceService() {
-        this.transactionList = new ArrayList<>();
-        this.categoryMap = new HashMap<>();
+        transactionList = new ArrayList<>();
+        categoryMap = new HashMap<>();
         loadInitialData();
     }
 
     private void loadInitialData() {
-        // 1. Nạp danh mục: Sử dụng Stream để Map ID với đối tượng Category
-        List<Category> categoriesFromDb = DatabaseUtil.getAllCategories();
-        if (categoriesFromDb != null) {
-            this.categoryMap = categoriesFromDb.stream()
-                    .collect(Collectors.toMap(
-                            Category::getId,
-                            c -> c,
-                            (existing, replacement) -> existing
-                    ));
+        try {
+            List<Category> categories = DatabaseUtil.getAllCategories();
+            if (categories != null) {
+                for (Category c : categories) {
+                    if (c != null) categoryMap.put(c.getId(), c);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Không thể tải danh mục: " + e.getMessage());
         }
 
-        // 2. Nạp giao dịch: Đảm bảo danh sách có thể thay đổi (Mutable) để add được sau này
         try {
             List<Transaction> saved = JsonUtil.loadFromJson(JSON_FILE_PATH);
-            // Ép về ArrayList để tránh lỗi UnsupportedOperationException khi thêm mới
-            this.transactionList = (saved != null) ? new ArrayList<>(saved) : new ArrayList<>();
+            transactionList = saved != null ? saved : new ArrayList<>();
         } catch (DataLoadException e) {
-            System.err.println("Không thể tải dữ liệu: " + e.getMessage());
-            this.transactionList = new ArrayList<>();
+            System.err.println("Không thể tải file JSON: " + e.getMessage());
+            transactionList = new ArrayList<>();
         }
     }
 
-    // --- TÍNH TOÁN (ĐÃ SỬ DỤNG STREAM API) ---
+    public void syncFromDatabase() {
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) return;
+        List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions(userId);
+        if (dbTransactions != null) {
+            this.transactionList = dbTransactions;
+            saveToFile();
+        }
+    }
+
+    public void addTransaction(Transaction transaction) {
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) {
+            System.err.println("Chưa đăng nhập, không thể thêm giao dịch");
+            return;
+        }
+        try {
+            DatabaseUtil.insertTransaction(transaction, userId);
+            transactionList.add(transaction);
+            saveToFile();
+        } catch (Exception e) {
+            System.err.println("Lỗi khi thêm giao dịch: " + e.getMessage());
+        }
+    }
+
+    public List<Transaction> getAllTransactions() {
+        return transactionList;
+    }
 
     public double getTotalIncome() {
         return transactionList.stream()
                 .filter(t -> t != null && t.getType() == TransactionType.INCOME)
-                .mapToDouble(Transaction::getAmount)
-                .sum();
+                .mapToDouble(Transaction::getAmount).sum();
     }
 
     public double getTotalExpense() {
         return transactionList.stream()
                 .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
-                .mapToDouble(Transaction::getAmount)
-                .sum();
+                .mapToDouble(Transaction::getAmount).sum();
     }
 
     public double getBalance() {
         return getTotalIncome() - getTotalExpense();
     }
 
-    // --- CÁC PHƯƠNG THỨC QUẢN LÝ ---
+    public Category getCategoryById(String id) { return categoryMap.get(id); }
+    public List<Category> getAllCategories() { return new ArrayList<>(categoryMap.values()); }
 
-    public void addTransaction(Transaction transaction) {
-        if (transaction != null) {
-            DatabaseUtil.insertTransaction(transaction);
-            this.transactionList.add(transaction);
-            saveToFile();
+    public void refreshCategories() {
+        try {
+            List<Category> categories = DatabaseUtil.getAllCategories();
+            categoryMap.clear();
+            if (categories != null) for (Category c : categories) categoryMap.put(c.getId(), c);
+        } catch (Exception e) {
+            System.err.println("Lỗi làm mới danh mục: " + e.getMessage());
         }
-    }
-
-    public List<Transaction> getAllTransactions() {
-        return new ArrayList<>(this.transactionList);
-    }
-
-    public List<Category> getAllCategories() {
-        return new ArrayList<>(this.categoryMap.values());
-    }
-
-    /**
-     * SỬA LỖI: Truy xuất ID thông qua object Category của bạn A
-     */
-    public List<Transaction> filterByCategory(String categoryId) {
-        if (categoryId == null) return new ArrayList<>();
-        return transactionList.stream()
-                .filter(t -> t.getCategory() != null && categoryId.equals(t.getCategory().getId()))
-                .collect(Collectors.toList());
     }
 
     private void saveToFile() {
-        try {
-            JsonUtil.saveToJson(this.transactionList, JSON_FILE_PATH);
-        } catch (DataLoadException e) {
-            System.err.println("Lỗi lưu file: " + e.getMessage());
-        }
+        try { JsonUtil.saveToJson(transactionList, JSON_FILE_PATH); }
+        catch (DataLoadException e) { System.err.println("Lỗi lưu JSON: " + e.getMessage()); }
     }
 }

@@ -1,97 +1,222 @@
 package com.expensemanager.ui;
 
 import com.expensemanager.database.DatabaseUtil;
-import com.expensemanager.entity.*;
+import com.expensemanager.entity.Category;
+import com.expensemanager.entity.Transaction;
+import com.expensemanager.entity.TransactionType;
+import com.expensemanager.service.SessionManager;
+
 import javax.swing.*;
 import java.awt.*;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.time.format.ResolverStyle;
+import java.util.*;
+import java.util.List;
 import java.util.UUID;
 
 public class AddTransactionDialog extends JDialog {
-    private JTextField txtA, txtN, txtD;
-    private JComboBox<Category> cmbC;
-    private JRadioButton rbI, rbE;
     private MainFrame mainFrame;
-    private Transaction editT;
+    private TransactionType selectedType = TransactionType.EXPENSE;
+    private Category selectedCategory;
+    private JTextField txtAmount, txtNote;
+    private JPanel categoryPanel;
+    private JToggleButton activeCategoryButton;
+    private JButton btnExpense, btnIncome;
 
-    public AddTransactionDialog(MainFrame mf) { this(mf, null); }
-    public AddTransactionDialog(MainFrame mf, Transaction t) {
-        super(mf, t == null ? "Thêm giao dịch mới" : "Sửa giao dịch", true);
-        this.mainFrame = mf; this.editT = t;
-        setSize(450, 550); setLocationRelativeTo(mf);
-        getContentPane().setBackground(new Color(30, 30, 30)); setLayout(new BorderLayout());
-
-        JPanel p = new JPanel(new GridLayout(10, 1, 5, 2)); p.setOpaque(false);
-        p.setBorder(BorderFactory.createEmptyBorder(25, 45, 10, 45));
-
-        txtD = f(LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-        txtA = f(""); txtN = f(""); cmbC = new JComboBox<>();
-
-        rbI = new JRadioButton("Thu nhập"); rbE = new JRadioButton("Chi tiêu", true);
-        rbI.setForeground(Color.WHITE); rbE.setForeground(Color.WHITE);
-        rbI.setOpaque(false); rbE.setOpaque(false);
-        ButtonGroup g = new ButtonGroup(); g.add(rbI); g.add(rbE);
-        
-        rbI.addActionListener(e -> loadFilteredCategories());
-        rbE.addActionListener(e -> loadFilteredCategories());
-
-        JPanel tp = new JPanel(new FlowLayout(FlowLayout.LEFT)); tp.setOpaque(false); tp.add(rbI); tp.add(rbE);
-
-        loadFilteredCategories();
-
-        if (editT != null) {
-            txtD.setText(editT.getDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            txtA.setText(String.format("%.0f", editT.getAmount()));
-            txtN.setText(editT.getNote());
-            if (editT.getType() == TransactionType.INCOME) { rbI.setSelected(true); loadFilteredCategories(); }
-            for (int i=0; i<cmbC.getItemCount(); i++) if (cmbC.getItemAt(i).getName().equals(editT.getCategory().getName())) cmbC.setSelectedIndex(i);
-        }
-
-        p.add(l("Ngày (dd/MM/yyyy):")); p.add(txtD);
-        p.add(l("Số tiền (VND):")); p.add(txtA);
-        p.add(l("Loại giao dịch:")); p.add(tp);
-        p.add(l("Danh mục:")); p.add(cmbC);
-        p.add(l("Ghi chú:")); p.add(txtN);
-        add(p, BorderLayout.CENTER);
-
-        JButton btn = new JButton(editT == null ? "LƯU GIAO DỊCH" : "CẬP NHẬT");
-        btn.setBackground(new Color(46, 204, 113));
-        btn.addActionListener(e -> save());
-        add(btn, BorderLayout.SOUTH);
+    public static Map<String, String> customEmojiMap = new HashMap<>();
+    private static final Map<String, String> CATEGORY_EMOJI = new HashMap<>();
+    static {
+        CATEGORY_EMOJI.put("Mua sắm", "🛍️");
+        CATEGORY_EMOJI.put("Ăn uống", "🍔");
+        CATEGORY_EMOJI.put("Điện thoại", "📱");
+        CATEGORY_EMOJI.put("Giải trí", "🎮");
+        CATEGORY_EMOJI.put("Giáo dục", "📚");
+        CATEGORY_EMOJI.put("Làm đẹp", "💄");
+        CATEGORY_EMOJI.put("Thể thao", "⚽");
+        CATEGORY_EMOJI.put("Xã hội", "👥");
+        CATEGORY_EMOJI.put("Di chuyển", "🚗");
+        CATEGORY_EMOJI.put("Quần áo", "👗");
+        CATEGORY_EMOJI.put("Xe cộ", "🏍️");
+        CATEGORY_EMOJI.put("Điện tử", "💻");
+        CATEGORY_EMOJI.put("Du lịch", "✈️");
+        CATEGORY_EMOJI.put("Sức khỏe", "🏥");
+        CATEGORY_EMOJI.put("Sửa chữa", "🔧");
+        CATEGORY_EMOJI.put("Nhà cửa", "🏠");
+        CATEGORY_EMOJI.put("Quà tặng", "🎁");
+        CATEGORY_EMOJI.put("Từ thiện", "💖");
+        CATEGORY_EMOJI.put("Ăn vặt", "🍿");
+        CATEGORY_EMOJI.put("Trái cây", "🍎");
+        CATEGORY_EMOJI.put("Lương", "💰");
+        CATEGORY_EMOJI.put("Học bổng", "🎓");
+        CATEGORY_EMOJI.put("Tiền được cho", "💵");
     }
 
-    private void loadFilteredCategories() {
-        cmbC.removeAllItems();
-        TransactionType type = rbI.isSelected() ? TransactionType.INCOME : TransactionType.EXPENSE;
-        for (Category c : DatabaseUtil.getAllCategories()) {
-            if (c.getType() == type) cmbC.addItem(c);
-        }
+    public AddTransactionDialog(MainFrame mainFrame) {
+        super(mainFrame, "Thêm giao dịch", true);
+        this.mainFrame = mainFrame;
+        setSize(480, 620);
+        setLocationRelativeTo(mainFrame);
+        setLayout(new BorderLayout());
+        getContentPane().setBackground(new Color(245, 245, 245));
+
+        // Tiêu đề
+        JLabel title = new JLabel("Thêm giao dịch", SwingConstants.CENTER);
+        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        title.setBorder(BorderFactory.createEmptyBorder(15, 0, 10, 0));
+        add(title, BorderLayout.NORTH);
+
+        // Tab chọn loại
+        JPanel typeTabs = new JPanel(new GridLayout(1, 2, 0, 0));
+        typeTabs.setBorder(BorderFactory.createEmptyBorder(0, 20, 10, 20));
+        btnExpense = new JButton("Chi tiêu");
+        btnExpense.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnExpense.setBackground(new Color(0, 153, 76));
+        btnExpense.setForeground(Color.WHITE);
+        btnExpense.addActionListener(e -> switchType(TransactionType.EXPENSE));
+        btnIncome = new JButton("Thu nhập");
+        btnIncome.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnIncome.setBackground(Color.LIGHT_GRAY);
+        btnIncome.setForeground(Color.BLACK);
+        btnIncome.addActionListener(e -> switchType(TransactionType.INCOME));
+        typeTabs.add(btnExpense);
+        typeTabs.add(btnIncome);
+
+        JPanel centerPanel = new JPanel(new BorderLayout());
+        centerPanel.setBackground(new Color(245, 245, 245));
+        centerPanel.add(typeTabs, BorderLayout.NORTH);
+        centerPanel.add(createCategoryGrid(), BorderLayout.CENTER);
+        add(centerPanel, BorderLayout.CENTER);
+        add(createBottomPanel(), BorderLayout.SOUTH);
     }
 
-    private void save() {
-        try {
-            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
-            LocalDate d = LocalDate.parse(txtD.getText().trim(), dtf);
-            double a = Double.parseDouble(txtA.getText().trim());
-            Category cat = (Category) cmbC.getSelectedItem();
-            TransactionType type = rbI.isSelected() ? TransactionType.INCOME : TransactionType.EXPENSE;
+    private JScrollPane createCategoryGrid() {
+        categoryPanel = new JPanel(new GridLayout(0, 4, 10, 10));
+        categoryPanel.setBackground(new Color(245, 245, 245));
+        categoryPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        loadCategories(selectedType);
+        JScrollPane scrollPane = new JScrollPane(categoryPanel);
+        scrollPane.setBorder(null);
+        return scrollPane;
+    }
 
-            if (editT == null) {
-                Transaction tr = new Transaction(UUID.randomUUID().toString().substring(0,8), a, type, cat, txtN.getText());
-                tr.setDateTime(d.atStartOfDay());
-                mainFrame.getFinanceService().addTransaction(tr);
-                JOptionPane.showMessageDialog(this, "Thêm giao dịch thành công!");
-            } else {
-                editT.setAmount(a); editT.setNote(txtN.getText()); editT.setDateTime(d.atStartOfDay());
-                DatabaseUtil.updateTransaction(editT);
-                JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
+    private void loadCategories(TransactionType type) {
+        categoryPanel.removeAll();
+        List<Category> categories = DatabaseUtil.getAllCategories();
+        for (Category c : categories) {
+            if (c.getType() == type) {
+                String emoji = customEmojiMap.getOrDefault(c.getName(),
+                        CATEGORY_EMOJI.getOrDefault(c.getName(), "📌"));
+                JToggleButton btn = new JToggleButton("<html><center>" + emoji + "<br>" + c.getName() + "</center></html>");
+                btn.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                btn.setHorizontalTextPosition(SwingConstants.CENTER);
+                btn.setVerticalTextPosition(SwingConstants.BOTTOM);
+                btn.setPreferredSize(new Dimension(90, 70));
+                btn.setBackground(Color.WHITE);
+                btn.addActionListener(e -> {
+                    if (activeCategoryButton != null) activeCategoryButton.setSelected(false);
+                    activeCategoryButton = btn;
+                    btn.setSelected(true);
+                    selectedCategory = c;
+                });
+                categoryPanel.add(btn);
             }
-            mainFrame.refreshAllPanels();
-            dispose();
-        } catch (Exception ex) { JOptionPane.showMessageDialog(this, "Lỗi dữ liệu!"); }
+        }
+        JButton btnAdd = new JButton("+");
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        btnAdd.setPreferredSize(new Dimension(90, 70));
+        btnAdd.setBackground(Color.WHITE);
+        btnAdd.addActionListener(e -> {
+            AddCategoryDialog dlg = new AddCategoryDialog(mainFrame, () -> loadCategories(selectedType));
+            dlg.setVisible(true);
+        });
+        categoryPanel.add(btnAdd);
+        categoryPanel.revalidate();
+        categoryPanel.repaint();
     }
-    private JTextField f(String t) { JTextField f = new JTextField(t); f.setBackground(new Color(50, 50, 50)); f.setForeground(Color.WHITE); f.setCaretColor(Color.WHITE); return f; }
-    private JLabel l(String t) { JLabel l = new JLabel(t); l.setForeground(Color.WHITE); return l; }
+
+    private void switchType(TransactionType type) {
+        selectedType = type;
+        if (type == TransactionType.EXPENSE) {
+            btnExpense.setBackground(new Color(0, 153, 76));
+            btnExpense.setForeground(Color.WHITE);
+            btnIncome.setBackground(Color.LIGHT_GRAY);
+            btnIncome.setForeground(Color.BLACK);
+        } else {
+            btnIncome.setBackground(new Color(0, 102, 204));
+            btnIncome.setForeground(Color.WHITE);
+            btnExpense.setBackground(Color.LIGHT_GRAY);
+            btnExpense.setForeground(Color.BLACK);
+        }
+        loadCategories(type);
+        selectedCategory = null;
+        if (activeCategoryButton != null) {
+            activeCategoryButton.setSelected(false);
+            activeCategoryButton = null;
+        }
+    }
+
+    private JPanel createBottomPanel() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(new Color(245, 245, 245));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 20, 15, 20));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        gbc.gridx = 0; gbc.gridy = 0;
+        panel.add(new JLabel("Số tiền:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 0; gbc.gridwidth = 2;
+        txtAmount = new JTextField();
+        panel.add(txtAmount, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1;
+        panel.add(new JLabel("Ghi chú:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 1; gbc.gridwidth = 2;
+        txtNote = new JTextField();
+        panel.add(txtNote, gbc);
+
+        gbc.gridx = 1; gbc.gridy = 2; gbc.gridwidth = 1;
+        JButton btnSave = new JButton("Lưu");
+        btnSave.setBackground(new Color(0, 153, 76));
+        btnSave.setForeground(Color.WHITE);
+        btnSave.addActionListener(e -> saveTransaction());
+        panel.add(btnSave, gbc);
+
+        gbc.gridx = 2;
+        JButton btnCancel = new JButton("Hủy");
+        btnCancel.addActionListener(e -> dispose());
+        panel.add(btnCancel, gbc);
+
+        return panel;
+    }
+
+    private void saveTransaction() {
+        try {
+            String userId = SessionManager.getCurrentUserId();
+            if (userId == null) {
+                JOptionPane.showMessageDialog(this, "Bạn chưa đăng nhập!");
+                return;
+            }
+            double amount = Double.parseDouble(txtAmount.getText().trim());
+            if (amount <= 0) {
+                JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!");
+                return;
+            }
+            if (selectedCategory == null) {
+                JOptionPane.showMessageDialog(this, "Vui lòng chọn danh mục!");
+                return;
+            }
+            String note = txtNote.getText().trim();
+            String id = UUID.randomUUID().toString().substring(0, 8);
+            Transaction t = new Transaction(id, amount, selectedType, selectedCategory, note);
+            DatabaseUtil.insertTransaction(t, userId);
+            JOptionPane.showMessageDialog(this, "Thêm thành công!");
+            dispose();
+            if (mainFrame != null) mainFrame.refreshAllPanels();
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!");
+        }
+    }
+
+    public static void addCustomEmoji(String categoryName, String emoji) {
+        customEmojiMap.put(categoryName, emoji);
+    }
 }
