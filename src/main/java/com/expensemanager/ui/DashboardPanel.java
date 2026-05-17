@@ -13,6 +13,8 @@ import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
@@ -22,15 +24,16 @@ public class DashboardPanel extends JPanel implements Observer {
     private MainFrame mainFrame;
     private FinanceService financeService;
     private BudgetManager budgetManager;
+    private final Color ADD_BTN_BG = new Color(76, 175, 80);      // xanh lá
+    private final Color ADD_BTN_BG_HOVER = new Color(56, 142, 60); // xanh đậm hơn khi hover
+    private final Color ADD_BTN_FG = Color.WHITE;
 
     private JLabel lblMonthYear, lblIncome, lblExpense, lblBalance;
-    // 🌟 KHẮC PHỤC 1: Thêm thuộc tính lớp cho các nhãn tiêu đề Card để có thể dịch chuyển động
     private JLabel lblIncomeTitle, lblExpenseTitle, lblBalanceTitle;
     private JPanel transactionListPanel;
     private JScrollPane scrollPane;
     private JTextField txtSearch;
     private JComboBox<String> cmbFilter;
-    // 🌟 KHẮC PHỤC 2: Chuyển btnAdd thành thuộc tính lớp để hàm chuyển ngữ tiếp cận thành công
     private JButton btnAdd;
     private boolean isVietnamese = true;
 
@@ -97,12 +100,33 @@ public class DashboardPanel extends JPanel implements Observer {
 
         add(scrollPane, BorderLayout.CENTER);
 
-        // Khởi tạo nút gán thẳng vào thuộc tính lớp cấu hình
+        // ========== SỬA NÚT THÊM GIAO DỊCH ==========
         btnAdd = new JButton(isVietnamese ? "+ Thêm giao dịch mới" : "+ Add New Transaction");
-        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 16)); btnAdd.setForeground(BG_COLOR); btnAdd.setBackground(ACCENT_YELLOW);
-        btnAdd.setFocusPainted(false); btnAdd.setBorder(BorderFactory.createEmptyBorder(12, 40, 12, 40));
+        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnAdd.setForeground(ADD_BTN_FG);            // chữ trắng
+        btnAdd.setBackground(ADD_BTN_BG);            // nền xanh lá
+        btnAdd.setFocusPainted(false);
+        btnAdd.setBorder(BorderFactory.createEmptyBorder(12, 40, 12, 40));
         btnAdd.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnAdd.setOpaque(true);
+        btnAdd.setContentAreaFilled(true);
+
+        // Hiệu ứng hover (đổi màu nền)
+        btnAdd.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnAdd.setBackground(ADD_BTN_BG_HOVER);
+                btnAdd.repaint();
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnAdd.setBackground(ADD_BTN_BG);
+                btnAdd.repaint();
+            }
+        });
+
         btnAdd.addActionListener(e -> new AddTransactionDialog(mainFrame).setVisible(true));
+        // ===========================================
 
         JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottomPanel.setBackground(BG_COLOR); bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 15, 0));
@@ -123,7 +147,6 @@ public class DashboardPanel extends JPanel implements Observer {
         JPanel summaryPanel = new JPanel(new GridLayout(1, 3, 25, 0));
         summaryPanel.setBackground(SURFACE_COLOR);
 
-        // Khởi tạo thực thể cho các nhãn tiêu đề tĩnh
         lblIncomeTitle = new JLabel();
         lblExpenseTitle = new JLabel();
         lblBalanceTitle = new JLabel();
@@ -155,7 +178,6 @@ public class DashboardPanel extends JPanel implements Observer {
         String searchText = txtSearch != null ? txtSearch.getText().trim().toLowerCase() : "";
         String filterType = cmbFilter != null ? (String) cmbFilter.getSelectedItem() : "Tất cả";
 
-        // Đồng bộ chuẩn hóa giá trị lọc khi ngôn ngữ bị thay đổi bất ngờ giữa phiên chạy
         final String currentFilter = (filterType.contains("All") || filterType.contains("Tất cả")) ? "Tất cả" :
                 (filterType.contains("Income") || filterType.contains("Thu nhập")) ? "Thu nhập" : "Chi tiêu";
 
@@ -184,7 +206,6 @@ public class DashboardPanel extends JPanel implements Observer {
 
         transactionListPanel.removeAll();
 
-        // 🌟 KHẮC PHỤC 3: Đồng bộ Locale vùng miền để tự động dịch thứ trong tuần (Sunday/Monday vs Chủ nhật/Thứ hai)
         Locale currentLocale = isVietnamese ? new Locale("vi", "VN") : Locale.ENGLISH;
         DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy", currentLocale);
         DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", currentLocale);
@@ -239,15 +260,17 @@ public class DashboardPanel extends JPanel implements Observer {
         if (isVietnamese) {
             return "Tháng " + now.getMonthValue() + "/" + now.getYear();
         } else {
-            // Định dạng Tiếng Anh chuẩn công nghiệp: May 2026
             DateTimeFormatter mYFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH);
             return now.format(mYFormatter);
         }
     }
 
-    @Override public void update(EventType eventType, Object data) { if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.TRANSACTION_UPDATED || eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) { SwingUtilities.invokeLater(() -> refreshData()); } }
+    @Override public void update(EventType eventType, Object data) {
+        if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.TRANSACTION_UPDATED || eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) {
+            SwingUtilities.invokeLater(() -> refreshData());
+        }
+    }
 
-    // 🌟 KHẮC PHỤC CHÍNH XÁC LUỒNG CHUYỂN NGỮ TOÀN DIỆN CỦA HỆ THỐNG
     public void updateLanguageText(boolean isVN) {
         this.isVietnamese = isVN;
 
@@ -263,13 +286,11 @@ public class DashboardPanel extends JPanel implements Observer {
             if (idx >= 0) cmbFilter.setSelectedIndex(idx);
         }
 
-        // Cập nhật nhãn văn bản dịch thuật cho Summary Cards đỉnh đầu
         if (lblIncomeTitle != null) lblIncomeTitle.setText(isVN ? "Tổng thu nhập" : "Total Income");
         if (lblExpenseTitle != null) lblExpenseTitle.setText(isVN ? "Tổng chi tiêu" : "Total Expense");
         if (lblBalanceTitle != null) lblBalanceTitle.setText(isVN ? "Số dư hiện tại" : "Current Balance");
         if (lblMonthYear != null) lblMonthYear.setText(getCurrentMonthYear());
 
-        // Ép vẽ và làm mới cấu hình dữ liệu lịch sử ngay tại chỗ
         refreshData();
     }
 }

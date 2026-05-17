@@ -29,7 +29,7 @@ public class MainFrame extends JFrame implements Observer {
     private BudgetManager budgetManager;
     private boolean isVietnamese = true;
 
-    // --- Sidebar components ---
+    // Sidebar components
     private JLabel lblAvatar, lblNickname;
     private JLabel lblIdLabel, lblIdValue;
     private JLabel lblEmailLabel, lblEmailValue;
@@ -42,6 +42,8 @@ public class MainFrame extends JFrame implements Observer {
     private final Color TEXT_SECONDARY = new Color(150, 150, 150);
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
     private final Color DANGER_RED = new Color(244, 67, 54);
+    private final Color LOGOUT_BG_NORMAL = new Color(45, 45, 45);
+    private final Color LOGOUT_BG_HOVER = DANGER_RED;
 
     public boolean isVietnamese() {
         return this.isVietnamese;
@@ -96,7 +98,6 @@ public class MainFrame extends JFrame implements Observer {
         add(mainPanel, BorderLayout.CENTER);
         add(createNavBar(), BorderLayout.NORTH);
 
-        // Chỉ giữ phím tắt Ctrl+N (thêm giao dịch)
         setupKeyboardShortcuts();
 
         if (financeService != null) {
@@ -142,7 +143,7 @@ public class MainFrame extends JFrame implements Observer {
 
         JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         avatarRow.setOpaque(false);
-        avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);  // từ nhánh main
+        avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         avatarRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, avatarRow.getPreferredSize().height));
 
         lblAvatar = new JLabel("A", SwingConstants.CENTER);
@@ -187,27 +188,35 @@ public class MainFrame extends JFrame implements Observer {
         bottomContainer.setOpaque(false);
         bottomContainer.setBorder(new EmptyBorder(15, 15, 20, 15));
 
+        // === Nút Đăng xuất với hiệu ứng hover đỏ ===
         btnLogout = new JButton("Đăng xuất");
         btnLogout.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnLogout.setBackground(new Color(45, 45, 45));
+        btnLogout.setBackground(LOGOUT_BG_NORMAL);
         btnLogout.setForeground(TEXT_PRIMARY);
         btnLogout.setFocusPainted(false);
-        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnLogout.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        btnLogout.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnLogout.setOpaque(true);
+        btnLogout.setContentAreaFilled(true);
 
         btnLogout.addActionListener(e -> logout());
+
         btnLogout.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseEntered(MouseEvent e) {
-                btnLogout.setBackground(DANGER_RED);
+                btnLogout.setBackground(LOGOUT_BG_HOVER);
                 btnLogout.setForeground(Color.WHITE);
+                btnLogout.repaint();
             }
             @Override
             public void mouseExited(MouseEvent e) {
-                btnLogout.setBackground(new Color(45, 45, 45));
+                btnLogout.setBackground(LOGOUT_BG_NORMAL);
                 btnLogout.setForeground(TEXT_PRIMARY);
+                btnLogout.repaint();
             }
         });
+        // ==========================================
+
         bottomContainer.add(btnLogout, BorderLayout.CENTER);
         sidebar.add(bottomContainer, BorderLayout.SOUTH);
 
