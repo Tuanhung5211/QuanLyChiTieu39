@@ -25,7 +25,6 @@ public class SettingsPanel extends JPanel {
         setBackground(new Color(18, 18, 18));
         setBorder(BorderFactory.createEmptyBorder(20, 35, 20, 35));
 
-        // --- KHU VỰC HEADER TRÊN CÙNG ---
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
@@ -36,7 +35,6 @@ public class SettingsPanel extends JPanel {
         headerPanel.add(lblMainTitle, BorderLayout.WEST);
         add(headerPanel, BorderLayout.NORTH);
 
-        // --- KHU VỰC THÂN ĐIỀU HƯỚNG CHÍNH ---
         JPanel bodyContainer = new JPanel(new BorderLayout(25, 0));
         bodyContainer.setOpaque(false);
         bodyContainer.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
@@ -74,7 +72,6 @@ public class SettingsPanel extends JPanel {
         subContentPanel = new JPanel(subCardLayout);
         subContentPanel.setOpaque(false);
 
-        // Gắn trực tiếp ScrollPane (đã bọc target) vào các Tab CardLayout để quản lý chiều cao độc lập
         subContentPanel.add(createResponsiveWrapper(accountSettingsPanel), "account");
         subContentPanel.add(createResponsiveWrapper(systemConfigPanel), "config");
         subContentPanel.add(createResponsiveWrapper(categoryManagerPanel), "category");
@@ -85,9 +82,7 @@ public class SettingsPanel extends JPanel {
         updateLanguageText();
     }
 
-    // 🌟 NÂNG CẤP ĐỘC QUYỀN: Bọc JScrollPane tàng hình cho từng mục 🌟
     private JScrollPane createResponsiveWrapper(JPanel targetPanel) {
-        // Dùng BorderLayout.NORTH để ép form dính chặt lên trên cùng, tránh sinh khoảng trắng dư
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
         wrapper.add(targetPanel, BorderLayout.NORTH);
@@ -97,10 +92,8 @@ public class SettingsPanel extends JPanel {
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-        // CHIÊU THỨC ẨN THANH CUỘN: Thu hẹp kích thước thanh cuộn về 0px (Vô hình)
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16); // Tăng tốc độ cuộn chuột để mượt mà như native app
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
 
         return scrollPane;
     }
@@ -130,6 +123,41 @@ public class SettingsPanel extends JPanel {
         if (accountSettingsPanel != null) accountSettingsPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
         if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
         if (categoryManagerPanel != null) categoryManagerPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
+    }
+
+    // 🌟 ĐÃ SỬA: Ép đồng bộ biến 'isVN' thẳng thắn xuống các mục cài đặt con, chống lỗi hiển thị chậm
+    public void updateLanguageAndResponsive(boolean isVN, int targetFrameWidth) {
+        this.isVietnamese = isVN;
+        int panelWidth = targetFrameWidth - 240;
+        int fluidWidth = panelWidth - 220 - 25 - 70;
+        if (fluidWidth < 500) fluidWidth = 560;
+
+        if (isVietnamese) {
+            lblMainTitle.setText("Cài đặt hệ thống");
+            btnAccountTab.setText("Thông diễn cá nhân");
+            btnConfigTab.setText("Cấu hình hệ thống");
+            btnCategoryTab.setText("Quản lý danh mục");
+        } else {
+            lblMainTitle.setText("System Settings");
+            btnAccountTab.setText("Account Settings");
+            btnConfigTab.setText("System Configuration");
+            btnCategoryTab.setText("Category Manager");
+        }
+
+        if (accountSettingsPanel != null) {
+            accountSettingsPanel.updateResponsiveLayout(isVN, fluidWidth);
+            accountSettingsPanel.refreshData();
+        }
+        if (systemConfigPanel != null) {
+            systemConfigPanel.updateResponsiveLayout(isVN, fluidWidth);
+        }
+        if (categoryManagerPanel != null) {
+            categoryManagerPanel.updateResponsiveLayout(isVN, fluidWidth);
+            categoryManagerPanel.refreshCategories();
+        }
+
+        this.revalidate();
+        this.repaint();
     }
 
     public void refreshData() {

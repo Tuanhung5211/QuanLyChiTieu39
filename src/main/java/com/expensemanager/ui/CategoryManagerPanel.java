@@ -3,6 +3,7 @@ package com.expensemanager.ui;
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Category;
 import com.expensemanager.entity.TransactionType;
+import com.expensemanager.util.EmojiUtil;
 
 import javax.swing.*;
 import java.awt.*;
@@ -28,13 +29,11 @@ public class CategoryManagerPanel extends JPanel {
     private JPanel emojiGridPanel, emojiPagination, gridWrapper;
     private JButton btnSaveCategory, btnPrevEmojiPage, btnNextEmojiPage;
 
-    // 🌟 ĐÃ SỬA: Chuyển đổi emoji mặc định sang mã hóa Unicode an toàn
     private String selectedEmoji = "\uD83D\uDCCD";
     private int currentEmojiPage = 1;
     private final int EMOJI_PER_PAGE = 18;
     private int currentFluidWidth = 560;
 
-    // 🌟 ĐÃ SỬA TRIỆT ĐỂ: Mã hóa 100% danh sách sang chuỗi Unicode trích xuất từ gốc để phá xích lỗi ô vuông
     private final String[] EMOJI_LIST = {
             "\uD83D\uDCCD", "\uD83C\uDF54", "\uD83D\uDED2", "\uD83D\uDECD", "\uD83C\uDF7F", "\uD83C\uDF4E",
             "\uD83D\uDC57", "\uD83D\uDCBB", "\u26FD",       "\uD83C\uDFCD", "\uD83D\uDE97", "\u26A1",
@@ -61,7 +60,6 @@ public class CategoryManagerPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        // --- KHỐI 1: DANH SÁCH DANH MỤC HIỆN CÓ ---
         listCard = new JPanel(new BorderLayout(0, 10));
         listCard.setBackground(SURFACE_COLOR);
         listCard.setBorder(BorderFactory.createCompoundBorder(
@@ -83,6 +81,7 @@ public class CategoryManagerPanel extends JPanel {
         categoryList.setSelectionBackground(ACCENT_YELLOW);
         categoryList.setSelectionForeground(SURFACE_COLOR);
         categoryList.setCellRenderer(new CategoryCellRenderer());
+
         JScrollPane scrollPane = new JScrollPane(categoryList);
         scrollPane.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55)));
         listCard.add(scrollPane, BorderLayout.CENTER);
@@ -98,7 +97,6 @@ public class CategoryManagerPanel extends JPanel {
         add(listCard);
         add(Box.createVerticalStrut(20));
 
-        // --- KHỐI 2: FORM THÊM DANH MỤC MỚI VỚI LƯỚI EMOJI ---
         addCard = new JPanel(new BorderLayout());
         addCard.setBackground(SURFACE_COLOR);
         addCard.setBorder(BorderFactory.createCompoundBorder(
@@ -155,7 +153,6 @@ public class CategoryManagerPanel extends JPanel {
         this.isVietnamese = isVN;
         this.currentFluidWidth = fluidWidth;
         int currentTypeIndex = comboCategoryType.getSelectedIndex();
-
         int gridH = (getEmojiCellHeight() * 2) + 12;
 
         setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
@@ -169,8 +166,6 @@ public class CategoryManagerPanel extends JPanel {
             btnDeleteCategory.setPreferredSize(new Dimension(fluidWidth, 36));
             btnDeleteCategory.setMaximumSize(new Dimension(fluidWidth, 36));
         }
-
-        // 🌟 SỬA LỖI GIAO DIỆN SETTING: Mở rộng chiều cao cố định của addCard lên 540px để ôm khít, không bao giờ bị bóp nghẹt đè chữ
         if (addCard != null) {
             addCard.setPreferredSize(new Dimension(fluidWidth, 540));
             addCard.setMaximumSize(new Dimension(fluidWidth, 540));
@@ -209,13 +204,19 @@ public class CategoryManagerPanel extends JPanel {
             lblCatNameHint.setText("Tên danh mục mới:"); lblCatIconHint.setText("Chọn Icon/Emoji đại diện:"); lblCatTypeHint.setText("Phân loại danh mục:"); btnSaveCategory.setText("XÁC NHẬN THÊM DANH MỤC");
             comboCategoryType.setModel(new DefaultComboBoxModel<>(new String[]{"Khoản chi tiêu (EXPENSE)", "Khoản thu nhập (INCOME)"}));
         } else {
+            // 🌟 ĐÃ SỬA: Chuyển đổi ComboBox sang tiếng Anh chính xác
             lblListTitle.setText("Available System Categories List");
             btnDeleteCategory.setText("DELETE SELECTED CATEGORY");
             lblCategoryTitle.setText("Add New Expense / Income Category");
             lblCatNameHint.setText("New Category Name:"); lblCatIconHint.setText("Select Representative Icon/Emoji:"); lblCatTypeHint.setText("Category Type:"); btnSaveCategory.setText("CONFIRM ADD CATEGORY");
-            comboCategoryType.setModel(new DefaultComboBoxModel<>(new String[]{"Khoản chi tiêu (EXPENSE)", "Khoản thu nhập (INCOME)"}));
+            comboCategoryType.setModel(new DefaultComboBoxModel<>(new String[]{"Expense (CHI TIÊU)", "Income (THU NHẬP)"}));
         }
         if (currentTypeIndex >= 0 && currentTypeIndex < comboCategoryType.getItemCount()) comboCategoryType.setSelectedIndex(currentTypeIndex);
+
+        // Ép danh sách hiển thị cập nhật ngay ngôn ngữ mới
+        if (categoryList != null) {
+            categoryList.repaint();
+        }
         refreshEmojiGrid();
     }
 
@@ -261,14 +262,13 @@ public class CategoryManagerPanel extends JPanel {
         emojiGridPanel.revalidate(); emojiGridPanel.repaint();
     }
 
-    // 🌟 SỬA LỖI Ô VUÔNG LƯỚI SETTING: Bọc HTML bọc thẻ ép cứng Segoe UI Emoji vẽ lưới
     private JPanel createEmojiCellComponent(String emoji) {
         JPanel cell = new JPanel(new BorderLayout());
         cell.setPreferredSize(new Dimension(getEmojiCellWidth(), getEmojiCellHeight()));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        String htmlEmoji = "<html><span style='font-family:\"Segoe UI Emoji\";font-size:16px;'>" + emoji + "</span></html>";
-        JLabel lbl = new JLabel(htmlEmoji, SwingConstants.CENTER);
+        JLabel lbl = new JLabel(emoji, SwingConstants.CENTER);
+        lbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
         cell.add(lbl, BorderLayout.CENTER);
 
         if (emoji.equals(selectedEmoji)) {
@@ -308,15 +308,40 @@ public class CategoryManagerPanel extends JPanel {
     private void styleTextField(JTextField tf) { tf.setBackground(INPUT_BG); tf.setForeground(TEXT_PRIMARY); tf.setCaretColor(ACCENT_YELLOW); tf.setFont(new Font("Segoe UI", Font.PLAIN, 15)); tf.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)), BorderFactory.createEmptyBorder(10, 15, 10, 15))); }
     private JButton createPaginationButton(String text) { JButton btn = new JButton(text); btn.setFont(new Font("Segoe UI", Font.BOLD, 14)); btn.setForeground(TEXT_PRIMARY); btn.setBackground(INPUT_BG); btn.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 1)); btn.setPreferredSize(new Dimension(36, 28)); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); return btn; }
 
-    private class CategoryCellRenderer extends DefaultListCellRenderer {
-        @Override public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-            JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-            label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-            if (value instanceof Category) {
-                Category c = (Category) value;
-                label.setText(c.getName() + " (" + (c.getType() == TransactionType.INCOME ? "Thu" : "Chi") + ")");
+    private class CategoryCellRenderer extends JPanel implements ListCellRenderer<Category> {
+        private final JLabel lblEmoji = new JLabel();
+        private final JLabel lblText = new JLabel();
+
+        public CategoryCellRenderer() {
+            setLayout(new FlowLayout(FlowLayout.LEFT, 10, 4));
+            setOpaque(true);
+            lblEmoji.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
+            lblText.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            add(lblEmoji);
+            add(lblText);
+        }
+
+        @Override
+        public Component getListCellRendererComponent(JList<? extends Category> list, Category value, int index, boolean isSelected, boolean cellHasFocus) {
+            if (value != null) {
+                String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(value.getName(), "\uD83D\uDCCD");
+                lblEmoji.setText(emoji);
+
+                String typeStr = (value.getType() == TransactionType.INCOME) ?
+                        (isVietnamese ? "Thu" : "Income") : (isVietnamese ? "Chi" : "Expense");
+                lblText.setText(value.getName() + " (" + typeStr + ")");
             }
-            return label;
+
+            if (isSelected) {
+                setBackground(list.getSelectionBackground());
+                lblEmoji.setForeground(list.getSelectionForeground());
+                lblText.setForeground(list.getSelectionForeground());
+            } else {
+                setBackground(list.getBackground());
+                lblEmoji.setForeground(list.getForeground());
+                lblText.setForeground(list.getForeground());
+            }
+            return this;
         }
     }
 }

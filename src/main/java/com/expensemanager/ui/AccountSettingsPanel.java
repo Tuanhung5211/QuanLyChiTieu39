@@ -4,6 +4,7 @@ import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
 import com.expensemanager.service.SessionManager;
 import com.expensemanager.service.UserService;
+import com.expensemanager.util.InputValidator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -20,7 +21,6 @@ public class AccountSettingsPanel extends JPanel {
     private JComboBox<String> cmbGender;
     private JButton btnUpdateProfile, btnOpenChangePass, btnDeleteAccount;
 
-    // Hệ màu sắc phẳng Flat Dark Mode đồng bộ hệ thống chính
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
     private final Color INPUT_BG = new Color(40, 40, 40);
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
@@ -28,7 +28,6 @@ public class AccountSettingsPanel extends JPanel {
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
     private final Color DANGER_RED = new Color(244, 67, 54);
 
-    // Thuật toán chuẩn hóa bề rộng form cài đặt cố định theo nấc kích thước cửa sổ
     private int getResponsiveWidth() {
         if (mainFrame == null) return 560;
         int frameWidth = mainFrame.getWidth();
@@ -82,7 +81,6 @@ public class AccountSettingsPanel extends JPanel {
         pForm.add(lblGender, gbc);
         gbc.gridx = 1; gbc.weightx = 0.75;
 
-        // Khởi tạo model ban đầu ngay tại đây để tránh JComboBox bị trống khi nạp dữ liệu ở refreshData()
         cmbGender = new JComboBox<>(isVietnamese ? new String[]{"Nam", "Nữ", "Khác"} : new String[]{"Male", "Female", "Other"});
         cmbGender.setBackground(INPUT_BG); cmbGender.setForeground(TEXT_PRIMARY); cmbGender.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         pForm.add(cmbGender, gbc);
@@ -106,20 +104,27 @@ public class AccountSettingsPanel extends JPanel {
         btnOpenChangePass.addActionListener(e -> openChangePasswordDialog());
         pForm.add(btnOpenChangePass, gbc);
 
-        profileCard.add(pForm, BorderLayout.CENTER);
-        add(profileCard);
-        add(Box.createVerticalStrut(20));
-
+        gbc.gridy = 5;
+        gbc.insets = new Insets(15, 8, 5, 8);
         btnDeleteAccount = new JButton();
-        btnDeleteAccount.setBackground(SURFACE_COLOR); btnDeleteAccount.setForeground(DANGER_RED); btnDeleteAccount.setFont(new Font("Segoe UI", Font.BOLD, 15)); btnDeleteAccount.setFocusPainted(false); btnDeleteAccount.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnDeleteAccount.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(DANGER_RED, 1, true), BorderFactory.createEmptyBorder(10, 0, 10, 0)));
-        btnDeleteAccount.setAlignmentX(Component.LEFT_ALIGNMENT);
+        btnDeleteAccount.setBackground(SURFACE_COLOR);
+        btnDeleteAccount.setForeground(DANGER_RED);
+        btnDeleteAccount.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnDeleteAccount.setFocusPainted(false);
+        btnDeleteAccount.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnDeleteAccount.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(DANGER_RED, 1, true),
+                BorderFactory.createEmptyBorder(10, 0, 10, 0)
+        ));
         btnDeleteAccount.addActionListener(e -> deleteAccount());
         btnDeleteAccount.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { btnDeleteAccount.setBackground(DANGER_RED); btnDeleteAccount.setForeground(Color.WHITE); }
             @Override public void mouseExited(MouseEvent e) { btnDeleteAccount.setBackground(SURFACE_COLOR); btnDeleteAccount.setForeground(DANGER_RED); }
         });
-        add(btnDeleteAccount);
+        pForm.add(btnDeleteAccount, gbc);
+
+        profileCard.add(pForm, BorderLayout.CENTER);
+        add(profileCard);
 
         updateResponsiveLayout(isVietnamese, 560);
         refreshData();
@@ -132,13 +137,9 @@ public class AccountSettingsPanel extends JPanel {
         setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
 
         if (profileCard != null) {
-            profileCard.setPreferredSize(new Dimension(fluidWidth, 390));
-            profileCard.setMaximumSize(new Dimension(fluidWidth, 390));
-            profileCard.setMinimumSize(new Dimension(fluidWidth, 390));
-        }
-        if (btnDeleteAccount != null) {
-            btnDeleteAccount.setPreferredSize(new Dimension(fluidWidth, 45));
-            btnDeleteAccount.setMaximumSize(new Dimension(fluidWidth, 45));
+            profileCard.setPreferredSize(new Dimension(fluidWidth, 450));
+            profileCard.setMaximumSize(new Dimension(fluidWidth, 450));
+            profileCard.setMinimumSize(new Dimension(fluidWidth, 450));
         }
 
         if (isVN) {
@@ -174,20 +175,30 @@ public class AccountSettingsPanel extends JPanel {
         }
     }
 
+    // 🌟 TÍCH HỢP BẮT LỖI LUỒNG THAY ĐỔI THÔNG TIN CÁ NHÂN TRONG CONFIG SETTINGS
     private void updateProfile() {
-        String nickname = txtNickname.getText().trim();
-        String email = txtEmail.getText().trim();
+        String nickname = txtNickname.getText();
+        String email = txtEmail.getText();
         String gender = cmbGender.getSelectedIndex() == 0 ? "Male" : (cmbGender.getSelectedIndex() == 1 ? "Female" : "Other");
 
-        User user = DatabaseUtil.getUserByUsername(SessionManager.getCurrentUsername());
-        if (user != null) {
-            user.setNickname(nickname); user.setEmail(email); user.setGender(gender);
-            DatabaseUtil.updateUser(user);
-            JOptionPane.showMessageDialog(this, isVietnamese ? "Cập nhật thông tin thành công!" : "Profile updated successfully!");
-            if (mainFrame != null) mainFrame.refreshAllPanels();
+        try {
+            InputValidator.validateNickname(nickname, isVietnamese);
+            InputValidator.validateEmail(email, isVietnamese);
+
+            User user = DatabaseUtil.getUserByUsername(SessionManager.getCurrentUsername());
+            if (user != null) {
+                user.setNickname(nickname.trim()); user.setEmail(email.trim()); user.setGender(gender);
+                DatabaseUtil.updateUser(user);
+                JOptionPane.showMessageDialog(this, isVietnamese ? "Cập nhật thông tin thành công!" : "Profile updated successfully!");
+                if (mainFrame != null) mainFrame.refreshAllPanels();
+            }
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    isVietnamese ? "Lỗi nhập liệu" : "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
 
+    // 🌟 TÍCH HỢP BẮT LỖI LUỒNG ĐỔI MẬT KHẨU BẢO MẬT JDIALOG
     private void openChangePasswordDialog() {
         JDialog passDialog = new JDialog(mainFrame, isVietnamese ? "Thay đổi mật khẩu" : "Change Password", true);
         passDialog.setSize(400, 320);
@@ -235,26 +246,24 @@ public class AccountSettingsPanel extends JPanel {
             String newPass = new String(txtNewPassword.getPassword());
             String confirmPass = new String(txtConfirmPassword.getPassword());
 
-            if (oldPass.isEmpty() || newPass.isEmpty() || confirmPass.isEmpty()) {
-                JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Vui lòng nhập đầy đủ!" : "Please fill all fields!", "Warning", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            if (!newPass.equals(confirmPass)) {
-                JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Mật khẩu xác nhận không khớp!" : "Confirm password does not match!", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+            try {
+                InputValidator.validatePasswordChange(oldPass, newPass, confirmPass, isVietnamese);
 
-            String username = SessionManager.getCurrentUsername();
-            User user = UserService.login(username, oldPass);
+                String username = SessionManager.getCurrentUsername();
+                User user = UserService.login(username, oldPass);
 
-            if (user == null) {
-                JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Mật khẩu cũ không đúng!" : "Incorrect old password!", "Error", JOptionPane.ERROR_MESSAGE);
-            } else {
-                user.setPasswordHash(UserService.hashPassword(newPass));
-                DatabaseUtil.updateUser(user);
-                JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Đổi mật khẩu thành công! Hãy đăng nhập lại." : "Password changed! Please re-login.");
-                passDialog.dispose();
-                logout();
+                if (user == null) {
+                    JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Mật khẩu cũ không đúng!" : "Incorrect old password!", "Error", JOptionPane.ERROR_MESSAGE);
+                } else {
+                    user.setPasswordHash(UserService.hashPassword(newPass));
+                    DatabaseUtil.updateUser(user);
+                    JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Đổi mật khẩu thành công! Hãy đăng nhập lại." : "Password changed! Please re-login.");
+                    passDialog.dispose();
+                    logout();
+                }
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(passDialog, ex.getMessage(),
+                        isVietnamese ? "Lỗi cấu trúc" : "Validation Error", JOptionPane.WARNING_MESSAGE);
             }
         });
 
@@ -279,7 +288,6 @@ public class AccountSettingsPanel extends JPanel {
         }
     }
 
-    // 🌟 ĐÃ BỔ SUNG LẠI: Hàm đăng xuất hệ thống chính chủ ở đáy file
     private void logout() {
         SessionManager.logout();
         if (mainFrame != null) {

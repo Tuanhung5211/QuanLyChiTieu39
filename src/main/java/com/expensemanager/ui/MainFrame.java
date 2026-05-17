@@ -8,6 +8,7 @@ import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.service.SessionManager;
 import com.expensemanager.service.StatisticsService;
+import com.expensemanager.util.ConfigLocalStorage;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -47,6 +48,9 @@ public class MainFrame extends JFrame implements Observer {
     }
 
     public MainFrame() {
+        this.isVietnamese = ConfigLocalStorage.loadLanguage();
+        Dimension savedSize = ConfigLocalStorage.loadWindowSize();
+
         try {
             financeService = new FinanceService();
             financeService.syncFromDatabase();
@@ -64,7 +68,7 @@ public class MainFrame extends JFrame implements Observer {
 
         setTitle("Money Tracker Desktop");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 750);
+        setSize(savedSize.width, savedSize.height);
         setResizable(false);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
@@ -102,6 +106,7 @@ public class MainFrame extends JFrame implements Observer {
             financeService.attach(this);
         }
 
+        updateGlobalLanguage(this.isVietnamese);
         setVisible(true);
         refreshSidebarData();
     }
@@ -137,6 +142,9 @@ public class MainFrame extends JFrame implements Observer {
 
         JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         avatarRow.setOpaque(false);
+        avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);  // từ nhánh main
+        avatarRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, avatarRow.getPreferredSize().height));
+
         lblAvatar = new JLabel("A", SwingConstants.CENTER);
         lblAvatar.setFont(new Font("Segoe UI", Font.BOLD, 22));
         lblAvatar.setForeground(ACCENT_YELLOW);
@@ -151,9 +159,9 @@ public class MainFrame extends JFrame implements Observer {
         lblNickname.setForeground(TEXT_PRIMARY);
         lblNickname.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0));
         avatarRow.add(lblNickname);
-        topContainer.add(avatarRow);
 
-        topContainer.add(Box.createVerticalStrut(20));
+        topContainer.add(avatarRow);
+        topContainer.add(Box.createVerticalStrut(12));
 
         lblIdLabel = new JLabel("ID:");
         lblIdValue = new JLabel("---");
@@ -164,9 +172,12 @@ public class MainFrame extends JFrame implements Observer {
 
         JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 4));
         infoPanel.setOpaque(false);
+        infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         infoPanel.add(createProfileRow(lblIdLabel, lblIdValue));
         infoPanel.add(createProfileRow(lblEmailLabel, lblEmailValue));
         infoPanel.add(createProfileRow(lblGenderLabel, lblGenderValue));
+
+        infoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, infoPanel.getPreferredSize().height));
         topContainer.add(infoPanel);
 
         topContainer.add(Box.createVerticalGlue());
@@ -304,6 +315,8 @@ public class MainFrame extends JFrame implements Observer {
 
     public void updateGlobalLanguage(boolean isVN) {
         this.isVietnamese = isVN;
+        ConfigLocalStorage.saveConfig(this.isVietnamese, this.getWidth(), this.getHeight());
+
         if (btnDashboard != null) btnDashboard.setText(isVN ? "Tổng quan" : "Overview");
         if (btnStatistics != null) btnStatistics.setText(isVN ? "Thống kê" : "Statistics");
         if (btnBudget != null) btnBudget.setText(isVN ? "Ngân sách" : "Budget");
@@ -317,10 +330,11 @@ public class MainFrame extends JFrame implements Observer {
             refreshSidebarData();
         }
 
-        if (settingsPanel != null) settingsPanel.updateLanguageText();
-        if (statisticsPanel != null) statisticsPanel.refreshData();
-        if (dashboardPanel != null) dashboardPanel.refreshData();
-        if (budgetPanel != null) budgetPanel.refreshData();
+        // Gọi chuyển ngữ chủ động xuống các Panel con
+        if (settingsPanel != null) settingsPanel.updateLanguageAndResponsive(isVN, this.getWidth());
+        if (dashboardPanel != null) { dashboardPanel.updateLanguageText(isVN); dashboardPanel.refreshData(); }
+        if (statisticsPanel != null) { statisticsPanel.updateLanguageText(isVN); statisticsPanel.refreshData(); }
+        if (budgetPanel != null) { budgetPanel.updateLanguageText(isVN); budgetPanel.refreshData(); }
 
         this.revalidate();
         this.repaint();
@@ -331,7 +345,13 @@ public class MainFrame extends JFrame implements Observer {
         setSize(width, height);
         setLocationRelativeTo(null);
         setResizable(false);
-        if (settingsPanel != null) settingsPanel.updateLanguageText();
+
+        ConfigLocalStorage.saveConfig(this.isVietnamese, width, height);
+
+        if (settingsPanel != null) {
+            settingsPanel.updateLanguageAndResponsive(this.isVietnamese, width);
+        }
+
         this.revalidate();
         this.repaint();
     }

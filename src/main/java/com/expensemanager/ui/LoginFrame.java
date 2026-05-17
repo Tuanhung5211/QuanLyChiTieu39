@@ -3,6 +3,7 @@ package com.expensemanager.ui;
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
 import com.expensemanager.service.UserService;
+import com.expensemanager.util.InputValidator;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -30,6 +31,8 @@ public class LoginFrame extends JFrame {
     private JPasswordField txtRegPassword;
     private JComboBox<String> comboGender;
 
+    private boolean isVietnamese = true;
+
     // --- Hệ màu sắc phẳng (Flat Dark Mode) ---
     private final Color BG_COLOR = new Color(18, 18, 18);
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
@@ -48,7 +51,6 @@ public class LoginFrame extends JFrame {
         setTitle("Money Tracker Desktop - Hội viên UTC2");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // 🌟 SỬA LỖI KHOẢNG ĐEN: Thu nhỏ cửa sổ đăng nhập cho cân đối
         setSize(500, 750);
         setResizable(false);
         setLocationRelativeTo(null);
@@ -67,12 +69,10 @@ public class LoginFrame extends JFrame {
         cardLayout.show(cards, "login");
     }
 
-    // ================== GIAO DIỆN ĐĂNG NHẬP ==================
     private void createLoginPanel() {
-        loginPanel = new JPanel(new GridBagLayout()); // Căn giữa toàn bộ cửa sổ
+        loginPanel = new JPanel(new GridBagLayout());
         loginPanel.setBackground(BG_COLOR);
 
-        // 🌟 SỬA LỖI LỆCH PHẢI: Dùng GridBagLayout cho Form thay vì BoxLayout
         JPanel pForm = new JPanel(new GridBagLayout());
         pForm.setBackground(SURFACE_COLOR);
         pForm.setBorder(new CompoundBorder(
@@ -85,7 +85,6 @@ public class LoginFrame extends JFrame {
         gbc.weightx = 1.0;
         gbc.gridx = 0;
 
-        // Avatar & Tiêu đề
         JLabel lblAvatar = new JLabel("👤", SwingConstants.CENTER);
         lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 45));
         gbc.gridy = 0; gbc.insets = new Insets(0, 0, 5, 0); pForm.add(lblAvatar, gbc);
@@ -95,7 +94,6 @@ public class LoginFrame extends JFrame {
         lblTitle.setForeground(ACCENT_YELLOW);
         gbc.gridy = 1; gbc.insets = new Insets(0, 0, 25, 0); pForm.add(lblTitle, gbc);
 
-        // Form nhập liệu
         gbc.insets = new Insets(5, 0, 5, 0);
         gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
         gbc.gridy = 3; txtLoginUsername = new JTextField(); styleTextField(txtLoginUsername); pForm.add(txtLoginUsername, gbc);
@@ -103,7 +101,6 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 4; pForm.add(createLabel("Mật khẩu bảo mật:"), gbc);
         gbc.gridy = 5; txtLoginPassword = new JPasswordField(); styleTextField(txtLoginPassword); pForm.add(txtLoginPassword, gbc);
 
-        // Nút bấm & Liên kết
         gbc.gridy = 6; gbc.insets = new Insets(25, 0, 15, 0);
         JButton btnLogin = new JButton("ĐĂNG NHẬP"); stylePrimaryButton(btnLogin);
         btnLogin.addActionListener(e -> login());
@@ -115,12 +112,10 @@ public class LoginFrame extends JFrame {
         loginPanel.add(pForm);
     }
 
-    // ================== GIAO DIỆN ĐĂNG KÝ ==================
     private void createRegisterPanel() {
         registerPanel = new JPanel(new GridBagLayout());
         registerPanel.setBackground(BG_COLOR);
 
-        // 🌟 SỬA LỖI LỆCH PHẢI: Dùng GridBagLayout bảo đảm các ô thẳng tắp
         JPanel pForm = new JPanel(new GridBagLayout());
         pForm.setBackground(SURFACE_COLOR);
         pForm.setBorder(new CompoundBorder(
@@ -133,7 +128,6 @@ public class LoginFrame extends JFrame {
         gbc.weightx = 1.0;
         gbc.gridx = 0;
 
-        // Avatar & Tiêu đề
         JLabel lblAvatar = new JLabel("👤", SwingConstants.CENTER);
         lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 40));
         gbc.gridy = 0; gbc.insets = new Insets(0, 0, 0, 0); pForm.add(lblAvatar, gbc);
@@ -143,7 +137,6 @@ public class LoginFrame extends JFrame {
         lblTitle.setForeground(ACCENT_YELLOW);
         gbc.gridy = 1; gbc.insets = new Insets(0, 0, 15, 0); pForm.add(lblTitle, gbc);
 
-        // Form nhập liệu
         gbc.insets = new Insets(4, 0, 4, 0);
 
         gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
@@ -164,7 +157,6 @@ public class LoginFrame extends JFrame {
         styleComboBoxUI(comboGender);
         pForm.add(comboGender, gbc);
 
-        // Nút bấm & Liên kết
         gbc.gridy = 12; gbc.insets = new Insets(20, 0, 15, 0);
         JButton btnRegister = new JButton("ĐĂNG KÝ NGAY"); stylePrimaryButton(btnRegister);
         btnRegister.addActionListener(e -> register());
@@ -175,8 +167,6 @@ public class LoginFrame extends JFrame {
 
         registerPanel.add(pForm);
     }
-
-    // ================== TIỆN ÍCH GIAO DIỆN (UI HELPERS) ==================
 
     private JLabel createLabel(String text) {
         JLabel lbl = new JLabel(text);
@@ -203,7 +193,7 @@ public class LoginFrame extends JFrame {
         tf.setForeground(TEXT_PRIMARY);
         tf.setCaretColor(ACCENT_YELLOW);
         tf.setFont(FONT_INPUT);
-        tf.setPreferredSize(new Dimension(300, 42)); // Cố định chiều cao
+        tf.setPreferredSize(new Dimension(300, 42));
         tf.setBorder(new CompoundBorder(
                 new LineBorder(BORDER_COLOR, 1, true),
                 new EmptyBorder(0, 12, 0, 12)
@@ -263,48 +253,51 @@ public class LoginFrame extends JFrame {
         });
     }
 
-    // ================== XỬ LÝ LOGIC NGHIỆP VỤ ==================
-
+    // 🌟 KHẮC PHỤC TRIỆT ĐỂ LUỒNG ĐĂNG NHẬP CHỐNG ĐỂ TRỐNG DỮ LIỆU
     private void login() {
-        String username = txtLoginUsername.getText().trim();
-        String password = new String(txtLoginPassword.getPassword()).trim();
+        String username = txtLoginUsername.getText();
+        String password = new String(txtLoginPassword.getPassword());
 
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "UTC2 Team cảnh báo: Hãy điền đầy đủ tên đăng nhập và mật khẩu!", "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        try {
+            InputValidator.validateLogin(username, password, isVietnamese);
 
-        User user = UserService.login(username, password);
-        if (user != null) {
-            JOptionPane.showMessageDialog(this, "🎉 Money Tracker chúc mừng: " + user.getNickname() + " UTC2 đăng nhập thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
-            new MainFrame().setVisible(true);
-            this.dispose();
-        } else {
-            JOptionPane.showMessageDialog(this, "Lỗi đăng nhập: Tên người dùng hoặc mật khẩu không đúng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            User user = UserService.login(username.trim(), password.trim());
+            if (user != null) {
+                JOptionPane.showMessageDialog(this, "🎉 Money Tracker chúc mừng: " + user.getNickname() + " UTC2 đăng nhập thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                new MainFrame().setVisible(true);
+                this.dispose();
+            } else {
+                JOptionPane.showMessageDialog(this, "Lỗi đăng nhập: Tên người dùng hoặc mật khẩu không đúng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi đăng nhập", JOptionPane.WARNING_MESSAGE);
         }
     }
 
+    // 🌟 KHẮC PHỤC TRIỆT ĐỂ LUỒNG ĐĂNG KÝ HỘI VIÊN TOÀN DIỆN
     private void register() {
-        String username = txtRegUsername.getText().trim();
-        String password = new String(txtRegPassword.getPassword()).trim();
-        String nickname = txtRegNickname.getText().trim();
-        String email = txtRegEmail.getText().trim();
+        String username = txtRegUsername.getText();
+        String password = new String(txtRegPassword.getPassword());
+        String nickname = txtRegNickname.getText();
+        String email = txtRegEmail.getText();
         String gender = (String) comboGender.getSelectedItem();
 
-        if (username.isEmpty() || password.isEmpty() || nickname.isEmpty() || email.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "UTC2 Team cảnh báo: Vui lòng điền đầy đủ các thông tin đăng ký!", "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+        try {
+            // Do form UI gộp chung, ta truyền password vào cả 2 tham số để bỏ qua kiểm tra khớp pass, tập trung quét format
+            InputValidator.validateRegister(username, password, password, email, nickname, isVietnamese);
 
-        User user = UserService.register(username, password, nickname, email, gender);
-        if (user == null) {
-            JOptionPane.showMessageDialog(this, "Lỗi đăng ký: Tên đăng nhập đã tồn tại trong hệ thống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(this, "Đăng ký hội viên " + nickname + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            User user = UserService.register(username.trim(), password.trim(), nickname.trim(), email.trim(), gender);
+            if (user == null) {
+                JOptionPane.showMessageDialog(this, "Lỗi đăng ký: Tên đăng nhập đã tồn tại trong hệ thống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Đăng ký hội viên " + nickname.trim() + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
-            txtLoginUsername.setText(username);
-            txtLoginPassword.setText("");
-            cardLayout.show(cards, "login");
+                txtLoginUsername.setText(username.trim());
+                txtLoginPassword.setText("");
+                cardLayout.show(cards, "login");
+            }
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
         }
     }
 

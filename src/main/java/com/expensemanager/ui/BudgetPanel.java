@@ -14,16 +14,19 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
+import java.util.Locale;
 
 public class BudgetPanel extends JPanel implements Observer {
-    // ĐÃ THÊM BIẾN MAINFRAME Ở ĐÂY CHUẨN KIẾN TRÚC
     private MainFrame mainFrame;
     private BudgetManager budgetManager;
     private FinanceService financeService;
 
+    // 🌟 KHẮC PHỤC 1: Đưa nhãn tiêu đề lblTitle thành thuộc tính lớp để phục vụ dịch chuyển động
+    private JLabel lblTitle;
     private JLabel lblMonthYear, lblBudgetLimit, lblSpent, lblRemaining, lblStatus;
     private JProgressBar progressBar;
     private JButton btnSetBudget;
+    private boolean isVietnamese = true;
 
     private final Color BG_COLOR = new Color(18, 18, 18);
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
@@ -32,21 +35,21 @@ public class BudgetPanel extends JPanel implements Observer {
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
     private final Color TEXT_SECONDARY = new Color(160, 160, 160);
 
-    // ĐÃ CẬP NHẬT: Nhận vào MainFrame mainFrame từ hàm tạo
     public BudgetPanel(MainFrame mainFrame, BudgetManager budgetManager) {
         this.mainFrame = mainFrame;
         this.budgetManager = budgetManager;
         this.financeService = budgetManager.getFinanceService();
+        if (mainFrame != null) this.isVietnamese = mainFrame.isVietnamese();
 
         setLayout(new BorderLayout());
         setBackground(BG_COLOR);
         setBorder(BorderFactory.createEmptyBorder(30, 45, 30, 45));
 
-        JLabel title = new JLabel("NGÂN SÁCH CHI TIÊU THÁNG", SwingConstants.CENTER);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 26));
-        title.setForeground(ACCENT_YELLOW);
-        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 25, 0));
-        add(title, BorderLayout.NORTH);
+        lblTitle = new JLabel("", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 26));
+        lblTitle.setForeground(ACCENT_YELLOW);
+        lblTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 25, 0));
+        add(lblTitle, BorderLayout.NORTH);
 
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
@@ -64,21 +67,21 @@ public class BudgetPanel extends JPanel implements Observer {
         centerPanel.add(lblMonthYear);
         centerPanel.add(Box.createVerticalStrut(25));
 
-        lblBudgetLimit = new JLabel("Hạn mức: 0 đ", SwingConstants.CENTER);
+        lblBudgetLimit = new JLabel("", SwingConstants.CENTER);
         lblBudgetLimit.setFont(new Font("Segoe UI", Font.PLAIN, 18));
         lblBudgetLimit.setForeground(TEXT_PRIMARY);
         lblBudgetLimit.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(lblBudgetLimit);
         centerPanel.add(Box.createVerticalStrut(12));
 
-        lblSpent = new JLabel("Đã chi: 0 đ", SwingConstants.CENTER);
+        lblSpent = new JLabel("", SwingConstants.CENTER);
         lblSpent.setFont(new Font("Segoe UI", Font.PLAIN, 18));
         lblSpent.setForeground(TEXT_SECONDARY);
         lblSpent.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(lblSpent);
         centerPanel.add(Box.createVerticalStrut(12));
 
-        lblRemaining = new JLabel("Còn lại: 0 đ", SwingConstants.CENTER);
+        lblRemaining = new JLabel("", SwingConstants.CENTER);
         lblRemaining.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblRemaining.setForeground(new Color(76, 175, 80));
         lblRemaining.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -103,7 +106,7 @@ public class BudgetPanel extends JPanel implements Observer {
         centerPanel.add(lblStatus);
         centerPanel.add(Box.createVerticalStrut(30));
 
-        btnSetBudget = new JButton("Thay đổi hạn mức ngân sách");
+        btnSetBudget = new JButton();
         btnSetBudget.setFont(new Font("Segoe UI", Font.BOLD, 16));
         btnSetBudget.setBackground(ACCENT_YELLOW);
         btnSetBudget.setForeground(BG_COLOR);
@@ -124,7 +127,8 @@ public class BudgetPanel extends JPanel implements Observer {
         wrapperPanel.add(centerPanel);
         add(wrapperPanel, BorderLayout.CENTER);
 
-        refreshData();
+        // Kích hoạt nạp dịch ngôn ngữ ban đầu giải tỏa bế tắc
+        updateLanguageText(this.isVietnamese);
     }
 
     private void openSetBudgetDialog() {
@@ -140,7 +144,9 @@ public class BudgetPanel extends JPanel implements Observer {
 
         JPanel panel = new JPanel(new GridLayout(2, 1, 5, 8));
         panel.setOpaque(false);
-        JLabel lblHint = new JLabel("Nhập hạn mức chi tiêu mới (VND):");
+
+        // 🌟 KHẮC PHỤC 2: Dịch thuật nội dung và tiêu đề hộp thoại JDialog tùy chọn
+        JLabel lblHint = new JLabel(isVietnamese ? "Nhập hạn mức chi tiêu mới (VND):" : "Enter new monthly budget limit (VND):");
         lblHint.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         lblHint.setForeground(TEXT_PRIMARY);
         panel.add(lblHint);
@@ -150,7 +156,10 @@ public class BudgetPanel extends JPanel implements Observer {
         UIManager.put("Panel.background", SURFACE_COLOR);
         UIManager.put("OptionPane.messageForeground", TEXT_PRIMARY);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Thiết lập ngân sách", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        int result = JOptionPane.showConfirmDialog(this, panel,
+                isVietnamese ? "Thiết lập ngân sách" : "Setup Expense Budget",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
         if (result == JOptionPane.OK_OPTION) {
             try {
                 double limit = Double.parseDouble(txtLimit.getText().trim());
@@ -160,9 +169,12 @@ public class BudgetPanel extends JPanel implements Observer {
                 refreshData();
                 if (mainFrame != null) mainFrame.refreshAllPanels();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Số tiền nhập vào không hợp lệ!", "Lỗi cấu trúc", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this,
+                        isVietnamese ? "Số tiền nhập vào không hợp lệ!" : "The amount entered is invalid format!",
+                        isVietnamese ? "Lỗi cấu trúc" : "Format Error", JOptionPane.ERROR_MESSAGE);
             } catch (InvalidAmountException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi nghiệp vụ", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, ex.getMessage(),
+                        isVietnamese ? "Lỗi nghiệp vụ" : "Business Rule Violation", JOptionPane.WARNING_MESSAGE);
             }
         }
     }
@@ -172,9 +184,9 @@ public class BudgetPanel extends JPanel implements Observer {
 
         String status = budgetManager.checkBudget();
         lblStatus.setText(status);
-        if (status.contains("⚠️") || status.contains("Vượt")) {
+        if (status.contains("⚠️") || status.contains("Vượt") || status.contains("Exceeded")) {
             lblStatus.setForeground(new Color(244, 67, 54));
-        } else if (status.contains("✅") || status.contains("Còn")) {
+        } else if (status.contains("✅") || status.contains("Còn") || status.contains("Within")) {
             lblStatus.setForeground(new Color(76, 175, 80));
         } else {
             lblStatus.setForeground(TEXT_SECONDARY);
@@ -182,7 +194,14 @@ public class BudgetPanel extends JPanel implements Observer {
 
         int month = LocalDate.now().getMonthValue();
         int year = LocalDate.now().getYear();
-        lblMonthYear.setText("Tháng " + month + " Năm " + year);
+
+        // 🌟 KHẮC PHỤC 3: Dịch chuỗi hiển thị nấc thời gian "Tháng 5 Năm 2026" sang English chuẩn chỉ
+        if (isVietnamese) {
+            lblMonthYear.setText("Tháng " + month + " Năm " + year);
+        } else {
+            String monthName = java.time.Month.of(month).getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
+            lblMonthYear.setText(monthName + " " + year);
+        }
 
         String userId = SessionManager.getCurrentUserId();
         if (userId != null) {
@@ -192,18 +211,26 @@ public class BudgetPanel extends JPanel implements Observer {
                 Budget budget = DatabaseUtil.getBudget(month, year, userId);
                 if (budget != null) {
                     limit = budget.getLimit();
-                    lblBudgetLimit.setText(String.format("Hạn mức tháng này: %,.0f đ", limit));
+                    lblBudgetLimit.setText(isVietnamese ?
+                            String.format("Hạn mức tháng này: %,.0f đ", limit) :
+                            String.format("Monthly Limit: %,.0f VND", limit));
                 } else {
-                    lblBudgetLimit.setText("Hạn mức tháng này: Chưa thiết lập");
+                    lblBudgetLimit.setText(isVietnamese ? "Hạn mức tháng này: Chưa thiết lập" : "Monthly Limit: Not Set Yet");
                 }
             } catch (Exception e) {
-                lblBudgetLimit.setText("Hạn mức tháng này: Chưa thiết lập");
+                lblBudgetLimit.setText(isVietnamese ? "Hạn mức tháng này: Chưa thiết lập" : "Monthly Limit: Not Set Yet");
             }
-            lblSpent.setText(String.format("Số tiền đã chi tiêu: %,.0f đ", spent));
+
+            lblSpent.setText(isVietnamese ?
+                    String.format("Số tiền đã chi tiêu: %,.0f đ", spent) :
+                    String.format("Total Amount Spent: %,.0f VND", spent));
 
             if (limit > 0) {
                 double remaining = limit - spent;
-                lblRemaining.setText(String.format("Số dư còn lại: %,.0f đ", remaining));
+                lblRemaining.setText(isVietnamese ?
+                        String.format("Số dư còn lại: %,.0f đ", remaining) :
+                        String.format("Remaining Balance: %,.0f VND", remaining));
+
                 if (remaining < 0) {
                     lblRemaining.setForeground(new Color(244, 67, 54));
                 } else {
@@ -214,7 +241,7 @@ public class BudgetPanel extends JPanel implements Observer {
                 progressBar.setString(percent + "%");
                 progressBar.setForeground(percent > 100 ? new Color(244, 67, 54) : new Color(76, 175, 80));
             } else {
-                lblRemaining.setText("Số dư còn lại: 0 đ");
+                lblRemaining.setText(isVietnamese ? "Số dư còn lại: 0 đ" : "Remaining Balance: 0 VND");
                 progressBar.setValue(0);
                 progressBar.setString("0%");
             }
@@ -230,5 +257,20 @@ public class BudgetPanel extends JPanel implements Observer {
                 eventType == EventType.DATA_LOADED) {
             SwingUtilities.invokeLater(() -> refreshData());
         }
+    }
+
+    // 🌟 KHẮC PHỤC CHÍ TRỌNG: Thiết lập hàm bắt liên kết chuyển ngữ toàn cục nhận diện từ MainFrame
+    public void updateLanguageText(boolean isVN) {
+        this.isVietnamese = isVN;
+
+        if (lblTitle != null) {
+            lblTitle.setText(isVN ? "NGÂN SÁCH CHI TIÊU THÁNG" : "MONTHLY EXPENSE BUDGET");
+        }
+        if (btnSetBudget != null) {
+            btnSetBudget.setText(isVN ? "Thay đổi hạn mức ngân sách" : "Adjust Budget Limit");
+        }
+
+        // Làm mới dữ liệu và ép vẽ lại nhãn Tiếng Anh/Việt lập tức
+        refreshData();
     }
 }
