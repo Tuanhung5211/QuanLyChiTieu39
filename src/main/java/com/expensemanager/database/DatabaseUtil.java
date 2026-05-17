@@ -66,7 +66,90 @@ public class DatabaseUtil {
         );
     }
 
-    // ========== CATEGORIES (giữ nguyên, không sửa) ==========
+    // ========== THÊM MỚI: Khởi tạo database tables ==========
+    public static void initializeDatabase() {
+        String[] createTableQueries = {
+                // Users table
+                "CREATE TABLE IF NOT EXISTS users (" +
+                        "id VARCHAR(36) PRIMARY KEY, " +
+                        "username VARCHAR(50) UNIQUE NOT NULL, " +
+                        "password_hash VARCHAR(255) NOT NULL, " +
+                        "nickname VARCHAR(100), " +
+                        "avatar VARCHAR(255), " +
+                        "email VARCHAR(100), " +
+                        "gender VARCHAR(10), " +
+                        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                        ")",
+
+                // Categories table
+                "CREATE TABLE IF NOT EXISTS categories (" +
+                        "id VARCHAR(36) PRIMARY KEY, " +
+                        "name VARCHAR(50) NOT NULL, " +
+                        "type ENUM('INCOME', 'EXPENSE') NOT NULL" +
+                        ")",
+
+                // Transactions table
+                "CREATE TABLE IF NOT EXISTS transactions (" +
+                        "id VARCHAR(36) PRIMARY KEY, " +
+                        "amount DECIMAL(15,2) NOT NULL, " +
+                        "type ENUM('INCOME', 'EXPENSE') NOT NULL, " +
+                        "category_id VARCHAR(36) NOT NULL, " +
+                        "date_time DATETIME NOT NULL, " +
+                        "note TEXT, " +
+                        "user_id VARCHAR(36) NOT NULL, " +
+                        "FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, " +
+                        "INDEX idx_user_date (user_id, date_time)" +
+                        ")",
+
+                // Budgets table
+                "CREATE TABLE IF NOT EXISTS budgets (" +
+                        "id VARCHAR(36) PRIMARY KEY, " +
+                        "month INT NOT NULL, " +
+                        "year INT NOT NULL, " +
+                        "budget_limit DECIMAL(15,2) NOT NULL, " +
+                        "spent DECIMAL(15,2) DEFAULT 0, " +
+                        "user_id VARCHAR(36) NOT NULL, " +
+                        "FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE, " +
+                        "UNIQUE KEY unique_user_month_year (user_id, month, year)" +
+                        ")"
+        };
+
+        // Insert default categories
+        String insertCategories = "INSERT IGNORE INTO categories (id, name, type) VALUES " +
+                "('cat1', 'Lương', 'INCOME'), " +
+                "('cat2', 'Thưởng', 'INCOME'), " +
+                "('cat3', 'Đầu tư', 'INCOME'), " +
+                "('cat4', 'Ăn uống', 'EXPENSE'), " +
+                "('cat5', 'Di chuyển', 'EXPENSE'), " +
+                "('cat6', 'Giải trí', 'EXPENSE'), " +
+                "('cat7', 'Học tập', 'EXPENSE'), " +
+                "('cat8', 'Hóa đơn', 'EXPENSE')";
+
+        try (Connection conn = getConnection()) {
+            // Create tables
+            for (String query : createTableQueries) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute(query);
+                    System.out.println("Created table successfully");
+                }
+            }
+
+            // Insert default categories
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute(insertCategories);
+                System.out.println("Default categories inserted");
+            }
+
+            System.out.println("Database initialization completed!");
+
+        } catch (SQLException e) {
+            System.err.println("Failed to initialize database: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // ========== CATEGORIES ==========
     public static void insertCategory(Category category) {
         String sql = "INSERT INTO categories (id, name, type) VALUES (?, ?, ?)";
         try (Connection conn = getConnection();
@@ -109,7 +192,7 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== TRANSACTIONS (giữ nguyên, không sửa) ==========
+    // ========== TRANSACTIONS ==========
     public static void insertTransaction(Transaction transaction, String userId) {
         String sql = "INSERT INTO transactions (id, amount, type, category_id, date_time, note, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
@@ -235,7 +318,7 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== BUDGETS (giữ nguyên, không sửa) ==========
+    // ========== BUDGETS ==========
     public static void insertBudget(Budget budget, String userId) {
         String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?) " +
                 "ON DUPLICATE KEY UPDATE budget_limit = ?, spent = ?";
@@ -291,7 +374,7 @@ public class DatabaseUtil {
         return null;
     }
 
-    // ========== USERS (giữ nguyên, không sửa) ==========
+    // ========== USERS ==========
     public static void insertUser(User user) {
         String sql = "INSERT INTO users (id, username, password_hash, nickname, avatar, email, gender) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
@@ -349,7 +432,7 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== XÓA DỮ LIỆU THEO USER (giữ nguyên) ==========
+    // ========== XÓA DỮ LIỆU THEO USER ==========
     public static void deleteTransactionsByUser(String userId) {
         String sql = "DELETE FROM transactions WHERE user_id = ?";
         try (Connection conn = getConnection();
