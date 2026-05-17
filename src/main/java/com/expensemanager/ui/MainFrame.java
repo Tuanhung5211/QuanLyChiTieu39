@@ -13,8 +13,7 @@ import com.expensemanager.util.ConfigLocalStorage;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.awt.event.*;
 
 public class MainFrame extends JFrame implements Observer {
     private CardLayout cardLayout;
@@ -30,7 +29,7 @@ public class MainFrame extends JFrame implements Observer {
     private BudgetManager budgetManager;
     private boolean isVietnamese = true;
 
-    // --- Các thành phần của Sidebar ---
+    // --- Sidebar components ---
     private JLabel lblAvatar, lblNickname;
     private JLabel lblIdLabel, lblIdValue;
     private JLabel lblEmailLabel, lblEmailValue;
@@ -97,6 +96,9 @@ public class MainFrame extends JFrame implements Observer {
         add(mainPanel, BorderLayout.CENTER);
         add(createNavBar(), BorderLayout.NORTH);
 
+        // Chỉ giữ phím tắt Ctrl+N (thêm giao dịch)
+        setupKeyboardShortcuts();
+
         if (financeService != null) {
             financeService.attach(dashboardPanel);
             if (statisticsPanel != null) financeService.attach(statisticsPanel);
@@ -107,6 +109,23 @@ public class MainFrame extends JFrame implements Observer {
         updateGlobalLanguage(this.isVietnamese);
         setVisible(true);
         refreshSidebarData();
+    }
+
+    private void setupKeyboardShortcuts() {
+        JRootPane rootPane = getRootPane();
+        InputMap im = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = rootPane.getActionMap();
+
+        // Ctrl+N: Thêm giao dịch mới
+        im.put(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK), "newTransaction");
+        am.put("newTransaction", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                AddTransactionDialog dialog = new AddTransactionDialog(MainFrame.this);
+                dialog.setVisible(true);
+                refreshAllPanels();
+            }
+        });
     }
 
     private JPanel createSidebar() {
@@ -123,7 +142,8 @@ public class MainFrame extends JFrame implements Observer {
 
         JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         avatarRow.setOpaque(false);
-        avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);  // từ nhánh main
+        avatarRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, avatarRow.getPreferredSize().height));
 
         lblAvatar = new JLabel("A", SwingConstants.CENTER);
         lblAvatar.setFont(new Font("Segoe UI", Font.BOLD, 22));
@@ -140,16 +160,15 @@ public class MainFrame extends JFrame implements Observer {
         lblNickname.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0));
         avatarRow.add(lblNickname);
 
-        // 🌟 KHẮC PHỤC 1: Khóa chiều cao tối đa của avatarRow để BoxLayout không tạo khoảng trống giãn cách
-        avatarRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, avatarRow.getPreferredSize().height));
         topContainer.add(avatarRow);
-
-        // 🌟 KHẮC PHỤC 2: Khoảng cách đệm nhỏ chuẩn bằng đúng 1 dòng (12px) ngay dưới chân Avatar
         topContainer.add(Box.createVerticalStrut(12));
 
-        lblIdLabel = new JLabel("ID:"); lblIdValue = new JLabel("---");
-        lblEmailLabel = new JLabel("Email:"); lblEmailValue = new JLabel("---");
-        lblGenderLabel = new JLabel("Giới tính:"); lblGenderValue = new JLabel("---");
+        lblIdLabel = new JLabel("ID:");
+        lblIdValue = new JLabel("---");
+        lblEmailLabel = new JLabel("Email:");
+        lblEmailValue = new JLabel("---");
+        lblGenderLabel = new JLabel("Giới tính:");
+        lblGenderValue = new JLabel("---");
 
         JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 4));
         infoPanel.setOpaque(false);
@@ -158,7 +177,6 @@ public class MainFrame extends JFrame implements Observer {
         infoPanel.add(createProfileRow(lblEmailLabel, lblEmailValue));
         infoPanel.add(createProfileRow(lblGenderLabel, lblGenderValue));
 
-        // 🌟 KHẮC PHỤC 3: Khóa cứng chiều cao infoPanel để ép các dòng khít chặt lại với nhau sát chân Avatar
         infoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, infoPanel.getPreferredSize().height));
         topContainer.add(infoPanel);
 
@@ -179,8 +197,16 @@ public class MainFrame extends JFrame implements Observer {
 
         btnLogout.addActionListener(e -> logout());
         btnLogout.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btnLogout.setBackground(DANGER_RED); btnLogout.setForeground(Color.WHITE); }
-            @Override public void mouseExited(MouseEvent e) { btnLogout.setBackground(new Color(45, 45, 45)); btnLogout.setForeground(TEXT_PRIMARY); }
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnLogout.setBackground(DANGER_RED);
+                btnLogout.setForeground(Color.WHITE);
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btnLogout.setBackground(new Color(45, 45, 45));
+                btnLogout.setForeground(TEXT_PRIMARY);
+            }
         });
         bottomContainer.add(btnLogout, BorderLayout.CENTER);
         sidebar.add(bottomContainer, BorderLayout.SOUTH);
@@ -211,7 +237,6 @@ public class MainFrame extends JFrame implements Observer {
                 String email = user.getEmail();
                 if (email != null && email.length() > 18) email = email.substring(0, 16) + "...";
                 lblEmailValue.setText(email != null ? email : "---");
-
                 String gender = user.getGender();
                 if (isVietnamese) {
                     if ("Male".equalsIgnoreCase(gender) || "Nam".equalsIgnoreCase(gender)) lblGenderValue.setText("Nam");
@@ -222,7 +247,6 @@ public class MainFrame extends JFrame implements Observer {
                     else if ("Female".equalsIgnoreCase(gender) || "Nữ".equalsIgnoreCase(gender)) lblGenderValue.setText("Female");
                     else lblGenderValue.setText("Other");
                 }
-
                 if (user.getNickname() != null && !user.getNickname().isEmpty()) {
                     lblAvatar.setText(user.getNickname().substring(0, 1).toUpperCase());
                 }
@@ -240,12 +264,31 @@ public class MainFrame extends JFrame implements Observer {
         btnBudget = createNavButton(isVietnamese ? "Ngân sách" : "Budget");
         btnSettings = createNavButton(isVietnamese ? "Cài đặt" : "Settings");
 
-        btnDashboard.addActionListener(e -> { dashboardPanel.refreshData(); cardLayout.show(mainPanel, "dashboard"); });
-        btnStatistics.addActionListener(e -> { if (statisticsPanel != null) { statisticsPanel.refreshData(); cardLayout.show(mainPanel, "statistics"); } });
-        btnBudget.addActionListener(e -> { if (budgetPanel != null) { budgetPanel.refreshData(); cardLayout.show(mainPanel, "budget"); } });
-        btnSettings.addActionListener(e -> { settingsPanel.refreshData(); cardLayout.show(mainPanel, "settings"); });
+        btnDashboard.addActionListener(e -> {
+            dashboardPanel.refreshData();
+            cardLayout.show(mainPanel, "dashboard");
+        });
+        btnStatistics.addActionListener(e -> {
+            if (statisticsPanel != null) {
+                statisticsPanel.refreshData();
+                cardLayout.show(mainPanel, "statistics");
+            }
+        });
+        btnBudget.addActionListener(e -> {
+            if (budgetPanel != null) {
+                budgetPanel.refreshData();
+                cardLayout.show(mainPanel, "budget");
+            }
+        });
+        btnSettings.addActionListener(e -> {
+            settingsPanel.refreshData();
+            cardLayout.show(mainPanel, "settings");
+        });
 
-        navPanel.add(btnDashboard); navPanel.add(btnStatistics); navPanel.add(btnBudget); navPanel.add(btnSettings);
+        navPanel.add(btnDashboard);
+        navPanel.add(btnStatistics);
+        navPanel.add(btnBudget);
+        navPanel.add(btnSettings);
         return navPanel;
     }
 
@@ -257,9 +300,15 @@ public class MainFrame extends JFrame implements Observer {
         btn.setBorder(BorderFactory.createEmptyBorder(10, 22, 10, 22));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) { btn.setForeground(Color.WHITE); btn.setBackground(new Color(60, 60, 60)); }
-            public void mouseExited(java.awt.event.MouseEvent evt) { btn.removeMouseListener(this); btn.setForeground(Color.LIGHT_GRAY); btn.setBackground(new Color(40, 40, 40)); }
+        btn.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent evt) {
+                btn.setForeground(Color.WHITE);
+                btn.setBackground(new Color(60, 60, 60));
+            }
+            public void mouseExited(MouseEvent evt) {
+                btn.setForeground(Color.LIGHT_GRAY);
+                btn.setBackground(new Color(40, 40, 40));
+            }
         });
         return btn;
     }
@@ -274,13 +323,14 @@ public class MainFrame extends JFrame implements Observer {
         if (btnSettings != null) btnSettings.setText(isVN ? "Cài đặt" : "Settings");
 
         if (lblIdLabel != null) {
-            lblIdLabel.setText("ID:"); lblEmailLabel.setText("Email:");
+            lblIdLabel.setText("ID:");
+            lblEmailLabel.setText("Email:");
             lblGenderLabel.setText(isVN ? "Giới tính:" : "Gender:");
             btnLogout.setText(isVN ? "Đăng xuất" : "Logout");
             refreshSidebarData();
         }
 
-        // 🌟 KHẮC PHỤC CHÍNH XÁC: Gọi lệnh chuyển ngữ chủ động xuống các Panel ngoài để dứt điểm lỗi chữ đứng im
+        // Gọi chuyển ngữ chủ động xuống các Panel con
         if (settingsPanel != null) settingsPanel.updateLanguageAndResponsive(isVN, this.getWidth());
         if (dashboardPanel != null) { dashboardPanel.updateLanguageText(isVN); dashboardPanel.refreshData(); }
         if (statisticsPanel != null) { statisticsPanel.updateLanguageText(isVN); statisticsPanel.refreshData(); }
@@ -306,8 +356,15 @@ public class MainFrame extends JFrame implements Observer {
         this.repaint();
     }
 
-    public void refreshAllPanels() { if (financeService != null) financeService.syncFromDatabase(); }
-    private void logout() { SessionManager.logout(); dispose(); new LoginFrame().setVisible(true); }
+    public void refreshAllPanels() {
+        if (financeService != null) financeService.syncFromDatabase();
+    }
+
+    private void logout() {
+        SessionManager.logout();
+        dispose();
+        new LoginFrame().setVisible(true);
+    }
 
     @Override
     public void update(EventType eventType, Object data) {
@@ -316,6 +373,11 @@ public class MainFrame extends JFrame implements Observer {
         }
     }
 
-    public FinanceService getFinanceService() { return financeService; }
-    public BudgetManager getBudgetManager() { return budgetManager; }
+    public FinanceService getFinanceService() {
+        return financeService;
+    }
+
+    public BudgetManager getBudgetManager() {
+        return budgetManager;
+    }
 }
