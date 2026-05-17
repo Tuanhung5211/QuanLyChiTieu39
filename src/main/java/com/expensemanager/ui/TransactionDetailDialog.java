@@ -14,7 +14,6 @@ public class TransactionDetailDialog extends JDialog {
     private MainFrame mainFrame;
     private Transaction transaction;
 
-    // Định nghĩa bảng màu Dark Mode phẳng đồng bộ
     private final Color BG_COLOR = new Color(18, 18, 18);
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
@@ -31,16 +30,16 @@ public class TransactionDetailDialog extends JDialog {
         getContentPane().setBackground(BG_COLOR);
         setLayout(new BorderLayout());
 
-        // --- HEADER PANEL ---
         JPanel headerPanel = new JPanel(new BorderLayout(15, 0));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 15, 25));
         headerPanel.setBackground(BG_COLOR);
 
         Category cat = transaction.getCategory();
-        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
+        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "\uD83D\uDCCD") : "\uD83D\uDCCD";
 
+        // 🌟 ĐÃ SỬA: Bỏ HTML, dùng setFont gốc kết hợp font Segoe UI Emoji để hiện màu chuẩn xác
         JLabel lblIcon = new JLabel(emoji);
-        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 44)); // Sửa font phẳng chuẩn tránh lỗi ô vuông
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 36));
         headerPanel.add(lblIcon, BorderLayout.WEST);
 
         JPanel textPanel = new JPanel(new GridLayout(2, 1, 0, 4));
@@ -60,7 +59,6 @@ public class TransactionDetailDialog extends JDialog {
         headerPanel.add(textPanel, BorderLayout.CENTER);
         add(headerPanel, BorderLayout.NORTH);
 
-        // --- DETAILS PANEL (Khối Grid dữ liệu phẳng) ---
         JPanel detailPanel = new JPanel(new GridBagLayout());
         detailPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
         detailPanel.setBackground(BG_COLOR);
@@ -73,7 +71,6 @@ public class TransactionDetailDialog extends JDialog {
 
         String amountStr = String.format("%,.0f VND", transaction.getAmount());
         addDetailRow(detailPanel, gbc, "Số tiền:", amountStr, 1);
-        // Tô màu số tiền dựa theo loại giao dịch thu/chi
         JLabel amountLabelValue = (JLabel) detailPanel.getComponent(3);
         amountLabelValue.setForeground(transaction.getType() == TransactionType.INCOME ? new Color(76, 175, 80) : new Color(244, 67, 54));
         amountLabelValue.setFont(new Font("Segoe UI", Font.BOLD, 15));
@@ -82,7 +79,6 @@ public class TransactionDetailDialog extends JDialog {
         addDetailRow(detailPanel, gbc, "Thời gian lưu:", transaction.getDateTime().format(dtf), 3);
         add(detailPanel, BorderLayout.CENTER);
 
-        // --- BUTTON FOOTER PANEL (Hệ thống nút phẳng hoàn toàn) ---
         JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 12, 0));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 25, 25));
         buttonPanel.setBackground(BG_COLOR);
@@ -118,11 +114,8 @@ public class TransactionDetailDialog extends JDialog {
 
     private JButton createFlatButton(String text, Color bg, Color fg) {
         JButton btn = new JButton(text);
-        btn.setBackground(bg);
-        btn.setForeground(fg);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        btn.setBackground(bg); btn.setForeground(fg); btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFocusPainted(false); btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
@@ -130,25 +123,17 @@ public class TransactionDetailDialog extends JDialog {
     private void editTransaction() {
         JTextField txtAmount = new JTextField(String.valueOf(transaction.getAmount()));
         JTextField txtNote = new JTextField(transaction.getNote());
-
-        // Custom Panel cho form sửa có giao diện tối giản
         JPanel panel = new JPanel(new GridLayout(4, 1, 5, 5));
-        panel.add(new JLabel("Số tiền mới:"));
-        panel.add(txtAmount);
-        panel.add(new JLabel("Ghi chú mới:"));
-        panel.add(txtNote);
+        panel.add(new JLabel("Số tiền mới:")); panel.add(txtAmount);
+        panel.add(new JLabel("Ghi chú mới:")); panel.add(txtNote);
 
         int result = JOptionPane.showConfirmDialog(this, panel, "Sửa giao dịch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
             try {
                 double newAmount = Double.parseDouble(txtAmount.getText().trim());
-                if (newAmount <= 0) {
-                    JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!");
-                    return;
-                }
+                if (newAmount <= 0) { JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!"); return; }
                 transaction.setAmount(newAmount);
                 transaction.setNote(txtNote.getText().trim());
-
                 if (mainFrame != null && mainFrame.getFinanceService() != null) {
                     mainFrame.getFinanceService().updateTransaction(transaction);
                 } else {
@@ -156,16 +141,12 @@ public class TransactionDetailDialog extends JDialog {
                 }
                 JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
                 dispose();
-            } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!");
-            }
+            } catch (NumberFormatException e) { JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!"); }
         }
     }
 
     private void deleteTransaction() {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc muốn xóa giao dịch này?", "Xác nhận xóa",
-                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        int confirm = JOptionPane.showConfirmDialog(this, "Bạn có chắc muốn xóa giao dịch này?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
             if (mainFrame != null && mainFrame.getFinanceService() != null) {
                 mainFrame.getFinanceService().deleteTransaction(transaction.getId());

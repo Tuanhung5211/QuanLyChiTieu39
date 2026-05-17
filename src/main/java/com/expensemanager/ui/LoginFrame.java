@@ -1,239 +1,200 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.service.UserService;
+import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
+import com.expensemanager.service.UserService;
 
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.plaf.basic.BasicComboPopup;
+import javax.swing.plaf.basic.ComboPopup;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.UUID;
 
 public class LoginFrame extends JFrame {
-    private JTextField txtUsername;
-    private JPasswordField txtPassword;
-    private JTextField txtRegUsername;
-    private JPasswordField txtRegPassword;
-    private JTextField txtNickname;
-    private JTextField txtEmail;
-    private JComboBox<String> cmbGender;
-
-    private JPanel cardPanel;
+    private JPanel cards;
     private CardLayout cardLayout;
-    private JButton btnTabLogin;
-    private JButton btnTabRegister;
+    private JPanel loginPanel, registerPanel;
 
-    // Bộ màu đồng bộ với MainFrame
+    // --- Components cho Đăng nhập ---
+    private JTextField txtLoginUsername;
+    private JPasswordField txtLoginPassword;
+
+    // --- Components cho Đăng ký ---
+    private JTextField txtRegUsername, txtRegNickname, txtRegEmail;
+    private JPasswordField txtRegPassword;
+    private JComboBox<String> comboGender;
+
+    // --- Hệ màu sắc phẳng (Flat Dark Mode) ---
     private final Color BG_COLOR = new Color(18, 18, 18);
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color INPUT_BG = new Color(45, 45, 45);
+    private final Color INPUT_BG = new Color(40, 40, 40);
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
+    private final Color TEXT_SECONDARY = new Color(150, 150, 150);
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
+    private final Color BORDER_COLOR = new Color(50, 50, 50);
+
+    private final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 26);
+    private final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 13);
+    private final Font FONT_INPUT = new Font("Segoe UI", Font.PLAIN, 15);
+    private final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 15);
 
     public LoginFrame() {
-        setTitle("Money Tracker - TheTays Team");
+        setTitle("Money Tracker Desktop - Hội viên UTC2");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(450, 680);
+
+        // 🌟 SỬA LỖI KHOẢNG ĐEN: Thu nhỏ cửa sổ đăng nhập cho cân đối
+        setSize(500, 750);
+        setResizable(false);
         setLocationRelativeTo(null);
-        getContentPane().setBackground(BG_COLOR);
-        setLayout(new BorderLayout());
 
-        // --- HEADER (Logo & Toggle Tabs) ---
-        JPanel headerPanel = new JPanel();
-        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
-        headerPanel.setBackground(BG_COLOR);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(30, 0, 10, 0));
-
-        JLabel lblLogo = new JLabel("💸 Money Tracker", SwingConstants.CENTER);
-        lblLogo.setFont(new Font("Segoe UI Emoji", Font.BOLD, 30));
-        lblLogo.setForeground(ACCENT_YELLOW);
-        lblLogo.setAlignmentX(Component.CENTER_ALIGNMENT);
-        headerPanel.add(lblLogo);
-        headerPanel.add(Box.createVerticalStrut(25));
-
-        // Nút chuyển Tab Đăng nhập / Đăng ký
-        JPanel tabTogglePanel = new JPanel(new GridLayout(1, 2));
-        tabTogglePanel.setBackground(BG_COLOR);
-        tabTogglePanel.setMaximumSize(new Dimension(350, 40));
-
-        btnTabLogin = createTabButton("Đăng nhập", true);
-        btnTabRegister = createTabButton("Đăng ký", false);
-
-        btnTabLogin.addActionListener(e -> switchTab("login"));
-        btnTabRegister.addActionListener(e -> switchTab("register"));
-
-        tabTogglePanel.add(btnTabLogin);
-        tabTogglePanel.add(btnTabRegister);
-        headerPanel.add(tabTogglePanel);
-
-        add(headerPanel, BorderLayout.NORTH);
-
-        // --- BODY (CardLayout chứa 2 form) ---
         cardLayout = new CardLayout();
-        cardPanel = new JPanel(cardLayout);
-        cardPanel.setBackground(BG_COLOR);
+        cards = new JPanel(cardLayout);
+        cards.setBackground(BG_COLOR);
 
-        cardPanel.add(createLoginPanel(), "login");
-        cardPanel.add(createRegisterPanel(), "register");
+        createLoginPanel();
+        createRegisterPanel();
 
-        add(cardPanel, BorderLayout.CENTER);
+        cards.add(loginPanel, "login");
+        cards.add(registerPanel, "register");
+
+        add(cards);
+        cardLayout.show(cards, "login");
     }
 
-    private JPanel createLoginPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(BG_COLOR);
+    // ================== GIAO DIỆN ĐĂNG NHẬP ==================
+    private void createLoginPanel() {
+        loginPanel = new JPanel(new GridBagLayout()); // Căn giữa toàn bộ cửa sổ
+        loginPanel.setBackground(BG_COLOR);
+
+        // 🌟 SỬA LỖI LỆCH PHẢI: Dùng GridBagLayout cho Form thay vì BoxLayout
+        JPanel pForm = new JPanel(new GridBagLayout());
+        pForm.setBackground(SURFACE_COLOR);
+        pForm.setBorder(new CompoundBorder(
+                new LineBorder(BORDER_COLOR, 1, true),
+                new EmptyBorder(35, 40, 35, 40)
+        ));
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(10, 30, 10, 30);
         gbc.weightx = 1.0;
+        gbc.gridx = 0;
 
-        gbc.gridx = 0; gbc.gridy = 0;
-        panel.add(createLabel("Tên đăng nhập:"), gbc);
+        // Avatar & Tiêu đề
+        JLabel lblAvatar = new JLabel("👤", SwingConstants.CENTER);
+        lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 45));
+        gbc.gridy = 0; gbc.insets = new Insets(0, 0, 5, 0); pForm.add(lblAvatar, gbc);
 
-        gbc.gridy = 1;
-        txtUsername = new JTextField();
-        styleTextField(txtUsername);
-        panel.add(txtUsername, gbc);
+        JLabel lblTitle = new JLabel("ĐĂNG NHẬP", SwingConstants.CENTER);
+        lblTitle.setFont(FONT_TITLE);
+        lblTitle.setForeground(ACCENT_YELLOW);
+        gbc.gridy = 1; gbc.insets = new Insets(0, 0, 25, 0); pForm.add(lblTitle, gbc);
 
-        gbc.gridy = 2;
-        panel.add(createLabel("Mật khẩu:"), gbc);
+        // Form nhập liệu
+        gbc.insets = new Insets(5, 0, 5, 0);
+        gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
+        gbc.gridy = 3; txtLoginUsername = new JTextField(); styleTextField(txtLoginUsername); pForm.add(txtLoginUsername, gbc);
 
-        gbc.gridy = 3;
-        txtPassword = new JPasswordField();
-        styleTextField(txtPassword);
-        panel.add(txtPassword, gbc);
+        gbc.gridy = 4; pForm.add(createLabel("Mật khẩu bảo mật:"), gbc);
+        gbc.gridy = 5; txtLoginPassword = new JPasswordField(); styleTextField(txtLoginPassword); pForm.add(txtLoginPassword, gbc);
 
-        gbc.gridy = 4;
-        gbc.insets = new Insets(40, 30, 10, 30);
-        JButton btnLogin = new JButton("Đăng nhập");
-        stylePrimaryButton(btnLogin);
+        // Nút bấm & Liên kết
+        gbc.gridy = 6; gbc.insets = new Insets(25, 0, 15, 0);
+        JButton btnLogin = new JButton("ĐĂNG NHẬP"); stylePrimaryButton(btnLogin);
         btnLogin.addActionListener(e -> login());
-        panel.add(btnLogin, gbc);
+        pForm.add(btnLogin, gbc);
 
-        // Đẩy các component lên trên cùng
-        gbc.gridy = 5; gbc.weighty = 1.0;
-        panel.add(Box.createVerticalGlue(), gbc);
+        gbc.gridy = 7; gbc.insets = new Insets(0, 0, 0, 0);
+        pForm.add(createLink("Chưa có tài khoản? Đăng ký ngay", "register"), gbc);
 
-        return panel;
+        loginPanel.add(pForm);
     }
 
-    private JPanel createRegisterPanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBackground(BG_COLOR);
+    // ================== GIAO DIỆN ĐĂNG KÝ ==================
+    private void createRegisterPanel() {
+        registerPanel = new JPanel(new GridBagLayout());
+        registerPanel.setBackground(BG_COLOR);
+
+        // 🌟 SỬA LỖI LỆCH PHẢI: Dùng GridBagLayout bảo đảm các ô thẳng tắp
+        JPanel pForm = new JPanel(new GridBagLayout());
+        pForm.setBackground(SURFACE_COLOR);
+        pForm.setBorder(new CompoundBorder(
+                new LineBorder(BORDER_COLOR, 1, true),
+                new EmptyBorder(25, 40, 25, 40)
+        ));
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 30, 5, 30);
         gbc.weightx = 1.0;
+        gbc.gridx = 0;
 
-        // Cột 1: Labels | Cột 2: Inputs
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.3;
-        panel.add(createLabel("Tài khoản:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.7;
-        txtRegUsername = new JTextField();
-        styleTextField(txtRegUsername);
-        panel.add(txtRegUsername, gbc);
+        // Avatar & Tiêu đề
+        JLabel lblAvatar = new JLabel("👤", SwingConstants.CENTER);
+        lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 40));
+        gbc.gridy = 0; gbc.insets = new Insets(0, 0, 0, 0); pForm.add(lblAvatar, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.3;
-        panel.add(createLabel("Mật khẩu:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 0.7;
-        txtRegPassword = new JPasswordField();
-        styleTextField(txtRegPassword);
-        panel.add(txtRegPassword, gbc);
+        JLabel lblTitle = new JLabel("ĐĂNG KÝ HỘI VIÊN", SwingConstants.CENTER);
+        lblTitle.setFont(FONT_TITLE);
+        lblTitle.setForeground(ACCENT_YELLOW);
+        gbc.gridy = 1; gbc.insets = new Insets(0, 0, 15, 0); pForm.add(lblTitle, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 2;
-        panel.add(createLabel("Nickname:"), gbc);
-        gbc.gridx = 1;
-        txtNickname = new JTextField();
-        styleTextField(txtNickname);
-        panel.add(txtNickname, gbc);
+        // Form nhập liệu
+        gbc.insets = new Insets(4, 0, 4, 0);
 
-        gbc.gridx = 0; gbc.gridy = 3;
-        panel.add(createLabel("Email:"), gbc);
-        gbc.gridx = 1;
-        txtEmail = new JTextField();
-        styleTextField(txtEmail);
-        panel.add(txtEmail, gbc);
+        gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
+        gbc.gridy = 3; txtRegUsername = new JTextField(); styleTextField(txtRegUsername); pForm.add(txtRegUsername, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 4;
-        panel.add(createLabel("Giới tính:"), gbc);
-        gbc.gridx = 1;
-        cmbGender = new JComboBox<>(new String[]{"Male", "Female", "Other"});
-        cmbGender.setBackground(INPUT_BG);
-        cmbGender.setForeground(TEXT_PRIMARY);
-        cmbGender.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        cmbGender.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)));
-        panel.add(cmbGender, gbc);
+        gbc.gridy = 4; pForm.add(createLabel("Mật khẩu bảo mật:"), gbc);
+        gbc.gridy = 5; txtRegPassword = new JPasswordField(); styleTextField(txtRegPassword); pForm.add(txtRegPassword, gbc);
 
-        gbc.gridx = 0; gbc.gridy = 5; gbc.gridwidth = 2;
-        gbc.insets = new Insets(25, 30, 10, 30);
-        JButton btnRegister = new JButton("Tạo tài khoản");
-        stylePrimaryButton(btnRegister);
+        gbc.gridy = 6; pForm.add(createLabel("Tên hiển thị:"), gbc);
+        gbc.gridy = 7; txtRegNickname = new JTextField(); styleTextField(txtRegNickname); pForm.add(txtRegNickname, gbc);
+
+        gbc.gridy = 8; pForm.add(createLabel("Email liên hệ:"), gbc);
+        gbc.gridy = 9; txtRegEmail = new JTextField(); styleTextField(txtRegEmail); pForm.add(txtRegEmail, gbc);
+
+        gbc.gridy = 10; pForm.add(createLabel("Giới tính:"), gbc);
+        gbc.gridy = 11;
+        comboGender = new JComboBox<>(new String[]{"Nam", "Nữ", "Khác"});
+        styleComboBoxUI(comboGender);
+        pForm.add(comboGender, gbc);
+
+        // Nút bấm & Liên kết
+        gbc.gridy = 12; gbc.insets = new Insets(20, 0, 15, 0);
+        JButton btnRegister = new JButton("ĐĂNG KÝ NGAY"); stylePrimaryButton(btnRegister);
         btnRegister.addActionListener(e -> register());
-        panel.add(btnRegister, gbc);
+        pForm.add(btnRegister, gbc);
 
-        gbc.gridy = 6; gbc.weighty = 1.0;
-        panel.add(Box.createVerticalGlue(), gbc);
+        gbc.gridy = 13; gbc.insets = new Insets(0, 0, 0, 0);
+        pForm.add(createLink("Quay lại Đăng nhập", "login"), gbc);
 
-        return panel;
+        registerPanel.add(pForm);
     }
 
-    // ================== LOGIC XỬ LÝ ==================
-
-    private void login() {
-        String username = txtUsername.getText().trim();
-        String password = new String(txtPassword.getPassword());
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên đăng nhập và mật khẩu!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        User user = UserService.login(username, password);
-        if (user == null) {
-            JOptionPane.showMessageDialog(this, "Sai tên đăng nhập hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } else {
-            new MainFrame().setVisible(true);
-            dispose();
-        }
-    }
-
-    private void register() {
-        String username = txtRegUsername.getText().trim();
-        String password = new String(txtRegPassword.getPassword());
-        String nickname = txtNickname.getText().trim();
-        String email = txtEmail.getText().trim();
-        String gender = (String) cmbGender.getSelectedItem();
-
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ tài khoản và mật khẩu!", "Thông báo", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-
-        User user = UserService.register(username, password, nickname, email, gender);
-        if (user == null) {
-            JOptionPane.showMessageDialog(this, "Tên đăng nhập đã tồn tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(this, "Đăng ký thành công! Vui lòng đăng nhập.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
-            txtUsername.setText(username);
-            txtPassword.setText("");
-            switchTab("login");
-        }
-    }
-
-    private void switchTab(String tabName) {
-        cardLayout.show(cardPanel, tabName);
-        if (tabName.equals("login")) {
-            updateTabStyle(btnTabLogin, true);
-            updateTabStyle(btnTabRegister, false);
-        } else {
-            updateTabStyle(btnTabLogin, false);
-            updateTabStyle(btnTabRegister, true);
-        }
-    }
-
-    // ================== HELPER TẠO GIAO DIỆN ==================
+    // ================== TIỆN ÍCH GIAO DIỆN (UI HELPERS) ==================
 
     private JLabel createLabel(String text) {
         JLabel lbl = new JLabel(text);
+        lbl.setFont(FONT_LABEL);
+        lbl.setForeground(TEXT_SECONDARY);
+        return lbl;
+    }
+
+    private JLabel createLink(String text, String targetTab) {
+        JLabel lbl = new JLabel(text, SwingConstants.CENTER);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        lbl.setForeground(new Color(150, 150, 150));
+        lbl.setForeground(TEXT_PRIMARY);
+        lbl.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lbl.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { cardLayout.show(cards, targetTab); }
+            @Override public void mouseEntered(MouseEvent e) { lbl.setForeground(ACCENT_YELLOW); }
+            @Override public void mouseExited(MouseEvent e) { lbl.setForeground(TEXT_PRIMARY); }
+        });
         return lbl;
     }
 
@@ -241,46 +202,113 @@ public class LoginFrame extends JFrame {
         tf.setBackground(INPUT_BG);
         tf.setForeground(TEXT_PRIMARY);
         tf.setCaretColor(ACCENT_YELLOW);
-        tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        tf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(60, 60, 60)),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        tf.setFont(FONT_INPUT);
+        tf.setPreferredSize(new Dimension(300, 42)); // Cố định chiều cao
+        tf.setBorder(new CompoundBorder(
+                new LineBorder(BORDER_COLOR, 1, true),
+                new EmptyBorder(0, 12, 0, 12)
+        ));
+    }
+
+    private void styleComboBoxUI(JComboBox<?> combo) {
+        combo.setBackground(INPUT_BG);
+        combo.setForeground(TEXT_PRIMARY);
+        combo.setFont(FONT_INPUT);
+        combo.setPreferredSize(new Dimension(300, 42));
+
+        combo.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel l = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                l.setBackground(index < 0 ? INPUT_BG : (isSelected ? ACCENT_YELLOW : SURFACE_COLOR));
+                l.setForeground(isSelected ? BG_COLOR : TEXT_PRIMARY);
+                l.setBorder(new EmptyBorder(5, 10, 5, 10));
+                return l;
+            }
+        });
+
+        combo.setUI(new BasicComboBoxUI() {
+            @Override protected ComboPopup createPopup() {
+                BasicComboPopup popup = new BasicComboPopup(comboBox);
+                popup.setBorder(new LineBorder(BORDER_COLOR, 1));
+                return popup;
+            }
+            @Override protected JButton createArrowButton() {
+                JButton btn = super.createArrowButton();
+                btn.setBackground(INPUT_BG);
+                btn.setBorder(new EmptyBorder(0, 5, 0, 5));
+                btn.setForeground(TEXT_PRIMARY);
+                return btn;
+            }
+        });
+
+        combo.setBorder(new CompoundBorder(
+                new LineBorder(BORDER_COLOR, 1, true),
+                new EmptyBorder(0, 0, 0, 0)
         ));
     }
 
     private void stylePrimaryButton(JButton btn) {
         btn.setBackground(ACCENT_YELLOW);
-        btn.setForeground(BG_COLOR);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setForeground(new Color(18, 18, 18));
+        btn.setFont(FONT_BUTTON);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        btn.setPreferredSize(new Dimension(300, 45));
+        btn.setBorder(new LineBorder(ACCENT_YELLOW, 1, true));
 
         btn.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) { btn.setBackground(new Color(255, 205, 50)); }
-            @Override
-            public void mouseExited(MouseEvent e) { btn.setBackground(ACCENT_YELLOW); }
+            @Override public void mouseEntered(MouseEvent e) { btn.setBackground(new Color(230, 170, 0)); }
+            @Override public void mouseExited(MouseEvent e) { btn.setBackground(ACCENT_YELLOW); }
         });
     }
 
-    private JButton createTabButton(String text, boolean isActive) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btn.setFocusPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        updateTabStyle(btn, isActive);
-        return btn;
+    // ================== XỬ LÝ LOGIC NGHIỆP VỤ ==================
+
+    private void login() {
+        String username = txtLoginUsername.getText().trim();
+        String password = new String(txtLoginPassword.getPassword()).trim();
+
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "UTC2 Team cảnh báo: Hãy điền đầy đủ tên đăng nhập và mật khẩu!", "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        User user = UserService.login(username, password);
+        if (user != null) {
+            JOptionPane.showMessageDialog(this, "🎉 Money Tracker chúc mừng: " + user.getNickname() + " UTC2 đăng nhập thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+            new MainFrame().setVisible(true);
+            this.dispose();
+        } else {
+            JOptionPane.showMessageDialog(this, "Lỗi đăng nhập: Tên người dùng hoặc mật khẩu không đúng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
-    private void updateTabStyle(JButton btn, boolean isActive) {
-        if (isActive) {
-            btn.setForeground(ACCENT_YELLOW);
-            btn.setBorder(BorderFactory.createMatteBorder(0, 0, 3, 0, ACCENT_YELLOW));
-        } else {
-            btn.setForeground(new Color(120, 120, 120));
-            btn.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(60, 60, 60)));
+    private void register() {
+        String username = txtRegUsername.getText().trim();
+        String password = new String(txtRegPassword.getPassword()).trim();
+        String nickname = txtRegNickname.getText().trim();
+        String email = txtRegEmail.getText().trim();
+        String gender = (String) comboGender.getSelectedItem();
+
+        if (username.isEmpty() || password.isEmpty() || nickname.isEmpty() || email.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "UTC2 Team cảnh báo: Vui lòng điền đầy đủ các thông tin đăng ký!", "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
+            return;
         }
+
+        User user = UserService.register(username, password, nickname, email, gender);
+        if (user == null) {
+            JOptionPane.showMessageDialog(this, "Lỗi đăng ký: Tên đăng nhập đã tồn tại trong hệ thống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Đăng ký hội viên " + nickname + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+
+            txtLoginUsername.setText(username);
+            txtLoginPassword.setText("");
+            cardLayout.show(cards, "login");
+        }
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> new LoginFrame().setVisible(true));
     }
 }

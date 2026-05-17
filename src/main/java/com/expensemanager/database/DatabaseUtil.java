@@ -48,7 +48,18 @@ public class DatabaseUtil {
         return list;
     }
 
-    // ========== TRANSACTIONS (có user_id) ==========
+    public static void deleteCategory(String id) {
+        String sql = "DELETE FROM categories WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ========== TRANSACTIONS ==========
     public static void insertTransaction(Transaction transaction, String userId) {
         String sql = "INSERT INTO transactions (id, amount, type, category_id, date_time, note, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
@@ -71,24 +82,25 @@ public class DatabaseUtil {
         String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
                 "FROM transactions t JOIN categories c ON t.category_id = c.id " +
                 "WHERE t.user_id = ?";
+        // 🌟 TỐI ƯU: Đưa ResultSet rs vào try-with-resources để tự động giải phóng bộ nhớ
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                String id = rs.getString("id");
-                double amount = rs.getDouble("amount");
-                TransactionType type = TransactionType.valueOf(rs.getString("type"));
-                String categoryId = rs.getString("category_id");
-                String categoryName = rs.getString("category_name");
-                TransactionType categoryType = TransactionType.valueOf(rs.getString("category_type"));
-                Category category = new Category(categoryId, categoryName, categoryType);
-                LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
-                String note = rs.getString("note");
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    double amount = rs.getDouble("amount");
+                    TransactionType type = TransactionType.valueOf(rs.getString("type"));
+                    String categoryId = rs.getString("category_id");
+                    String categoryName = rs.getString("category_name");
+                    TransactionType categoryType = TransactionType.valueOf(rs.getString("category_type"));
+                    Category category = new Category(categoryId, categoryName, categoryType);
+                    LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
+                    String note = rs.getString("note");
 
-                // Sử dụng constructor có dateTime để giữ nguyên thời gian gốc
-                Transaction transaction = new Transaction(id, amount, type, category, note, dateTime);
-                list.add(transaction);
+                    Transaction transaction = new Transaction(id, amount, type, category, note, dateTime);
+                    list.add(transaction);
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -122,9 +134,11 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== BUDGETS (có user_id) ==========
+    // ========== BUDGETS ==========
+    // 🌟 ĐÃ SỬA LỖI CHÍ MẠNG: Thêm 'ON DUPLICATE KEY UPDATE' chống crash ứng dụng khi đổi hạn mức ngân sách
     public static void insertBudget(Budget budget, String userId) {
-        String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE budget_limit = ?, spent = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, budget.getId());
@@ -133,18 +147,24 @@ public class DatabaseUtil {
             stmt.setDouble(4, budget.getLimit());
             stmt.setDouble(5, budget.getSpent());
             stmt.setString(6, userId);
+
+            // Tham số cấu hình cho phần UPDATE nếu trùng ID khóa chính
+            stmt.setDouble(7, budget.getLimit());
+            stmt.setDouble(8, budget.getSpent());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
+    // 🌟 TỐI ƯU: Cho phép cập nhật cả hạn mức lẫn số tiền đã tiêu một cách toàn diện
     public static void updateBudget(Budget budget) {
-        String sql = "UPDATE budgets SET spent=? WHERE id=?";
+        String sql = "UPDATE budgets SET budget_limit=?, spent=? WHERE id=?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setDouble(1, budget.getSpent());
-            stmt.setString(2, budget.getId());
+            stmt.setDouble(1, budget.getLimit());
+            stmt.setDouble(2, budget.getSpent());
+            stmt.setString(3, budget.getId());
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -158,14 +178,15 @@ public class DatabaseUtil {
             stmt.setInt(1, month);
             stmt.setInt(2, year);
             stmt.setString(3, userId);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                String id = rs.getString("id");
-                double limit = rs.getDouble("budget_limit");
-                double spent = rs.getDouble("spent");
-                Budget budget = new Budget(id, month, year, limit);
-                budget.setSpent(spent);
-                return budget;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = rs.getString("id");
+                    double limit = rs.getDouble("budget_limit");
+                    double spent = rs.getDouble("spent");
+                    Budget budget = new Budget(id, month, year, limit);
+                    budget.setSpent(spent);
+                    return budget;
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -196,19 +217,20 @@ public class DatabaseUtil {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                String id = rs.getString("id");
-                String passwordHash = rs.getString("password_hash");
-                String nickname = rs.getString("nickname");
-                String avatar = rs.getString("avatar");
-                String email = rs.getString("email");
-                String gender = rs.getString("gender");
-                User user = new User(id, username, passwordHash, nickname);
-                user.setAvatar(avatar);
-                user.setEmail(email);
-                user.setGender(gender);
-                return user;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = rs.getString("id");
+                    String passwordHash = rs.getString("password_hash");
+                    String nickname = rs.getString("nickname");
+                    String avatar = rs.getString("avatar");
+                    String email = rs.getString("email");
+                    String gender = rs.getString("gender");
+
+                    // 🌟 TỐI ƯU: Gọi gọn gàng Constructor 6 tham số đã khai báo và nạp avatar trực tiếp
+                    User user = new User(id, username, passwordHash, nickname, email, gender);
+                    user.setAvatar(avatar);
+                    return user;
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -231,7 +253,7 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== XÓA DỮ LIỆU THEO USER (cho Delete Account) ==========
+    // ========== XÓA DỮ LIỆU THEO USER ==========
     public static void deleteTransactionsByUser(String userId) {
         String sql = "DELETE FROM transactions WHERE user_id = ?";
         try (Connection conn = getConnection();
@@ -259,16 +281,6 @@ public class DatabaseUtil {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    public static void deleteCategory(String id) {
-        String sql = "DELETE FROM categories WHERE id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

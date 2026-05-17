@@ -11,12 +11,11 @@ public class SettingsPanel extends JPanel {
     private CardLayout subCardLayout;
     private JPanel subContentPanel;
     private JLabel lblMainTitle;
-    private JButton btnAccountTab, btnLanguageTab, btnCategoryTab, btnSizeTab;
+    private JButton btnAccountTab, btnConfigTab, btnCategoryTab;
 
     private AccountSettingsPanel accountSettingsPanel;
-    private LanguageSettingsPanel languageSettingsPanel;
-    private WindowSizeSettingsPanel windowSizeSettingsPanel;
-    private AddCategoryPanel addCategoryPanel;
+    private SystemConfigPanel systemConfigPanel;
+    private CategoryManagerPanel categoryManagerPanel;
 
     public SettingsPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -52,63 +51,58 @@ public class SettingsPanel extends JPanel {
         sidebarPanel.setPreferredSize(new Dimension(220, 0));
 
         btnAccountTab = createSubNavButton("", true);
-        btnLanguageTab = createSubNavButton("", false);
-        btnSizeTab = createSubNavButton("", false);
+        btnConfigTab = createSubNavButton("", false);
         btnCategoryTab = createSubNavButton("", false);
 
         btnAccountTab.addActionListener(e -> switchSubTab("account", btnAccountTab));
-        btnLanguageTab.addActionListener(e -> switchSubTab("language", btnLanguageTab));
-        btnSizeTab.addActionListener(e -> switchSubTab("size", btnSizeTab));
+        btnConfigTab.addActionListener(e -> switchSubTab("config", btnConfigTab));
         btnCategoryTab.addActionListener(e -> switchSubTab("category", btnCategoryTab));
 
         sidebarPanel.add(btnAccountTab);
         sidebarPanel.add(Box.createVerticalStrut(10));
-        sidebarPanel.add(btnLanguageTab);
-        sidebarPanel.add(Box.createVerticalStrut(10));
-        sidebarPanel.add(btnSizeTab);
+        sidebarPanel.add(btnConfigTab);
         sidebarPanel.add(Box.createVerticalStrut(10));
         sidebarPanel.add(btnCategoryTab);
         sidebarPanel.add(Box.createVerticalGlue());
         bodyContainer.add(sidebarPanel, BorderLayout.WEST);
 
         accountSettingsPanel = new AccountSettingsPanel(mainFrame);
-        languageSettingsPanel = new LanguageSettingsPanel(mainFrame);
-        windowSizeSettingsPanel = new WindowSizeSettingsPanel(mainFrame);
-        addCategoryPanel = new AddCategoryPanel(mainFrame);
+        systemConfigPanel = new SystemConfigPanel(mainFrame);
+        categoryManagerPanel = new CategoryManagerPanel(mainFrame);
 
         subCardLayout = new CardLayout();
         subContentPanel = new JPanel(subCardLayout);
         subContentPanel.setOpaque(false);
+
+        // Gắn trực tiếp ScrollPane (đã bọc target) vào các Tab CardLayout để quản lý chiều cao độc lập
         subContentPanel.add(createResponsiveWrapper(accountSettingsPanel), "account");
-        subContentPanel.add(createResponsiveWrapper(languageSettingsPanel), "language");
-        subContentPanel.add(createResponsiveWrapper(windowSizeSettingsPanel), "size");
-        subContentPanel.add(createResponsiveWrapper(addCategoryPanel), "category");
+        subContentPanel.add(createResponsiveWrapper(systemConfigPanel), "config");
+        subContentPanel.add(createResponsiveWrapper(categoryManagerPanel), "category");
 
-        JScrollPane scrollPane = new JScrollPane(subContentPanel);
-        scrollPane.setBorder(null);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        bodyContainer.add(scrollPane, BorderLayout.CENTER);
-
+        bodyContainer.add(subContentPanel, BorderLayout.CENTER);
         add(bodyContainer, BorderLayout.CENTER);
 
         updateLanguageText();
     }
 
-    private JPanel createResponsiveWrapper(JPanel targetPanel) {
-        JPanel wrapper = new JPanel(new GridBagLayout());
+    // 🌟 NÂNG CẤP ĐỘC QUYỀN: Bọc JScrollPane tàng hình cho từng mục 🌟
+    private JScrollPane createResponsiveWrapper(JPanel targetPanel) {
+        // Dùng BorderLayout.NORTH để ép form dính chặt lên trên cùng, tránh sinh khoảng trắng dư
+        JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 1.0; gbc.weighty = 0.0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        wrapper.add(targetPanel, gbc);
+        wrapper.add(targetPanel, BorderLayout.NORTH);
 
-        gbc.gridy = 1; gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH;
-        JPanel filler = new JPanel(); filler.setOpaque(false);
-        wrapper.add(filler, gbc);
-        return wrapper;
+        JScrollPane scrollPane = new JScrollPane(wrapper);
+        scrollPane.setBorder(null);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+
+        // CHIÊU THỨC ẨN THANH CUỘN: Thu hẹp kích thước thanh cuộn về 0px (Vô hình)
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16); // Tăng tốc độ cuộn chuột để mượt mà như native app
+
+        return scrollPane;
     }
 
     public void updateLanguageText() {
@@ -123,26 +117,24 @@ public class SettingsPanel extends JPanel {
 
         if (isVietnamese) {
             lblMainTitle.setText("Cài đặt hệ thống");
-            btnAccountTab.setText("Thông tin tài khoản");
-            btnLanguageTab.setText("Ngôn ngữ");
-            btnSizeTab.setText("Kích thước cửa sổ");
-            btnCategoryTab.setText("Thêm Danh mục");
+            btnAccountTab.setText("Thông diễn cá nhân");
+            btnConfigTab.setText("Cấu hình hệ thống");
+            btnCategoryTab.setText("Quản lý danh mục");
         } else {
             lblMainTitle.setText("System Settings");
             btnAccountTab.setText("Account Settings");
-            btnLanguageTab.setText("Language");
-            btnSizeTab.setText("Window Size");
-            btnCategoryTab.setText("Add Category");
+            btnConfigTab.setText("System Configuration");
+            btnCategoryTab.setText("Category Manager");
         }
 
         if (accountSettingsPanel != null) accountSettingsPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
-        if (languageSettingsPanel != null) languageSettingsPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
-        if (windowSizeSettingsPanel != null) windowSizeSettingsPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
-        if (addCategoryPanel != null) addCategoryPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
+        if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
+        if (categoryManagerPanel != null) categoryManagerPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
     }
 
     public void refreshData() {
         if (accountSettingsPanel != null) accountSettingsPanel.refreshData();
+        if (categoryManagerPanel != null) categoryManagerPanel.refreshCategories();
     }
 
     private void switchSubTab(String targetCard, JButton activeBtn) {
@@ -150,8 +142,7 @@ public class SettingsPanel extends JPanel {
         Color secondary = new Color(150, 150, 150);
         Color inputBg = new Color(40, 40, 40);
         btnAccountTab.setBackground(inputBg); btnAccountTab.setForeground(secondary);
-        btnLanguageTab.setBackground(inputBg); btnLanguageTab.setForeground(secondary);
-        btnSizeTab.setBackground(inputBg); btnSizeTab.setForeground(secondary);
+        btnConfigTab.setBackground(inputBg); btnConfigTab.setForeground(secondary);
         btnCategoryTab.setBackground(inputBg); btnCategoryTab.setForeground(secondary);
         activeBtn.setBackground(new Color(255, 193, 7));
         activeBtn.setForeground(new Color(18, 18, 18));
