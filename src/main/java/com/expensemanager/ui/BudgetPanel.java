@@ -106,6 +106,7 @@ public class BudgetPanel extends JPanel implements Observer {
         centerPanel.add(lblStatus);
         centerPanel.add(Box.createVerticalStrut(30));
 
+        // Trong BudgetPanel, sửa lại style của btnSetBudget
         btnSetBudget = new JButton();
         btnSetBudget.setFont(new Font("Segoe UI", Font.BOLD, 16));
         btnSetBudget.setBackground(ACCENT_YELLOW);
@@ -114,7 +115,13 @@ public class BudgetPanel extends JPanel implements Observer {
         btnSetBudget.setAlignmentX(Component.CENTER_ALIGNMENT);
         btnSetBudget.setBorder(BorderFactory.createEmptyBorder(12, 35, 12, 35));
         btnSetBudget.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnSetBudget.setOpaque(true);
+        btnSetBudget.setContentAreaFilled(true);
         btnSetBudget.addActionListener(e -> openSetBudgetDialog());
+        btnSetBudget.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { btnSetBudget.setBackground(new Color(255, 205, 50)); }
+            @Override public void mouseExited(MouseEvent e) { btnSetBudget.setBackground(ACCENT_YELLOW); }
+        });
 
         btnSetBudget.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { btnSetBudget.setBackground(new Color(255, 205, 50)); }
