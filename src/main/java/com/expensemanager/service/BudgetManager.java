@@ -17,7 +17,9 @@ public class BudgetManager {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) throw new InvalidAmountException("Chưa đăng nhập");
         if (limit <= 0) throw new InvalidAmountException("Hạn mức ngân sách phải lớn hơn 0!");
-        String id = "BUD" + String.format("%02d%04d", month, year);
+
+        // 🌟 ĐÃ KHẮC PHỤC: Thêm userId vào đầu khóa chính để phân tách vùng dữ liệu đa tài khoản
+        String id = userId + "_BUD_" + String.format("%02d%04d", month, year);
         Budget budget = new Budget(id, month, year, limit);
         DatabaseUtil.insertBudget(budget, userId);
     }
@@ -31,7 +33,6 @@ public class BudgetManager {
         Budget budget = DatabaseUtil.getBudget(month, year, userId);
         if (budget == null) return "Chưa thiết lập ngân sách.";
 
-        // 🌟 KHẮC PHỤC: Chỉ tính tổng CHI TIÊU của đúng THÁNG và NĂM hiện tại
         double monthlyExpense = financeService.getAllTransactions().stream()
                 .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
                 .filter(t -> t.getDateTime().getMonthValue() == month)

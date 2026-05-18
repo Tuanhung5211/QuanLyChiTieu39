@@ -16,15 +16,12 @@ public class AccountPanel extends JPanel implements Observer {
     private MainFrame mainFrame;
     private boolean isVietnamese = true;
 
-    // Các thành phần giao diện Sidebar hiển thị Profile
-    private JLabel lblAvatar;
-    private JLabel lblNickname;
+    private JLabel lblAvatar, lblNickname;
     private JLabel lblIdLabel, lblIdValue;
     private JLabel lblEmailLabel, lblEmailValue;
     private JLabel lblGenderLabel, lblGenderValue;
     private JButton btnLogout;
 
-    // Bảng màu Flat Dark Mode đồng bộ hệ thống chính
     private final Color SIDEBAR_BG = new Color(30, 30, 30);
     private final Color AVATAR_BG = new Color(45, 45, 45);
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
@@ -34,28 +31,24 @@ public class AccountPanel extends JPanel implements Observer {
 
     public AccountPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-
-        if (mainFrame != null) {
-            this.isVietnamese = mainFrame.isVietnamese();
-        }
+        if (mainFrame != null) this.isVietnamese = mainFrame.isVietnamese();
 
         setPreferredSize(new Dimension(240, 0));
         setBackground(SIDEBAR_BG);
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(45, 45, 45)));
 
-        // --- KHU VỰC THÔNG TIN TRÊN ---
         JPanel topContainer = new JPanel();
         topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
         topContainer.setOpaque(false);
         topContainer.setBorder(new EmptyBorder(30, 20, 20, 20));
 
-        // 1. Khối hiển thị Avatar và Tên hiển thị
         JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         avatarRow.setOpaque(false);
+        avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         lblAvatar = new JLabel("👤", SwingConstants.CENTER);
-        lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 28));
+        lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
         lblAvatar.setOpaque(true);
         lblAvatar.setBackground(AVATAR_BG);
         lblAvatar.setPreferredSize(new Dimension(55, 55));
@@ -69,31 +62,23 @@ public class AccountPanel extends JPanel implements Observer {
         avatarRow.add(lblNickname);
         topContainer.add(avatarRow);
 
-        // Khoảng trống từ Avatar xuống cụm thông tin liền kề
         topContainer.add(Box.createVerticalStrut(20));
 
-        // 2. Khởi tạo các nhãn thông tin
-        lblIdLabel = new JLabel("ID:");
-        lblIdValue = new JLabel("---");
-        lblEmailLabel = new JLabel("Email:");
-        lblEmailValue = new JLabel("---");
-        lblGenderLabel = new JLabel("Giới tính:");
-        lblGenderValue = new JLabel("---");
+        lblIdLabel = new JLabel("ID:"); lblIdValue = new JLabel("---");
+        lblEmailLabel = new JLabel("Email:"); lblEmailValue = new JLabel("---");
+        lblGenderLabel = new JLabel("Giới tính:"); lblGenderValue = new JLabel("---");
 
-        // 🌟 SỬA ĐỒNG BỘ LIỀN KỀ: Gom chặt vào 1 Panel riêng với khoảng hở dọc siêu nhỏ (4px) giúp hiển thị khít khao, liền kề nhau
         JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 4));
         infoPanel.setOpaque(false);
+        infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         infoPanel.add(createProfileRow(lblIdLabel, lblIdValue));
         infoPanel.add(createProfileRow(lblEmailLabel, lblEmailValue));
         infoPanel.add(createProfileRow(lblGenderLabel, lblGenderValue));
         topContainer.add(infoPanel);
 
-        // Lò xo dồn ép toàn bộ khoảng hở thừa xuống đáy
         topContainer.add(Box.createVerticalGlue());
-
         add(topContainer, BorderLayout.CENTER);
 
-        // --- KHU VỰC NÚT ĐĂNG XUẤT ĐÁY PANEL ---
         JPanel bottomContainer = new JPanel(new BorderLayout());
         bottomContainer.setOpaque(false);
         bottomContainer.setBorder(new EmptyBorder(15, 15, 20, 15));
@@ -121,23 +106,17 @@ public class AccountPanel extends JPanel implements Observer {
     public void updateLanguage(boolean isVN) {
         this.isVietnamese = isVN;
         updateLanguageText();
-        refreshData();
     }
 
     private void updateLanguageText() {
         if (isVietnamese) {
-            lblIdLabel.setText("ID:");
-            lblEmailLabel.setText("Email:");
-            lblGenderLabel.setText("Giới tính:");
-            btnLogout.setText("Đăng xuất");
+            lblIdLabel.setText("ID:"); lblEmailLabel.setText("Email:");
+            lblGenderLabel.setText("Giới tính:"); btnLogout.setText("Đăng xuất");
         } else {
-            lblIdLabel.setText("ID:");
-            lblEmailLabel.setText("Email:");
-            lblGenderLabel.setText("Gender:");
-            btnLogout.setText("Logout");
+            lblIdLabel.setText("ID:"); lblEmailLabel.setText("Email:");
+            lblGenderLabel.setText("Gender:"); btnLogout.setText("Logout");
         }
-        this.revalidate();
-        this.repaint();
+        refreshData();
     }
 
     public void refreshData() {
@@ -146,12 +125,11 @@ public class AccountPanel extends JPanel implements Observer {
             User user = DatabaseUtil.getUserByUsername(username);
             if (user != null) {
                 lblNickname.setText(user.getNickname());
-                lblIdValue.setText(user.getId() != null ? user.getId() : "c4929946");
+                // 🌟 ĐÃ SỬA: Thay thế chuỗi mã sinh viên chạy thử thành chuỗi an toàn hệ thống "N/A"
+                lblIdValue.setText(user.getId() != null ? user.getId() : "N/A");
 
                 String email = user.getEmail();
-                if (email != null && email.length() > 18) {
-                    email = email.substring(0, 16) + "...";
-                }
+                if (email != null && email.length() > 18) email = email.substring(0, 16) + "...";
                 lblEmailValue.setText(email != null ? email : "---");
 
                 String gender = user.getGender();
@@ -175,14 +153,11 @@ public class AccountPanel extends JPanel implements Observer {
     private JPanel createProfileRow(JLabel lblLabel, JLabel lblValue) {
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
-
         lblLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblLabel.setForeground(TEXT_SECONDARY);
-        lblLabel.setPreferredSize(new Dimension(70, 22)); // Tinh chỉnh kích thước dòng khít khao, ngay ngắn
-
+        lblLabel.setPreferredSize(new Dimension(70, 22));
         lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         lblValue.setForeground(TEXT_PRIMARY);
-
         row.add(lblLabel, BorderLayout.WEST);
         row.add(lblValue, BorderLayout.CENTER);
         return row;
@@ -190,15 +165,12 @@ public class AccountPanel extends JPanel implements Observer {
 
     private void logout() {
         SessionManager.logout();
-        if (mainFrame != null) {
-            mainFrame.dispose();
-        }
+        if (mainFrame != null) mainFrame.dispose();
         new LoginFrame().setVisible(true);
     }
 
     @Override
     public void update(EventType eventType, Object data) {
-        // 🌟 KHẮC PHỤC: Chỉ làm mới khi nạp lại toàn bộ dữ liệu hệ thống (DATA_LOADED), chặn spam khi thêm giao dịch nhỏ lẻ
         if (eventType == EventType.DATA_LOADED) {
             SwingUtilities.invokeLater(() -> refreshData());
         }

@@ -128,24 +128,22 @@ public class SystemConfigPanel extends JPanel {
         }
 
         if (isVN) {
-            lblLanguageTitle.setText("Ngôn ngữ hiển thị");
-            lblLangHint.setText("Chọn ngôn ngữ mặc định của hệ thống ứng dụng:");
+            lblLanguageTitle.setText("Ngôn ngữ");
             rbVietnamese.setText("Tiếng Việt (Vietnamese)"); rbEnglish.setText("Tiếng Anh (English)");
-            btnSaveLanguage.setText("Lưu cấu hình dịch");
+            btnSaveLanguage.setText("Lưu");
 
-            lblSizeTitle.setText("Độ phân giải hiển thị");
-            lblSizeHint.setText("Chọn độ phân giải cố định cho cửa sổ (Hệ thống tự động khóa chuột kéo giãn):");
+            lblSizeTitle.setText("Kích thước hiển thị");
+            lblSizeHint.setText("Chọn độ phân giải cố định cho cửa sổ:");
             btnSaveSize.setText("Áp dụng kích thước");
             comboWindowSize.setModel(new DefaultComboBoxModel<>(new String[]{"1200 x 750 (Mặc định)", "1400 x 800", "1600 x 950"}));
         } else {
             lblLanguageTitle.setText("Display Language");
-            lblLangHint.setText("Select the default language for the application system:");
             rbVietnamese.setText("Vietnamese (Tiếng Việt)"); rbEnglish.setText("English (Tiếng Anh)");
-            btnSaveLanguage.setText("Save Translation");
+            btnSaveLanguage.setText("Save");
 
             lblSizeTitle.setText("Application Resolution");
-            lblSizeHint.setText("Select a fixed resolution for the window (Mouse resize is permanently locked):");
-            btnSaveSize.setText("Apply Screen Size");
+            lblSizeHint.setText("Select a fixed resolution for the window:");
+            btnSaveSize.setText("Apply");
             comboWindowSize.setModel(new DefaultComboBoxModel<>(new String[]{"1200 x 750 (Default)", "1400 x 800", "1600 x 950"}));
         }
         if (currentSizeIndex >= 0 && currentSizeIndex < comboWindowSize.getItemCount()) {

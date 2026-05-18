@@ -37,7 +37,6 @@ public class MainFrame extends JFrame implements Observer {
     private JLabel lblGenderLabel, lblGenderValue;
     private JButton btnLogout;
 
-    // 🌟 KHẮC PHỤC: Khai báo các biến và hệ màu Nav để triệt tiêu lỗi "cannot find symbol"
     private JButton activeBtn;
     private final Color NAV_BG = new Color(40, 40, 40);
     private final Color NAV_BTN_FG = Color.LIGHT_GRAY;
@@ -110,8 +109,6 @@ public class MainFrame extends JFrame implements Observer {
         }
 
         updateGlobalLanguage(this.isVietnamese);
-
-        // Kích hoạt sáng màu mặc định cho Tab tổng quan ban đầu
         selectTab(btnDashboard, "dashboard");
 
         setVisible(true);
@@ -130,7 +127,8 @@ public class MainFrame extends JFrame implements Observer {
         topContainer.setOpaque(false);
         topContainer.setBorder(new EmptyBorder(30, 20, 20, 20));
 
-        JPanel avatarRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        // 🌟 KHẮC PHỤC: Thay FlowLayout bằng GridBagLayout giúp các thành phần tự động căn giữa theo chiều dọc chuẩn chỉnh
+        JPanel avatarRow = new JPanel(new GridBagLayout());
         avatarRow.setOpaque(false);
         avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -141,24 +139,31 @@ public class MainFrame extends JFrame implements Observer {
         lblAvatar.setBackground(AVATAR_BG);
         lblAvatar.setPreferredSize(new Dimension(55, 55));
         lblAvatar.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 1, true));
-        avatarRow.add(lblAvatar);
 
         lblNickname = new JLabel("User");
         lblNickname.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblNickname.setForeground(TEXT_PRIMARY);
-        lblNickname.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0));
-        avatarRow.add(lblNickname);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.anchor = GridBagConstraints.WEST;
+        avatarRow.add(lblAvatar, gbc);
+
+        gbc.gridx = 1;
+        gbc.insets = new Insets(0, 15, 0, 0); // Tạo khoảng cách 15px giữa Avatar và Nickname
+        avatarRow.add(lblNickname, gbc);
 
         avatarRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, avatarRow.getPreferredSize().height));
         topContainer.add(avatarRow);
 
-        topContainer.add(Box.createVerticalStrut(12));
+        topContainer.add(Box.createVerticalStrut(15));
 
         lblIdLabel = new JLabel("ID:"); lblIdValue = new JLabel("---");
         lblEmailLabel = new JLabel("Email:"); lblEmailValue = new JLabel("---");
         lblGenderLabel = new JLabel("Giới tính:"); lblGenderValue = new JLabel("---");
 
-        JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 4));
+        JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 6));
         infoPanel.setOpaque(false);
         infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         infoPanel.add(createProfileRow(lblIdLabel, lblIdValue));
@@ -199,7 +204,7 @@ public class MainFrame extends JFrame implements Observer {
         row.setOpaque(false);
         lblLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lblLabel.setForeground(TEXT_SECONDARY);
-        lblLabel.setPreferredSize(new Dimension(70, 22));
+        lblLabel.setPreferredSize(new Dimension(75, 22));
         lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         lblValue.setForeground(TEXT_PRIMARY);
         row.add(lblLabel, BorderLayout.WEST);
@@ -212,8 +217,12 @@ public class MainFrame extends JFrame implements Observer {
         if (username != null) {
             User user = DatabaseUtil.getUserByUsername(username);
             if (user != null) {
-                lblNickname.setText(user.getNickname());
-                lblIdValue.setText(user.getId() != null ? user.getId() : "c4929946");
+                // 🌟 KHẮC PHỤC: Thêm cắt ngắn Nickname nếu quá dài (tương tự Email) để tránh làm lệch/tràn khung Sidebar
+                String nickname = user.getNickname();
+                if (nickname != null && nickname.length() > 14) nickname = nickname.substring(0, 12) + "...";
+                lblNickname.setText(nickname != null ? nickname : "User");
+
+                lblIdValue.setText(user.getId() != null ? user.getId() : "N/A");
                 String email = user.getEmail();
                 if (email != null && email.length() > 18) email = email.substring(0, 16) + "...";
                 lblEmailValue.setText(email != null ? email : "---");
@@ -246,7 +255,6 @@ public class MainFrame extends JFrame implements Observer {
         btnBudget = createNavButton(isVietnamese ? "Ngân sách" : "Budget");
         btnSettings = createNavButton(isVietnamese ? "Cài đặt" : "Settings");
 
-        // 🌟 NÂNG CẤP: Điều phối chuyển đổi màu nút Tab thông minh qua selectTab
         btnDashboard.addActionListener(e -> { selectTab(btnDashboard, "dashboard"); dashboardPanel.refreshData(); });
         btnStatistics.addActionListener(e -> { if (statisticsPanel != null) { selectTab(btnStatistics, "statistics"); statisticsPanel.refreshData(); } });
         btnBudget.addActionListener(e -> { if (budgetPanel != null) { selectTab(btnBudget, "budget"); budgetPanel.refreshData(); } });
@@ -256,7 +264,6 @@ public class MainFrame extends JFrame implements Observer {
         return navPanel;
     }
 
-    // 🌟 THÊM MỚI: Hàm quản lý làm sáng tab được bấm chọn, làm tối các tab còn lại
     private void selectTab(JButton targetBtn, String cardName) {
         activeBtn = targetBtn;
         cardLayout.show(mainPanel, cardName);

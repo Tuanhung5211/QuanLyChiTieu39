@@ -48,7 +48,7 @@ public class LoginFrame extends JFrame {
     private final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 15);
 
     public LoginFrame() {
-        setTitle("Money Tracker Desktop - Hội viên UTC2");
+        setTitle("Money Tracker");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         setSize(500, 750);
@@ -98,7 +98,7 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
         gbc.gridy = 3; txtLoginUsername = new JTextField(); styleTextField(txtLoginUsername); pForm.add(txtLoginUsername, gbc);
 
-        gbc.gridy = 4; pForm.add(createLabel("Mật khẩu bảo mật:"), gbc);
+        gbc.gridy = 4; pForm.add(createLabel("Mật khẩu:"), gbc);
         gbc.gridy = 5; txtLoginPassword = new JPasswordField(); styleTextField(txtLoginPassword); pForm.add(txtLoginPassword, gbc);
 
         gbc.gridy = 6; gbc.insets = new Insets(25, 0, 15, 0);
@@ -132,7 +132,7 @@ public class LoginFrame extends JFrame {
         lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 40));
         gbc.gridy = 0; gbc.insets = new Insets(0, 0, 0, 0); pForm.add(lblAvatar, gbc);
 
-        JLabel lblTitle = new JLabel("ĐĂNG KÝ HỘI VIÊN", SwingConstants.CENTER);
+        JLabel lblTitle = new JLabel("ĐĂNG KÝ", SwingConstants.CENTER);
         lblTitle.setFont(FONT_TITLE);
         lblTitle.setForeground(ACCENT_YELLOW);
         gbc.gridy = 1; gbc.insets = new Insets(0, 0, 15, 0); pForm.add(lblTitle, gbc);
@@ -142,18 +142,18 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
         gbc.gridy = 3; txtRegUsername = new JTextField(); styleTextField(txtRegUsername); pForm.add(txtRegUsername, gbc);
 
-        gbc.gridy = 4; pForm.add(createLabel("Mật khẩu bảo mật:"), gbc);
+        gbc.gridy = 4; pForm.add(createLabel("Mật khẩu:"), gbc);
         gbc.gridy = 5; txtRegPassword = new JPasswordField(); styleTextField(txtRegPassword); pForm.add(txtRegPassword, gbc);
 
         gbc.gridy = 6; pForm.add(createLabel("Tên hiển thị:"), gbc);
         gbc.gridy = 7; txtRegNickname = new JTextField(); styleTextField(txtRegNickname); pForm.add(txtRegNickname, gbc);
 
-        gbc.gridy = 8; pForm.add(createLabel("Email liên hệ:"), gbc);
+        gbc.gridy = 8; pForm.add(createLabel("Email:"), gbc);
         gbc.gridy = 9; txtRegEmail = new JTextField(); styleTextField(txtRegEmail); pForm.add(txtRegEmail, gbc);
 
         gbc.gridy = 10; pForm.add(createLabel("Giới tính:"), gbc);
         gbc.gridy = 11;
-        comboGender = new JComboBox<>(new String[]{"Nam", "Nữ", "Khác"});
+        comboGender = new JComboBox<>(new String[]{"Nam", "Nữ"});
         styleComboBoxUI(comboGender);
         pForm.add(comboGender, gbc);
 
@@ -263,7 +263,6 @@ public class LoginFrame extends JFrame {
 
             User user = UserService.login(username.trim(), password.trim());
             if (user != null) {
-                JOptionPane.showMessageDialog(this, "🎉 Money Tracker chúc mừng: " + user.getNickname() + " UTC2 đăng nhập thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 new MainFrame().setVisible(true);
                 this.dispose();
             } else {
@@ -290,7 +289,7 @@ public class LoginFrame extends JFrame {
             if (user == null) {
                 JOptionPane.showMessageDialog(this, "Lỗi đăng ký: Tên đăng nhập đã tồn tại trong hệ thống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(this, "Đăng ký hội viên " + nickname.trim() + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Đăng ký" + nickname.trim() + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
 
                 txtLoginUsername.setText(username.trim());
                 txtLoginPassword.setText("");

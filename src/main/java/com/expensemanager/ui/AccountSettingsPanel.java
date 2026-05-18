@@ -145,7 +145,7 @@ public class AccountSettingsPanel extends JPanel {
         if (isVN) {
             lblProfileTitle.setText("Thông tin cá nhân");
             lblNickname.setText("Tên hiển thị:"); lblEmail.setText("Email:"); lblGender.setText("Giới tính:");
-            btnUpdateProfile.setText("Lưu thay đổi"); btnOpenChangePass.setText("Đổi mật khẩu bảo mật");
+            btnUpdateProfile.setText("Lưu thay đổi"); btnOpenChangePass.setText("Đổi mật khẩu");
             btnDeleteAccount.setText("Xóa tài khoản vĩnh viễn");
             cmbGender.setModel(new DefaultComboBoxModel<>(new String[]{"Nam", "Nữ", "Khác"}));
         } else {

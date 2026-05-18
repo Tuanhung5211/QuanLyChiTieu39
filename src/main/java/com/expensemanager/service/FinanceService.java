@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class FinanceService extends Subject {
     private List<Transaction> transactionList;
@@ -58,12 +57,35 @@ public class FinanceService extends Subject {
         }
     }
 
+    // ====================================================================
+    // 🌟 QUẢN LÝ QUY TRÌNH CATEGORIES TRUNG GIAN (ĐÃ KHẮC PHỤC)
+    // ====================================================================
+    public void addCategory(Category category) {
+        try {
+            DatabaseUtil.insertCategory(category);
+            categoryMap.put(category.getId(), category); // Cập nhật bộ nhớ RAM cache ngay lập tức
+            notifyObservers(EventType.CATEGORY_ADDED, category);
+        } catch (Exception e) {
+            System.err.println("Lỗi nghiệp vụ thêm danh mục: " + e.getMessage());
+        }
+    }
+
+    public void deleteCategory(String categoryId) {
+        try {
+            DatabaseUtil.deleteCategory(categoryId);
+            categoryMap.remove(categoryId); // Xóa RAM cache
+            notifyObservers(EventType.CATEGORY_DELETED, categoryId);
+        } catch (Exception e) {
+            System.err.println("Lỗi nghiệp vụ xóa danh mục: " + e.getMessage());
+        }
+    }
+
+    // ====================================================================
+    // 🌟 QUẢN LÝ QUY TRÌNH TRANSACTIONS ĐỒNG BỘ
+    // ====================================================================
     public void addTransaction(Transaction transaction) {
         String userId = SessionManager.getCurrentUserId();
-        if (userId == null) {
-            System.err.println("Chưa đăng nhập, không thể thêm giao dịch");
-            return;
-        }
+        if (userId == null) return;
         try {
             DatabaseUtil.insertTransaction(transaction, userId);
             transactionList.add(transaction);
@@ -77,6 +99,15 @@ public class FinanceService extends Subject {
     public void updateTransaction(Transaction transaction) {
         try {
             DatabaseUtil.updateTransaction(transaction);
+
+            // 🌟 ĐÃ KHẮC PHỤC BUG: Tìm và đồng bộ hóa bản ghi cập nhật ngay trên RAM danh sách tĩnh
+            for (int i = 0; i < transactionList.size(); i++) {
+                if (transactionList.get(i).getId().equals(transaction.getId())) {
+                    transactionList.set(i, transaction);
+                    break;
+                }
+            }
+            saveToFile(); // Ghi đè file JSON cục bộ bảo toàn dữ liệu đồng nhất
             notifyObservers(EventType.TRANSACTION_UPDATED, transaction);
         } catch (Exception e) {
             System.err.println("Lỗi khi cập nhật giao dịch: " + e.getMessage());
@@ -94,26 +125,7 @@ public class FinanceService extends Subject {
         }
     }
 
-    public List<Transaction> getAllTransactions() {
-        return transactionList;
-    }
-
-    public double getTotalIncome() {
-        return transactionList.stream()
-                .filter(t -> t != null && t.getType() == TransactionType.INCOME)
-                .mapToDouble(Transaction::getAmount).sum();
-    }
-
-    public double getTotalExpense() {
-        return transactionList.stream()
-                .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
-                .mapToDouble(Transaction::getAmount).sum();
-    }
-
-    public double getBalance() {
-        return getTotalIncome() - getTotalExpense();
-    }
-
+    public List<Transaction> getAllTransactions() { return transactionList; }
     public Category getCategoryById(String id) { return categoryMap.get(id); }
     public List<Category> getAllCategories() { return new ArrayList<>(categoryMap.values()); }
 
@@ -131,25 +143,14 @@ public class FinanceService extends Subject {
         try { JsonUtil.saveToJson(transactionList, JSON_FILE_PATH); }
         catch (DataLoadException e) { System.err.println("Lỗi lưu JSON: " + e.getMessage()); }
     }
-    // ====================================================================
-    // 🌟 THÊM MỚI: LẤY MỐC NGÀY XA NHẤT TRONG QUÁ KHỨ CÓ GIAO DỊCH
-    // ====================================================================
+
     public java.time.LocalDate getEarliestTransactionDate() {
         if (transactionList == null || transactionList.isEmpty()) return null;
-        return transactionList.stream()
-                .map(t -> t.getDateTime().toLocalDate())
-                .min(java.time.LocalDate::compareTo)
-                .orElse(null);
+        return transactionList.stream().map(t -> t.getDateTime().toLocalDate()).min(java.time.LocalDate::compareTo).orElse(null);
     }
 
-    // ====================================================================
-    // 🌟 THÊM MỚI: LẤY MỐC NGÀY MỚI NHẤT CÓ GIAO DỊCH TRONG HỆ THỐNG
-    // ====================================================================
     public java.time.LocalDate getLatestTransactionDate() {
         if (transactionList == null || transactionList.isEmpty()) return null;
-        return transactionList.stream()
-                .map(t -> t.getDateTime().toLocalDate())
-                .max(java.time.LocalDate::compareTo)
-                .orElse(null);
+        return transactionList.stream().map(t -> t.getDateTime().toLocalDate()).max(java.time.LocalDate::compareTo).orElse(null);
     }
 }

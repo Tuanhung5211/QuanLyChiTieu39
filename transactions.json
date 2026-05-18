@@ -1,0 +1,230 @@
+[
+  {
+    "id": "12ffe552",
+    "amount": 150000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "f98d7dcb",
+      "name": "Thể thao",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-16T18:00:59",
+    "note": ""
+  },
+  {
+    "id": "21d60c5c",
+    "amount": 22222.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "CAT999",
+      "name": "Giải trí",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-14T13:57:43",
+    "note": "Random"
+  },
+  {
+    "id": "27157b4c",
+    "amount": 12000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "f2488ae3",
+      "name": "Internet",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T16:20:30",
+    "note": ""
+  },
+  {
+    "id": "4760f45a",
+    "amount": 232000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "f98d7dcb",
+      "name": "Thể thao",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T15:43:04",
+    "note": ""
+  },
+  {
+    "id": "4b2a5737",
+    "amount": 130000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "71ab75f6",
+      "name": "Thú cưng",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-16T17:59:55",
+    "note": ""
+  },
+  {
+    "id": "4d0cdb47",
+    "amount": 150000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "1de2ffc1",
+      "name": "Mua sắm",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-16T17:59:41",
+    "note": "2"
+  },
+  {
+    "id": "629a523b",
+    "amount": 544444.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "b40d1ecd",
+      "name": "Thuê nhà",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T15:41:54",
+    "note": ""
+  },
+  {
+    "id": "698e9420",
+    "amount": 25000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "34f65e19",
+      "name": "Trái cây",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-16T17:58:59",
+    "note": "lựu"
+  },
+  {
+    "id": "6c744638",
+    "amount": 2000000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "43a1afd7",
+      "name": "Điện tử",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T15:58:32",
+    "note": ""
+  },
+  {
+    "id": "7be2abe8",
+    "amount": 123.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "CAT999",
+      "name": "Giải trí",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-14T14:13:10",
+    "note": "alo"
+  },
+  {
+    "id": "8df29d63",
+    "amount": 120000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "CAT999",
+      "name": "Giải trí",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-16T14:53:59",
+    "note": "Yes"
+  },
+  {
+    "id": "9df81b87",
+    "amount": 1300000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "b40d1ecd",
+      "name": "Thuê nhà",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T15:42:24",
+    "note": ""
+  },
+  {
+    "id": "a51029e9",
+    "amount": 24000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "f98b6645",
+      "name": "Chi khác",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T16:21",
+    "note": ""
+  },
+  {
+    "id": "a77b8a0d",
+    "amount": 222222.0,
+    "type": "INCOME",
+    "category": {
+      "id": "deba658c",
+      "name": "Thưởng",
+      "type": "INCOME"
+    },
+    "dateTime": "2026-05-17T13:32:19",
+    "note": ""
+  },
+  {
+    "id": "aaf97a3c",
+    "amount": 120000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "f98b6645",
+      "name": "Chi khác",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T15:43:33",
+    "note": ""
+  },
+  {
+    "id": "b3e24667",
+    "amount": 1111111.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "5e7a8bed",
+      "name": "Xe cộ",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-17T16:20:16",
+    "note": ""
+  },
+  {
+    "id": "d38b4a95",
+    "amount": 3600000.0,
+    "type": "INCOME",
+    "category": {
+      "id": "580837a6",
+      "name": "Làm thêm",
+      "type": "INCOME"
+    },
+    "dateTime": "2026-05-17T12:23:31",
+    "note": ""
+  },
+  {
+    "id": "eef6503a",
+    "amount": 200000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "e676eb65",
+      "name": "Làm đẹp",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-16T18:00:42",
+    "note": ""
+  },
+  {
+    "id": "f2ee7940",
+    "amount": 120000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "825e1ca3",
+      "name": "Điện nước",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-16T17:59:15",
+    "note": ""
+  }
+]

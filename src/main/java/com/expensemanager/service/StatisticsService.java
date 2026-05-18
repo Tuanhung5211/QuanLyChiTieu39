@@ -1,10 +1,8 @@
 package com.expensemanager.service;
 
-import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.entity.Category;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,11 +13,10 @@ public class StatisticsService {
         this.financeService = financeService;
     }
 
+    // 🌟 TỐI ƯU HÓA TOÀN BỘ: Đọc dữ liệu In-Memory từ RAM của FinanceService, chấm dứt nghẽn I/O DB
     public double calculateTotal(int month, int year, TransactionType type) {
-        String userId = SessionManager.getCurrentUserId();
-        if (userId == null) return 0;
-        List<Transaction> transactions = DatabaseUtil.getAllTransactions(userId);
-        return transactions.stream()
+        if (SessionManager.getCurrentUserId() == null) return 0;
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getDateTime().getMonthValue() == month)
                 .filter(t -> t.getDateTime().getYear() == year)
                 .filter(t -> t.getType() == type)
@@ -28,10 +25,8 @@ public class StatisticsService {
     }
 
     public double calculateTotal(int month, int year) {
-        String userId = SessionManager.getCurrentUserId();
-        if (userId == null) return 0;
-        List<Transaction> transactions = DatabaseUtil.getAllTransactions(userId);
-        return transactions.stream()
+        if (SessionManager.getCurrentUserId() == null) return 0;
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getDateTime().getMonthValue() == month)
                 .filter(t -> t.getDateTime().getYear() == year)
                 .mapToDouble(Transaction::getAmount)
@@ -39,20 +34,16 @@ public class StatisticsService {
     }
 
     public double calculateByCategory(Category category) {
-        String userId = SessionManager.getCurrentUserId();
-        if (userId == null) return 0;
-        List<Transaction> transactions = DatabaseUtil.getAllTransactions(userId);
-        return transactions.stream()
+        if (SessionManager.getCurrentUserId() == null) return 0;
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getCategory().getId().equals(category.getId()))
                 .mapToDouble(Transaction::getAmount)
                 .sum();
     }
 
     public double calculateByCategory(Category category, int month, int year) {
-        String userId = SessionManager.getCurrentUserId();
-        if (userId == null) return 0;
-        List<Transaction> transactions = DatabaseUtil.getAllTransactions(userId);
-        return transactions.stream()
+        if (SessionManager.getCurrentUserId() == null) return 0;
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getCategory().getId().equals(category.getId()))
                 .filter(t -> t.getDateTime().getMonthValue() == month)
                 .filter(t -> t.getDateTime().getYear() == year)
@@ -77,14 +68,11 @@ public class StatisticsService {
     }
 
     public List<Transaction> getHighValueTransactions(double threshold) {
-        String userId = SessionManager.getCurrentUserId();
-        if (userId == null) return List.of();
-        List<Transaction> transactions = DatabaseUtil.getAllTransactions(userId);
-        return transactions.stream()
+        if (SessionManager.getCurrentUserId() == null) return List.of();
+        return financeService.getAllTransactions().stream()
                 .filter(t -> t.getAmount() > threshold)
                 .collect(Collectors.toList());
     }
-    public FinanceService getFinanceService() {
-        return financeService;
-    }
+
+    public FinanceService getFinanceService() { return financeService; }
 }
