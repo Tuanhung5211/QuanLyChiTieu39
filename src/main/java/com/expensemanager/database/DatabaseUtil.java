@@ -183,8 +183,7 @@ public class DatabaseUtil {
 
     // ========== BUDGETS ==========
     public static void insertBudget(Budget budget, String userId) {
-        String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?) " +
-                "ON DUPLICATE KEY UPDATE budget_limit = ?, spent = ?";
+        String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, budget.getId());
@@ -193,17 +192,38 @@ public class DatabaseUtil {
             stmt.setDouble(4, budget.getLimit());
             stmt.setDouble(5, budget.getSpent());
             stmt.setString(6, userId);
-
-            stmt.setDouble(7, budget.getLimit());
-            stmt.setDouble(8, budget.getSpent());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi chèn/ghi đè ngân sách", e);
+            e.printStackTrace();
         }
     }
 
+    public static Budget getBudget(int month, int year, String userId) {
+        String sql = "SELECT * FROM budgets WHERE month = ? AND year = ? AND user_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, month);
+            stmt.setInt(2, year);
+            stmt.setString(3, userId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                Budget b = new Budget(
+                        rs.getString("id"),
+                        rs.getInt("month"),
+                        rs.getInt("year"),
+                        rs.getDouble("budget_limit")
+                );
+                b.setSpent(rs.getDouble("spent"));
+                return b;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public static void updateBudget(Budget budget) {
-        String sql = "UPDATE budgets SET budget_limit=?, spent=? WHERE id=?";
+        String sql = "UPDATE budgets SET budget_limit = ?, spent = ? WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setDouble(1, budget.getLimit());
@@ -211,31 +231,8 @@ public class DatabaseUtil {
             stmt.setString(3, budget.getId());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi cập nhật số liệu ngân sách chi tiêu", e);
+            e.printStackTrace();
         }
-    }
-
-    public static Budget getBudget(int month, int year, String userId) {
-        String sql = "SELECT * FROM budgets WHERE month=? AND year=? AND user_id=?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, month);
-            stmt.setInt(2, year);
-            stmt.setString(3, userId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    String id = rs.getString("id");
-                    double limit = rs.getDouble("budget_limit");
-                    double spent = rs.getDouble("spent");
-                    Budget budget = new Budget(id, month, year, limit);
-                    budget.setSpent(spent);
-                    return budget;
-                }
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi truy vấn thông tin ngân sách hệ thống", e);
-        }
-        return null;
     }
 
     // ========== USERS ==========

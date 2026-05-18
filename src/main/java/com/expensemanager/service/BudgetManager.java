@@ -9,31 +9,28 @@ import java.time.LocalDate;
 
 public class BudgetManager {
 
-    // =====================================================================
-    // 1. KHAI BÁO BIẾN LOGIC
-    // =====================================================================
     private FinanceService financeService;
 
     public BudgetManager(FinanceService financeService) {
         this.financeService = financeService;
     }
 
-    // =====================================================================
-    // 2. NGHIỆP VỤ THIẾT LẬP NGÂN SÁCH
-    // =====================================================================
     public void setBudget(int month, int year, double limit) throws InvalidAmountException {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) throw new InvalidAmountException("Chưa đăng nhập");
         if (limit <= 0) throw new InvalidAmountException("Hạn mức ngân sách phải lớn hơn 0!");
 
-        String id = userId + "_BUD_" + String.format("%02d%04d", month, year);
-        Budget budget = new Budget(id, month, year, limit);
-        DatabaseUtil.insertBudget(budget, userId);
+        Budget existingBudget = DatabaseUtil.getBudget(month, year, userId);
+        if (existingBudget != null) {
+            existingBudget.setLimit(limit);
+            DatabaseUtil.updateBudget(existingBudget);
+        } else {
+            String id = java.util.UUID.randomUUID().toString().substring(0, 8);
+            Budget newBudget = new Budget(id, month, year, limit);
+            DatabaseUtil.insertBudget(newBudget, userId);
+        }
     }
 
-    // =====================================================================
-    // 3. NGHIỆP VỤ KIỂM TRA VÀ TÍNH TOÁN NGÂN SÁCH
-    // =====================================================================
     public String checkBudget() {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) return "Chưa đăng nhập";
@@ -57,9 +54,6 @@ public class BudgetManager {
         return formatBudgetStatus(budget);
     }
 
-    // =====================================================================
-    // 4. TIỆN ÍCH HIỂN THỊ TRẠNG THÁI
-    // =====================================================================
     private String formatBudgetStatus(Budget budget) {
         boolean isVN = "vi".equalsIgnoreCase(SessionManager.getLanguage());
         if (budget.isOverBudget()) {

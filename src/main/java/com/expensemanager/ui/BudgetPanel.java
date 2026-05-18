@@ -21,9 +21,6 @@ import java.util.Locale;
 
 public class BudgetPanel extends JPanel implements Observer {
 
-    // =====================================================================
-    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
-    // =====================================================================
     private MainFrame mainFrame;
     private BudgetManager budgetManager;
     private FinanceService financeService;
@@ -34,8 +31,6 @@ public class BudgetPanel extends JPanel implements Observer {
     private JButton btnSetBudget;
     private boolean isVietnamese = true;
 
-    private Double localBudgetLimit = null;
-
     private final Color BG_COLOR = new Color(18, 18, 18);
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
     private final Color INPUT_BG = new Color(45, 45, 45);
@@ -43,9 +38,6 @@ public class BudgetPanel extends JPanel implements Observer {
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
     private final Color TEXT_SECONDARY = new Color(160, 160, 160);
 
-    // =====================================================================
-    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC CHÍNH
-    // =====================================================================
     public BudgetPanel(MainFrame mainFrame, BudgetManager budgetManager) {
         this.mainFrame = mainFrame;
         this.budgetManager = budgetManager;
@@ -147,9 +139,6 @@ public class BudgetPanel extends JPanel implements Observer {
         add(wrapperPanel, BorderLayout.CENTER);
     }
 
-    // =====================================================================
-    // 3. XỬ LÝ SỰ KIỆN GIAO DIỆN VÀ NHẬP LIỆU
-    // =====================================================================
     private void openSetBudgetDialog() {
         JTextField txtLimit = new JTextField();
         txtLimit.setBackground(INPUT_BG);
@@ -185,7 +174,6 @@ public class BudgetPanel extends JPanel implements Observer {
                 int year = LocalDate.now().getYear();
 
                 budgetManager.setBudget(month, year, limit);
-                this.localBudgetLimit = limit;
 
                 refreshData();
                 if (mainFrame != null) mainFrame.refreshAllPanels();
@@ -200,9 +188,6 @@ public class BudgetPanel extends JPanel implements Observer {
         }
     }
 
-    // =====================================================================
-    // 4. CẬP NHẬT TRẠNG THÁI & TÍNH TOÁN DỮ LIỆU
-    // =====================================================================
     public void refreshData() {
         if (budgetManager == null || financeService == null) return;
 
@@ -227,14 +212,6 @@ public class BudgetPanel extends JPanel implements Observer {
         }
 
         String userId = SessionManager.getCurrentUserId();
-        if (userId == null) {
-            String currentUsername = SessionManager.getCurrentUsername();
-            if (currentUsername != null) {
-                com.expensemanager.entity.User currentUser = DatabaseUtil.getUserByUsername(currentUsername);
-                if (currentUser != null) userId = currentUser.getId();
-            }
-        }
-
         if (userId != null) {
             double spent = financeService.getAllTransactions().stream()
                     .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
@@ -244,11 +221,9 @@ public class BudgetPanel extends JPanel implements Observer {
                     .sum();
 
             double limit = 0;
-            if (this.localBudgetLimit != null) {
-                limit = this.localBudgetLimit;
-            } else {
-                Budget budget = DatabaseUtil.getBudget(month, year, userId);
-                if (budget != null) limit = budget.getLimit();
+            Budget budget = DatabaseUtil.getBudget(month, year, userId);
+            if (budget != null) {
+                limit = budget.getLimit();
             }
 
             if (limit > 0) {
@@ -278,14 +253,8 @@ public class BudgetPanel extends JPanel implements Observer {
         }
     }
 
-    // =====================================================================
-    // 5. OBSERVER & ĐA NGÔN NGỮ
-    // =====================================================================
     @Override
     public void update(EventType eventType, Object data) {
-        if (eventType == EventType.BUDGET_CHANGED && data instanceof Double) {
-            this.localBudgetLimit = (Double) data;
-        }
         if (eventType == EventType.TRANSACTION_ADDED ||
                 eventType == EventType.TRANSACTION_UPDATED ||
                 eventType == EventType.TRANSACTION_DELETED ||

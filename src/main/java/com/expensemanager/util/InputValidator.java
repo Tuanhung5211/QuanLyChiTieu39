@@ -27,7 +27,7 @@ public class InputValidator {
             amount = Double.parseDouble(cleanStr);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(isVietnamese ?
-                    "Số tiền nhập vào phải là ký số hợp lệ!" : "Amount must be a valid number!");
+                    "Số tiền nhập vào phải là số!" : "Amount must be a valid number!");
         }
 
         if (amount <= 0) {
