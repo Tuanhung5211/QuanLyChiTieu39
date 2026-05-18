@@ -17,6 +17,11 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class MainFrame extends JFrame implements Observer {
+
+    // =====================================================================
+    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
+    // =====================================================================
+
     private CardLayout cardLayout;
     private JPanel mainPanel;
     private DashboardPanel dashboardPanel;
@@ -25,22 +30,21 @@ public class MainFrame extends JFrame implements Observer {
     private SettingsPanel settingsPanel;
 
     private JButton btnDashboard, btnStatistics, btnBudget, btnSettings;
+    private JButton activeBtn;
+
     private FinanceService financeService;
     private StatisticsService statsService;
     private BudgetManager budgetManager;
     private boolean isVietnamese = true;
 
-    // --- Các thành phần của Sidebar ---
     private JLabel lblAvatar, lblNickname;
     private JLabel lblIdLabel, lblIdValue;
     private JLabel lblEmailLabel, lblEmailValue;
     private JLabel lblGenderLabel, lblGenderValue;
     private JButton btnLogout;
 
-    private JButton activeBtn;
     private final Color NAV_BG = new Color(40, 40, 40);
     private final Color NAV_BTN_FG = Color.LIGHT_GRAY;
-
     private final Color SIDEBAR_BG = new Color(30, 30, 30);
     private final Color AVATAR_BG = new Color(45, 45, 45);
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
@@ -48,14 +52,32 @@ public class MainFrame extends JFrame implements Observer {
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
     private final Color DANGER_RED = new Color(244, 67, 54);
 
-    public boolean isVietnamese() {
-        return this.isVietnamese;
-    }
+    // =====================================================================
+    // 2. CONSTRUCTOR - KHỞI TẠO CỬA SỔ CHÍNH
+    // =====================================================================
 
     public MainFrame() {
         this.isVietnamese = ConfigLocalStorage.loadLanguage();
         Dimension savedSize = ConfigLocalStorage.loadWindowSize();
 
+        initServices();
+        initFrameSettings(savedSize);
+        initComponents();
+
+        if (financeService != null) {
+            financeService.attach(dashboardPanel);
+            if (statisticsPanel != null) financeService.attach(statisticsPanel);
+            if (budgetPanel != null) financeService.attach(budgetPanel);
+            financeService.attach(this);
+        }
+
+        updateGlobalLanguage(this.isVietnamese);
+        selectTab(btnDashboard, "dashboard");
+        refreshSidebarData();
+        setVisible(true);
+    }
+
+    private void initServices() {
         try {
             financeService = new FinanceService();
             financeService.syncFromDatabase();
@@ -70,14 +92,18 @@ public class MainFrame extends JFrame implements Observer {
             statsService = null;
             budgetManager = null;
         }
+    }
 
+    private void initFrameSettings(Dimension size) {
         setTitle("Money Tracker Desktop");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(savedSize.width, savedSize.height);
+        setSize(size.width, size.height);
         setResizable(false);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
+    }
 
+    private void initComponents() {
         add(createSidebar(), BorderLayout.WEST);
 
         cardLayout = new CardLayout();
@@ -87,10 +113,8 @@ public class MainFrame extends JFrame implements Observer {
         if (statsService != null && budgetManager != null) {
             statisticsPanel = new StatisticsPanel(statsService, budgetManager);
             budgetPanel = new BudgetPanel(this, budgetManager);
-        } else {
-            statisticsPanel = null;
-            budgetPanel = null;
         }
+
         settingsPanel = new SettingsPanel(this);
 
         mainPanel.add(dashboardPanel, "dashboard");
@@ -100,26 +124,16 @@ public class MainFrame extends JFrame implements Observer {
 
         add(mainPanel, BorderLayout.CENTER);
         add(createNavBar(), BorderLayout.NORTH);
-
-        if (financeService != null) {
-            financeService.attach(dashboardPanel);
-            if (statisticsPanel != null) financeService.attach(statisticsPanel);
-            if (budgetPanel != null) financeService.attach(budgetPanel);
-            financeService.attach(this);
-        }
-
-        updateGlobalLanguage(this.isVietnamese);
-        selectTab(btnDashboard, "dashboard");
-
-        setVisible(true);
-        refreshSidebarData();
     }
 
+    // =====================================================================
+    // 3. XÂY DỰNG GIAO DIỆN (SIDEBAR & NAVBAR)
+    // =====================================================================
+
     private JPanel createSidebar() {
-        JPanel sidebar = new JPanel();
+        JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setPreferredSize(new Dimension(240, 0));
         sidebar.setBackground(SIDEBAR_BG);
-        sidebar.setLayout(new BorderLayout());
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(45, 45, 45)));
 
         JPanel topContainer = new JPanel();
@@ -127,7 +141,6 @@ public class MainFrame extends JFrame implements Observer {
         topContainer.setOpaque(false);
         topContainer.setBorder(new EmptyBorder(30, 20, 20, 20));
 
-        // 🌟 KHẮC PHỤC: Thay FlowLayout bằng GridBagLayout giúp các thành phần tự động căn giữa theo chiều dọc chuẩn chỉnh
         JPanel avatarRow = new JPanel(new GridBagLayout());
         avatarRow.setOpaque(false);
         avatarRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -145,18 +158,14 @@ public class MainFrame extends JFrame implements Observer {
         lblNickname.setForeground(TEXT_PRIMARY);
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.WEST;
+        gbc.gridx = 0; gbc.gridy = 0; gbc.anchor = GridBagConstraints.WEST;
         avatarRow.add(lblAvatar, gbc);
 
-        gbc.gridx = 1;
-        gbc.insets = new Insets(0, 15, 0, 0); // Tạo khoảng cách 15px giữa Avatar và Nickname
+        gbc.gridx = 1; gbc.insets = new Insets(0, 15, 0, 0);
         avatarRow.add(lblNickname, gbc);
-
         avatarRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, avatarRow.getPreferredSize().height));
-        topContainer.add(avatarRow);
 
+        topContainer.add(avatarRow);
         topContainer.add(Box.createVerticalStrut(15));
 
         lblIdLabel = new JLabel("ID:"); lblIdValue = new JLabel("---");
@@ -169,10 +178,9 @@ public class MainFrame extends JFrame implements Observer {
         infoPanel.add(createProfileRow(lblIdLabel, lblIdValue));
         infoPanel.add(createProfileRow(lblEmailLabel, lblEmailValue));
         infoPanel.add(createProfileRow(lblGenderLabel, lblGenderValue));
-
         infoPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, infoPanel.getPreferredSize().height));
-        topContainer.add(infoPanel);
 
+        topContainer.add(infoPanel);
         topContainer.add(Box.createVerticalGlue());
         sidebar.add(topContainer, BorderLayout.CENTER);
 
@@ -193,6 +201,7 @@ public class MainFrame extends JFrame implements Observer {
             @Override public void mouseEntered(MouseEvent e) { btnLogout.setBackground(DANGER_RED); btnLogout.setForeground(Color.WHITE); }
             @Override public void mouseExited(MouseEvent e) { btnLogout.setBackground(new Color(45, 45, 45)); btnLogout.setForeground(TEXT_PRIMARY); }
         });
+
         bottomContainer.add(btnLogout, BorderLayout.CENTER);
         sidebar.add(bottomContainer, BorderLayout.SOUTH);
 
@@ -210,39 +219,6 @@ public class MainFrame extends JFrame implements Observer {
         row.add(lblLabel, BorderLayout.WEST);
         row.add(lblValue, BorderLayout.CENTER);
         return row;
-    }
-
-    private void refreshSidebarData() {
-        String username = SessionManager.getCurrentUsername();
-        if (username != null) {
-            User user = DatabaseUtil.getUserByUsername(username);
-            if (user != null) {
-                // 🌟 KHẮC PHỤC: Thêm cắt ngắn Nickname nếu quá dài (tương tự Email) để tránh làm lệch/tràn khung Sidebar
-                String nickname = user.getNickname();
-                if (nickname != null && nickname.length() > 14) nickname = nickname.substring(0, 12) + "...";
-                lblNickname.setText(nickname != null ? nickname : "User");
-
-                lblIdValue.setText(user.getId() != null ? user.getId() : "N/A");
-                String email = user.getEmail();
-                if (email != null && email.length() > 18) email = email.substring(0, 16) + "...";
-                lblEmailValue.setText(email != null ? email : "---");
-
-                String gender = user.getGender();
-                if (isVietnamese) {
-                    if ("Male".equalsIgnoreCase(gender) || "Nam".equalsIgnoreCase(gender)) lblGenderValue.setText("Nam");
-                    else if ("Female".equalsIgnoreCase(gender) || "Nữ".equalsIgnoreCase(gender)) lblGenderValue.setText("Nữ");
-                    else lblGenderValue.setText("Khác");
-                } else {
-                    if ("Male".equalsIgnoreCase(gender) || "Nam".equalsIgnoreCase(gender)) lblGenderValue.setText("Male");
-                    else if ("Female".equalsIgnoreCase(gender) || "Nữ".equalsIgnoreCase(gender)) lblGenderValue.setText("Female");
-                    else lblGenderValue.setText("Other");
-                }
-
-                if (user.getNickname() != null && !user.getNickname().isEmpty()) {
-                    lblAvatar.setText(user.getNickname().substring(0, 1).toUpperCase());
-                }
-            }
-        }
     }
 
     private JPanel createNavBar() {
@@ -264,6 +240,60 @@ public class MainFrame extends JFrame implements Observer {
         return navPanel;
     }
 
+    private JButton createNavButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btn.setForeground(NAV_BTN_FG);
+        btn.setBackground(NAV_BG);
+        btn.setBorder(BorderFactory.createEmptyBorder(10, 22, 10, 22));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent evt) { btn.setForeground(Color.WHITE); btn.setBackground(new Color(60, 60, 60)); }
+            @Override public void mouseExited(MouseEvent evt) {
+                if (btn != activeBtn) { btn.setBackground(NAV_BG); btn.setForeground(NAV_BTN_FG); }
+            }
+        });
+        return btn;
+    }
+
+    // =====================================================================
+    // 4. XỬ LÝ LOGIC, ĐỒNG BỘ VÀ NGÔN NGỮ
+    // =====================================================================
+
+    private void refreshSidebarData() {
+        String username = SessionManager.getCurrentUsername();
+        if (username == null) return;
+
+        User user = DatabaseUtil.getUserByUsername(username);
+        if (user == null) return;
+
+        String nickname = user.getNickname();
+        if (nickname != null && nickname.length() > 14) nickname = nickname.substring(0, 12) + "...";
+        lblNickname.setText(nickname != null ? nickname : "User");
+
+        lblIdValue.setText(user.getId() != null ? user.getId() : "N/A");
+
+        String email = user.getEmail();
+        if (email != null && email.length() > 18) email = email.substring(0, 16) + "...";
+        lblEmailValue.setText(email != null ? email : "---");
+
+        String gender = user.getGender();
+        if (isVietnamese) {
+            if ("Male".equalsIgnoreCase(gender) || "Nam".equalsIgnoreCase(gender)) lblGenderValue.setText("Nam");
+            else if ("Female".equalsIgnoreCase(gender) || "Nữ".equalsIgnoreCase(gender)) lblGenderValue.setText("Nữ");
+            else lblGenderValue.setText("Khác");
+        } else {
+            if ("Male".equalsIgnoreCase(gender) || "Nam".equalsIgnoreCase(gender)) lblGenderValue.setText("Male");
+            else if ("Female".equalsIgnoreCase(gender) || "Nữ".equalsIgnoreCase(gender)) lblGenderValue.setText("Female");
+            else lblGenderValue.setText("Other");
+        }
+
+        if (user.getNickname() != null && !user.getNickname().isEmpty()) {
+            lblAvatar.setText(user.getNickname().substring(0, 1).toUpperCase());
+        }
+    }
+
     private void selectTab(JButton targetBtn, String cardName) {
         activeBtn = targetBtn;
         cardLayout.show(mainPanel, cardName);
@@ -280,26 +310,6 @@ public class MainFrame extends JFrame implements Observer {
                 }
             }
         }
-    }
-
-    private JButton createNavButton(String text) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btn.setForeground(NAV_BTN_FG);
-        btn.setBackground(NAV_BG);
-        btn.setBorder(BorderFactory.createEmptyBorder(10, 22, 10, 22));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) { btn.setForeground(Color.WHITE); btn.setBackground(new Color(60, 60, 60)); }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                if (btn != activeBtn) {
-                    btn.setBackground(NAV_BG);
-                    btn.setForeground(NAV_BTN_FG);
-                }
-            }
-        });
-        return btn;
     }
 
     public void updateGlobalLanguage(boolean isVN) {
@@ -343,16 +353,26 @@ public class MainFrame extends JFrame implements Observer {
         this.repaint();
     }
 
-    public void refreshAllPanels() { if (financeService != null) financeService.syncFromDatabase(); }
-    private void logout() { SessionManager.logout(); dispose(); new LoginFrame().setVisible(true); }
+    private void logout() {
+        SessionManager.logout();
+        dispose();
+        new LoginFrame().setVisible(true);
+    }
 
     @Override
     public void update(EventType eventType, Object data) {
         if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.DATA_LOADED) {
-            SwingUtilities.invokeLater(() -> refreshSidebarData());
+            SwingUtilities.invokeLater(this::refreshSidebarData);
         }
     }
 
+    // =====================================================================
+    // 5. GETTERS & SETTERS
+    // =====================================================================
+
+    public boolean isVietnamese() { return this.isVietnamese; }
     public FinanceService getFinanceService() { return financeService; }
     public BudgetManager getBudgetManager() { return budgetManager; }
+    public void refreshAllPanels() { if (financeService != null) financeService.syncFromDatabase(); }
+
 }

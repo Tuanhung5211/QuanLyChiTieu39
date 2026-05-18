@@ -12,6 +12,10 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 
 public class AccountSettingsPanel extends JPanel {
+
+    // =====================================================================
+    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
+    // =====================================================================
     private MainFrame mainFrame;
     private boolean isVietnamese;
 
@@ -28,14 +32,9 @@ public class AccountSettingsPanel extends JPanel {
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
     private final Color DANGER_RED = new Color(244, 67, 54);
 
-    private int getResponsiveWidth() {
-        if (mainFrame == null) return 560;
-        int frameWidth = mainFrame.getWidth();
-        if (frameWidth >= 1600) return 850;
-        if (frameWidth >= 1400) return 700;
-        return 560;
-    }
-
+    // =====================================================================
+    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC FORM
+    // =====================================================================
     public AccountSettingsPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         this.isVietnamese = mainFrame != null && mainFrame.isVietnamese();
@@ -43,6 +42,12 @@ public class AccountSettingsPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
+        initComponents();
+        updateResponsiveLayout(isVietnamese, 560);
+        refreshData();
+    }
+
+    private void initComponents() {
         profileCard = new JPanel(new BorderLayout(0, 15));
         profileCard.setBackground(SURFACE_COLOR);
         profileCard.setBorder(BorderFactory.createCompoundBorder(
@@ -62,34 +67,41 @@ public class AccountSettingsPanel extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 8, 8, 8);
 
+        // Hàng 1: Nickname
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.25;
         lblNickname = new JLabel(); lblNickname.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lblNickname.setForeground(TEXT_SECONDARY);
         pForm.add(lblNickname, gbc);
+
         gbc.gridx = 1; gbc.weightx = 0.75;
         txtNickname = new JTextField(); styleTextField(txtNickname);
         pForm.add(txtNickname, gbc);
 
+        // Hàng 2: Email
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.25;
         lblEmail = new JLabel(); lblEmail.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lblEmail.setForeground(TEXT_SECONDARY);
         pForm.add(lblEmail, gbc);
+
         gbc.gridx = 1; gbc.weightx = 0.75;
         txtEmail = new JTextField(); styleTextField(txtEmail);
         pForm.add(txtEmail, gbc);
 
+        // Hàng 3: Gender
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.25;
         lblGender = new JLabel(); lblGender.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lblGender.setForeground(TEXT_SECONDARY);
         pForm.add(lblGender, gbc);
-        gbc.gridx = 1; gbc.weightx = 0.75;
 
+        gbc.gridx = 1; gbc.weightx = 0.75;
         cmbGender = new JComboBox<>(isVietnamese ? new String[]{"Nam", "Nữ", "Khác"} : new String[]{"Male", "Female", "Other"});
         cmbGender.setBackground(INPUT_BG); cmbGender.setForeground(TEXT_PRIMARY); cmbGender.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         pForm.add(cmbGender, gbc);
 
+        // Hàng 4: Button Lưu
         gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.insets = new Insets(15, 8, 5, 8);
         btnUpdateProfile = new JButton(); stylePrimaryButton(btnUpdateProfile);
         btnUpdateProfile.addActionListener(e -> updateProfile());
         pForm.add(btnUpdateProfile, gbc);
 
+        // Hàng 5: Button Đổi MK
         gbc.gridy = 4;
         btnOpenChangePass = new JButton();
         btnOpenChangePass.setFont(new Font("Segoe UI", Font.BOLD, 15));
@@ -104,6 +116,7 @@ public class AccountSettingsPanel extends JPanel {
         btnOpenChangePass.addActionListener(e -> openChangePasswordDialog());
         pForm.add(btnOpenChangePass, gbc);
 
+        // Hàng 6: Button Xóa Tài Khoản
         gbc.gridy = 5;
         gbc.insets = new Insets(15, 8, 5, 8);
         btnDeleteAccount = new JButton();
@@ -125,57 +138,26 @@ public class AccountSettingsPanel extends JPanel {
 
         profileCard.add(pForm, BorderLayout.CENTER);
         add(profileCard);
-
-        updateResponsiveLayout(isVietnamese, 560);
-        refreshData();
     }
 
-    public void updateResponsiveLayout(boolean isVN, int fluidWidth) {
-        this.isVietnamese = isVN;
-        int currentGenderIndex = cmbGender.getSelectedIndex();
-
-        setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
-
-        if (profileCard != null) {
-            profileCard.setPreferredSize(new Dimension(fluidWidth, 450));
-            profileCard.setMaximumSize(new Dimension(fluidWidth, 450));
-            profileCard.setMinimumSize(new Dimension(fluidWidth, 450));
-        }
-
-        if (isVN) {
-            lblProfileTitle.setText("Thông tin cá nhân");
-            lblNickname.setText("Tên hiển thị:"); lblEmail.setText("Email:"); lblGender.setText("Giới tính:");
-            btnUpdateProfile.setText("Lưu thay đổi"); btnOpenChangePass.setText("Đổi mật khẩu");
-            btnDeleteAccount.setText("Xóa tài khoản vĩnh viễn");
-            cmbGender.setModel(new DefaultComboBoxModel<>(new String[]{"Nam", "Nữ", "Khác"}));
-        } else {
-            lblProfileTitle.setText("Personal Profile");
-            lblNickname.setText("Display Name:"); lblEmail.setText("Email:"); lblGender.setText("Gender:");
-            btnUpdateProfile.setText("Save Changes"); btnOpenChangePass.setText("Change Password");
-            btnDeleteAccount.setText("Delete Account Permanently");
-            cmbGender.setModel(new DefaultComboBoxModel<>(new String[]{"Male", "Female", "Other"}));
-        }
-        if (currentGenderIndex >= 0 && currentGenderIndex < cmbGender.getItemCount()) {
-            cmbGender.setSelectedIndex(currentGenderIndex);
-        }
-    }
-
+    // =====================================================================
+    // 3. XỬ LÝ LOGIC NGHIỆP VỤ (HỒ SƠ, MẬT KHẨU, TÀI KHOẢN)
+    // =====================================================================
     public void refreshData() {
         String username = SessionManager.getCurrentUsername();
-        if (username != null) {
-            User user = DatabaseUtil.getUserByUsername(username);
-            if (user != null) {
-                txtNickname.setText(user.getNickname());
-                txtEmail.setText(user.getEmail());
-                String g = user.getGender();
-                if ("Male".equalsIgnoreCase(g) || "Nam".equalsIgnoreCase(g)) cmbGender.setSelectedIndex(0);
-                else if ("Female".equalsIgnoreCase(g) || "Nữ".equalsIgnoreCase(g)) cmbGender.setSelectedIndex(1);
-                else cmbGender.setSelectedIndex(2);
-            }
+        if (username == null) return;
+
+        User user = DatabaseUtil.getUserByUsername(username);
+        if (user != null) {
+            txtNickname.setText(user.getNickname());
+            txtEmail.setText(user.getEmail());
+            String g = user.getGender();
+            if ("Male".equalsIgnoreCase(g) || "Nam".equalsIgnoreCase(g)) cmbGender.setSelectedIndex(0);
+            else if ("Female".equalsIgnoreCase(g) || "Nữ".equalsIgnoreCase(g)) cmbGender.setSelectedIndex(1);
+            else cmbGender.setSelectedIndex(2);
         }
     }
 
-    // 🌟 TÍCH HỢP BẮT LỖI LUỒNG THAY ĐỔI THÔNG TIN CÁ NHÂN TRONG CONFIG SETTINGS
     private void updateProfile() {
         String nickname = txtNickname.getText();
         String email = txtEmail.getText();
@@ -187,7 +169,10 @@ public class AccountSettingsPanel extends JPanel {
 
             User user = DatabaseUtil.getUserByUsername(SessionManager.getCurrentUsername());
             if (user != null) {
-                user.setNickname(nickname.trim()); user.setEmail(email.trim()); user.setGender(gender);
+                user.setNickname(nickname.trim());
+                user.setEmail(email.trim());
+                user.setGender(gender);
+
                 DatabaseUtil.updateUser(user);
                 JOptionPane.showMessageDialog(this, isVietnamese ? "Cập nhật thông tin thành công!" : "Profile updated successfully!");
                 if (mainFrame != null) mainFrame.refreshAllPanels();
@@ -198,7 +183,6 @@ public class AccountSettingsPanel extends JPanel {
         }
     }
 
-    // 🌟 TÍCH HỢP BẮT LỖI LUỒNG ĐỔI MẬT KHẨU BẢO MẬT JDIALOG
     private void openChangePasswordDialog() {
         JDialog passDialog = new JDialog(mainFrame, isVietnamese ? "Thay đổi mật khẩu" : "Change Password", true);
         passDialog.setSize(400, 320);
@@ -277,6 +261,7 @@ public class AccountSettingsPanel extends JPanel {
         int confirm = JOptionPane.showConfirmDialog(this,
                 isVietnamese ? "Bạn có chắc muốn xóa tài khoản? Toàn bộ giao dịch và ngân sách sẽ bị mất và không thể hoàn tác!" : "Are you sure you want to delete your account? All transaction and budget data will be permanently lost!",
                 "Warning", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
         if (confirm == JOptionPane.YES_OPTION) {
             String userId = SessionManager.getCurrentUserId();
             if (userId != null) {
@@ -296,6 +281,9 @@ public class AccountSettingsPanel extends JPanel {
         new LoginFrame().setVisible(true);
     }
 
+    // =====================================================================
+    // 4. TIỆN ÍCH GIAO DIỆN VÀ RESPONSIVE MÀN HÌNH
+    // =====================================================================
     private void styleTextField(JTextField tf) {
         tf.setBackground(INPUT_BG); tf.setForeground(TEXT_PRIMARY); tf.setCaretColor(ACCENT_YELLOW);
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
@@ -306,5 +294,35 @@ public class AccountSettingsPanel extends JPanel {
         btn.setBackground(ACCENT_YELLOW); btn.setForeground(SURFACE_COLOR); btn.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btn.setFocusPainted(false); btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+    }
+
+    public void updateResponsiveLayout(boolean isVN, int fluidWidth) {
+        this.isVietnamese = isVN;
+        int currentGenderIndex = cmbGender.getSelectedIndex();
+
+        setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
+
+        if (profileCard != null) {
+            profileCard.setPreferredSize(new Dimension(fluidWidth, 450));
+            profileCard.setMaximumSize(new Dimension(fluidWidth, 450));
+            profileCard.setMinimumSize(new Dimension(fluidWidth, 450));
+        }
+
+        if (isVN) {
+            lblProfileTitle.setText("Thông tin cá nhân");
+            lblNickname.setText("Tên hiển thị:"); lblEmail.setText("Email:"); lblGender.setText("Giới tính:");
+            btnUpdateProfile.setText("Lưu thay đổi"); btnOpenChangePass.setText("Đổi mật khẩu bảo mật");
+            btnDeleteAccount.setText("Xóa tài khoản vĩnh viễn");
+            cmbGender.setModel(new DefaultComboBoxModel<>(new String[]{"Nam", "Nữ", "Khác"}));
+        } else {
+            lblProfileTitle.setText("Personal Profile");
+            lblNickname.setText("Display Name:"); lblEmail.setText("Email:"); lblGender.setText("Gender:");
+            btnUpdateProfile.setText("Save Changes"); btnOpenChangePass.setText("Change Password");
+            btnDeleteAccount.setText("Delete Account Permanently");
+            cmbGender.setModel(new DefaultComboBoxModel<>(new String[]{"Male", "Female", "Other"}));
+        }
+        if (currentGenderIndex >= 0 && currentGenderIndex < cmbGender.getItemCount()) {
+            cmbGender.setSelectedIndex(currentGenderIndex);
+        }
     }
 }

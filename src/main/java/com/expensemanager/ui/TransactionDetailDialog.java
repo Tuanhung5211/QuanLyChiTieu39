@@ -11,6 +11,10 @@ import java.awt.*;
 import java.time.format.DateTimeFormatter;
 
 public class TransactionDetailDialog extends JDialog {
+
+    // =====================================================================
+    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
+    // =====================================================================
     private MainFrame mainFrame;
     private Transaction transaction;
 
@@ -20,6 +24,9 @@ public class TransactionDetailDialog extends JDialog {
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
     private final Color TEXT_MUTED = new Color(150, 150, 150);
 
+    // =====================================================================
+    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC UI
+    // =====================================================================
     public TransactionDetailDialog(MainFrame mainFrame, Transaction transaction) {
         super(mainFrame, "Chi tiết giao dịch", true);
         this.mainFrame = mainFrame;
@@ -30,6 +37,10 @@ public class TransactionDetailDialog extends JDialog {
         getContentPane().setBackground(BG_COLOR);
         setLayout(new BorderLayout());
 
+        initComponents();
+    }
+
+    private void initComponents() {
         // --- HEADER PANEL ---
         JPanel headerPanel = new JPanel(new BorderLayout(15, 0));
         headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 15, 25));
@@ -40,7 +51,6 @@ public class TransactionDetailDialog extends JDialog {
 
         JLabel lblIcon = new JLabel(emoji);
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 44));
-        // 🌟 KHẮC PHỤC CHÍNH XÁC: Ép phủ màu trắng sáng cho icon tĩnh xem chi tiết không bị tối mờ
         lblIcon.setForeground(Color.WHITE);
         headerPanel.add(lblIcon, BorderLayout.WEST);
 
@@ -65,6 +75,7 @@ public class TransactionDetailDialog extends JDialog {
         JPanel detailPanel = new JPanel(new GridBagLayout());
         detailPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
         detailPanel.setBackground(BG_COLOR);
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 5, 8, 5);
@@ -102,28 +113,9 @@ public class TransactionDetailDialog extends JDialog {
         add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private void addDetailRow(JPanel panel, GridBagConstraints gbc, String label, String value, int row) {
-        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3;
-        JLabel lblLabel = new JLabel(label);
-        lblLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblLabel.setForeground(TEXT_MUTED);
-        panel.add(lblLabel, gbc);
-
-        gbc.gridx = 1; gbc.weightx = 0.7;
-        JLabel lblValue = new JLabel(value);
-        lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        lblValue.setForeground(TEXT_PRIMARY);
-        panel.add(lblValue, gbc);
-    }
-
-    private JButton createFlatButton(String text, Color bg, Color fg) {
-        JButton btn = new JButton(text);
-        btn.setBackground(bg); btn.setForeground(fg); btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setFocusPainted(false); btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
+    // =====================================================================
+    // 3. XỬ LÝ LOGIC NGHIỆP VỤ (SỬA / XÓA)
+    // =====================================================================
     private void editTransaction() {
         JTextField txtAmount = new JTextField(String.valueOf(transaction.getAmount()));
         JTextField txtNote = new JTextField(transaction.getNote());
@@ -171,5 +163,33 @@ public class TransactionDetailDialog extends JDialog {
             JOptionPane.showMessageDialog(this, "Đã xóa giao dịch!");
             dispose();
         }
+    }
+
+    // =====================================================================
+    // 4. TIỆN ÍCH GIAO DIỆN CON (UI HELPERS)
+    // =====================================================================
+    private void addDetailRow(JPanel panel, GridBagConstraints gbc, String label, String value, int row) {
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3;
+        JLabel lblLabel = new JLabel(label);
+        lblLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblLabel.setForeground(TEXT_MUTED);
+        panel.add(lblLabel, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 0.7;
+        JLabel lblValue = new JLabel(value);
+        lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblValue.setForeground(TEXT_PRIMARY);
+        panel.add(lblValue, gbc);
+    }
+
+    private JButton createFlatButton(String text, Color bg, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 }

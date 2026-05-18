@@ -1,10 +1,13 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.service.SessionManager;
 import javax.swing.*;
 import java.awt.*;
 
 public class SettingsPanel extends JPanel {
+
+    // =====================================================================
+    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
+    // =====================================================================
     private MainFrame mainFrame;
     private boolean isVietnamese = true;
 
@@ -17,6 +20,9 @@ public class SettingsPanel extends JPanel {
     private SystemConfigPanel systemConfigPanel;
     private CategoryManagerPanel categoryManagerPanel;
 
+    // =====================================================================
+    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC CHÍNH
+    // =====================================================================
     public SettingsPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         if (mainFrame != null) this.isVietnamese = mainFrame.isVietnamese();
@@ -25,6 +31,14 @@ public class SettingsPanel extends JPanel {
         setBackground(new Color(18, 18, 18));
         setBorder(BorderFactory.createEmptyBorder(20, 35, 20, 35));
 
+        initComponents();
+        updateLanguageText();
+    }
+
+    // =====================================================================
+    // 3. XÂY DỰNG GIAO DIỆN THÀNH PHẦN (UI COMPONENTS)
+    // =====================================================================
+    private void initComponents() {
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
@@ -78,8 +92,6 @@ public class SettingsPanel extends JPanel {
 
         bodyContainer.add(subContentPanel, BorderLayout.CENTER);
         add(bodyContainer, BorderLayout.CENTER);
-
-        updateLanguageText();
     }
 
     private JScrollPane createResponsiveWrapper(JPanel targetPanel) {
@@ -98,6 +110,49 @@ public class SettingsPanel extends JPanel {
         return scrollPane;
     }
 
+    private JButton createSubNavButton(String text, boolean isActive) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+
+        if (isActive) {
+            btn.setBackground(new Color(255, 193, 7));
+            btn.setForeground(new Color(18, 18, 18));
+        } else {
+            btn.setBackground(new Color(40, 40, 40));
+            btn.setForeground(new Color(150, 150, 150));
+        }
+        return btn;
+    }
+
+    // =====================================================================
+    // 4. XỬ LÝ CHUYỂN TAB VÀ ĐỒNG BỘ DỮ LIỆU
+    // =====================================================================
+    private void switchSubTab(String targetCard, JButton activeBtn) {
+        subCardLayout.show(subContentPanel, targetCard);
+        Color secondary = new Color(150, 150, 150);
+        Color inputBg = new Color(40, 40, 40);
+
+        btnAccountTab.setBackground(inputBg); btnAccountTab.setForeground(secondary);
+        btnConfigTab.setBackground(inputBg); btnConfigTab.setForeground(secondary);
+        btnCategoryTab.setBackground(inputBg); btnCategoryTab.setForeground(secondary);
+
+        activeBtn.setBackground(new Color(255, 193, 7));
+        activeBtn.setForeground(new Color(18, 18, 18));
+    }
+
+    public void refreshData() {
+        if (accountSettingsPanel != null) accountSettingsPanel.refreshData();
+        if (categoryManagerPanel != null) categoryManagerPanel.refreshCategories();
+    }
+
+    // =====================================================================
+    // 5. ĐIỀU PHỐI RESPONSIVE VÀ ĐA NGÔN NGỮ XUỐNG CÁC PANEL CON
+    // =====================================================================
     public void updateLanguageText() {
         if (mainFrame != null) this.isVietnamese = mainFrame.isVietnamese();
 
@@ -125,7 +180,6 @@ public class SettingsPanel extends JPanel {
         if (categoryManagerPanel != null) categoryManagerPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
     }
 
-    // 🌟 ĐÃ SỬA: Ép đồng bộ biến 'isVN' thẳng thắn xuống các mục cài đặt con, chống lỗi hiển thị chậm
     public void updateLanguageAndResponsive(boolean isVN, int targetFrameWidth) {
         this.isVietnamese = isVN;
         int panelWidth = targetFrameWidth - 240;
@@ -158,39 +212,5 @@ public class SettingsPanel extends JPanel {
 
         this.revalidate();
         this.repaint();
-    }
-
-    public void refreshData() {
-        if (accountSettingsPanel != null) accountSettingsPanel.refreshData();
-        if (categoryManagerPanel != null) categoryManagerPanel.refreshCategories();
-    }
-
-    private void switchSubTab(String targetCard, JButton activeBtn) {
-        subCardLayout.show(subContentPanel, targetCard);
-        Color secondary = new Color(150, 150, 150);
-        Color inputBg = new Color(40, 40, 40);
-        btnAccountTab.setBackground(inputBg); btnAccountTab.setForeground(secondary);
-        btnConfigTab.setBackground(inputBg); btnConfigTab.setForeground(secondary);
-        btnCategoryTab.setBackground(inputBg); btnCategoryTab.setForeground(secondary);
-        activeBtn.setBackground(new Color(255, 193, 7));
-        activeBtn.setForeground(new Color(18, 18, 18));
-    }
-
-    private JButton createSubNavButton(String text, boolean isActive) {
-        JButton btn = new JButton(text);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        btn.setFocusPainted(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btn.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
-        if (isActive) {
-            btn.setBackground(new Color(255, 193, 7));
-            btn.setForeground(new Color(18, 18, 18));
-        } else {
-            btn.setBackground(new Color(40, 40, 40));
-            btn.setForeground(new Color(150, 150, 150));
-        }
-        return btn;
     }
 }

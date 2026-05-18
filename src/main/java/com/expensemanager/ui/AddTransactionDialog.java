@@ -15,6 +15,10 @@ import java.util.List;
 import java.util.UUID;
 
 public class AddTransactionDialog extends JDialog {
+
+    // =====================================================================
+    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
+    // =====================================================================
     private MainFrame mainFrame;
     private TransactionType selectedType = TransactionType.EXPENSE;
     private Category selectedCategory;
@@ -32,40 +36,41 @@ public class AddTransactionDialog extends JDialog {
 
     public static Map<String, String> customEmojiMap = new HashMap<>();
     private static final Map<String, String> CATEGORY_EMOJI = new LinkedHashMap<>();
-    static {
-        CATEGORY_EMOJI.put("Ăn uống", "\uD83C\uDF54");    // 🍔
-        CATEGORY_EMOJI.put("Đi chợ", "\uD83D\uDED2");     // 🛒
-        CATEGORY_EMOJI.put("Ăn vặt", "\uD83C\uDF7F");     // 🍿
-        CATEGORY_EMOJI.put("Trái cây", "\uD83C\uDF4E");    // 🍎
-        CATEGORY_EMOJI.put("Mua sắm", "\uD83D\uDECD");     // 🛍️
-        CATEGORY_EMOJI.put("Quần áo", "\uD83D\uDC57");     // 裙
-        CATEGORY_EMOJI.put("Điện tử", "\uD83D\uDCBB");     // 💻
-        CATEGORY_EMOJI.put("Xăng dầu", "\u26FD");         // ⛽
-        CATEGORY_EMOJI.put("Xe cộ", "\uD83C\uDFCD");      // 🏍️
-        CATEGORY_EMOJI.put("Di chuyển", "\uD83D\uDE97");   // 🚗
-        CATEGORY_EMOJI.put("Điện nước", "\u26A1");         // ⚡
-        CATEGORY_EMOJI.put("Internet", "\uD83C\uDF10");    // 🌐
-        CATEGORY_EMOJI.put("Thuê nhà", "\uD83C\uDFE2");    // 🏢
-        CATEGORY_EMOJI.put("Điện thoại", "\uD83D\uDCF1");   // 📱
-        CATEGORY_EMOJI.put("Giải trí", "\uD83C\uDFAE");    // 🎮
-        CATEGORY_EMOJI.put("Phim ảnh", "\uD83C\uDFAC");    // 🎬
-        CATEGORY_EMOJI.put("Du lịch", "\u2708");           // ✈️
-        CATEGORY_EMOJI.put("Học tập", "\uD83D\uDCDA");     // 📚
-        CATEGORY_EMOJI.put("Sức khỏe", "\uD83C\uDFE5");    // 🏥
-        CATEGORY_EMOJI.put("Thuốc men", "\uD83D\uDC8A");    // 💊
-        CATEGORY_EMOJI.put("Làm đẹp", "\uD83D\uDC84");     // 💄
-        CATEGORY_EMOJI.put("Thể thao", "\u26BD");         // ⚽
-        CATEGORY_EMOJI.put("Thú cưng", "\uD83D\uDC31");    // 🐱
-        CATEGORY_EMOJI.put("Chi khác", "\uD83D\uDCCD");    // 📌
 
-        CATEGORY_EMOJI.put("Lương", "\uD83D\uDCB0");       // 💰
-        CATEGORY_EMOJI.put("Thưởng", "\uD83D\uDCB5");      // 💵
-        CATEGORY_EMOJI.put("Học bổng", "\uD83C\uDF93");    // 🎓
-        CATEGORY_EMOJI.put("Được cho", "\u2709\uFE0F");    // ✉️
-        CATEGORY_EMOJI.put("Làm thêm", "\uD83D\uDCBC");    // 💼
-        CATEGORY_EMOJI.put("Đầu tư", "\uD83D\uDCC8");      // 📈
-        CATEGORY_EMOJI.put("Tiết kiệm", "\uD83D\uDC37");   // 🐷
-        CATEGORY_EMOJI.put("Thu khác", "\uD83E\uDE99");    // 🪙
+    static {
+        CATEGORY_EMOJI.put("Ăn uống", "\uD83C\uDF54");
+        CATEGORY_EMOJI.put("Đi chợ", "\uD83D\uDED2");
+        CATEGORY_EMOJI.put("Ăn vặt", "\uD83C\uDF7F");
+        CATEGORY_EMOJI.put("Trái cây", "\uD83C\uDF4E");
+        CATEGORY_EMOJI.put("Mua sắm", "\uD83D\uDECD");
+        CATEGORY_EMOJI.put("Quần áo", "\uD83D\uDC57");
+        CATEGORY_EMOJI.put("Điện tử", "\uD83D\uDCBB");
+        CATEGORY_EMOJI.put("Xăng dầu", "\u26FD");
+        CATEGORY_EMOJI.put("Xe cộ", "\uD83C\uDFCD");
+        CATEGORY_EMOJI.put("Di chuyển", "\uD83D\uDE97");
+        CATEGORY_EMOJI.put("Điện nước", "\u26A1");
+        CATEGORY_EMOJI.put("Internet", "\uD83C\uDF10");
+        CATEGORY_EMOJI.put("Thuê nhà", "\uD83C\uDFE2");
+        CATEGORY_EMOJI.put("Điện thoại", "\uD83D\uDCF1");
+        CATEGORY_EMOJI.put("Giải trí", "\uD83C\uDFAE");
+        CATEGORY_EMOJI.put("Phim ảnh", "\uD83C\uDFAC");
+        CATEGORY_EMOJI.put("Du lịch", "\u2708");
+        CATEGORY_EMOJI.put("Học tập", "\uD83D\uDCDA");
+        CATEGORY_EMOJI.put("Sức khỏe", "\uD83C\uDFE5");
+        CATEGORY_EMOJI.put("Thuốc men", "\uD83D\uDC8A");
+        CATEGORY_EMOJI.put("Làm đẹp", "\uD83D\uDC84");
+        CATEGORY_EMOJI.put("Thể thao", "\u26BD");
+        CATEGORY_EMOJI.put("Thú cưng", "\uD83D\uDC31");
+        CATEGORY_EMOJI.put("Chi khác", "\uD83D\uDCCD");
+
+        CATEGORY_EMOJI.put("Lương", "\uD83D\uDCB0");
+        CATEGORY_EMOJI.put("Thưởng", "\uD83D\uDCB5");
+        CATEGORY_EMOJI.put("Học bổng", "\uD83C\uDF93");
+        CATEGORY_EMOJI.put("Được cho", "\u2709\uFE0F");
+        CATEGORY_EMOJI.put("Làm thêm", "\uD83D\uDCBC");
+        CATEGORY_EMOJI.put("Đầu tư", "\uD83D\uDCC8");
+        CATEGORY_EMOJI.put("Tiết kiệm", "\uD83D\uDC37");
+        CATEGORY_EMOJI.put("Thu khác", "\uD83E\uDE99");
     }
 
     private final Color BG_COLOR = new Color(18, 18, 18);
@@ -73,6 +78,9 @@ public class AddTransactionDialog extends JDialog {
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
     private final Color TEXT_PRIMARY = new Color(240, 240, 240);
 
+    // =====================================================================
+    // 2. CONSTRUCTOR VÀ KHỞI TẠO BỐ CỤC UI
+    // =====================================================================
     public AddTransactionDialog(MainFrame parent) {
         super(parent, parent != null && parent.isVietnamese() ? "Thêm giao dịch mới" : "Add New Transaction", true);
         this.mainFrame = parent;
@@ -85,6 +93,11 @@ public class AddTransactionDialog extends JDialog {
         getContentPane().setBackground(BG_COLOR);
         setLayout(new BorderLayout());
 
+        initComponents();
+        refreshCategories();
+    }
+
+    private void initComponents() {
         JPanel header = new JPanel(new GridLayout(1, 2, 10, 0));
         header.setBackground(BG_COLOR);
         header.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
@@ -122,12 +135,12 @@ public class AddTransactionDialog extends JDialog {
         categoryScrollPane.getViewport().setBackground(BG_COLOR);
         categoryScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         categoryScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
-        categoryScrollPane.setAlignmentX(Component.CENTER_ALIGNMENT); // 🌟 CĂN GIỮA KHUNG DANH MỤC
+        categoryScrollPane.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(categoryScrollPane);
 
         JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 4));
         paginationPanel.setOpaque(false);
-        paginationPanel.setAlignmentX(Component.CENTER_ALIGNMENT); // 🌟 CĂN GIỮA KHỐI ĐIỀU HƯỚNG TRANG
+        paginationPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         btnPrevPage = createArrowButton("<");
         btnNextPage = createArrowButton(">");
@@ -177,7 +190,7 @@ public class AddTransactionDialog extends JDialog {
         scrollNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
         scrollNote.setMinimumSize(new Dimension(10, 58));
         scrollNote.setPreferredSize(new Dimension(10, 58));
-        scrollNote.setAlignmentX(Component.CENTER_ALIGNMENT); // 🌟 CĂN GIỮA Ô GHI CHÚ
+        scrollNote.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(scrollNote);
 
         centerPanel.add(Box.createVerticalGlue());
@@ -206,10 +219,11 @@ public class AddTransactionDialog extends JDialog {
         footer.add(btnCancel);
         footer.add(btnSave);
         add(footer, BorderLayout.SOUTH);
-
-        refreshCategories();
     }
 
+    // =====================================================================
+    // 3. QUẢN LÝ LỌC & PHÂN TRANG DANH MỤC
+    // =====================================================================
     private void switchType(TransactionType type) {
         this.selectedType = type;
         this.currentPage = 1;
@@ -344,6 +358,9 @@ public class AddTransactionDialog extends JDialog {
         return item;
     }
 
+    // =====================================================================
+    // 4. LƯU GIAO DỊCH
+    // =====================================================================
     private void saveTransaction() {
         try {
             String userId = SessionManager.getCurrentUserId();
@@ -378,10 +395,23 @@ public class AddTransactionDialog extends JDialog {
         }
     }
 
-    public static void addCustomEmoji(String categoryName, String emoji) { customEmojiMap.put(categoryName, emoji); }
-    private JButton createTypeButton(String text, boolean active) { JButton b = new JButton(text); b.setFont(new Font("Segoe UI", Font.BOLD, 14)); b.setFocusPainted(false); b.setBackground(active ? (text.contains("CHI") || text.contains("EXP") ? new Color(244, 67, 54) : new Color(76, 175, 80)) : SURFACE_COLOR); b.setForeground(Color.WHITE); b.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0)); return b; }
+    // =====================================================================
+    // 5. TIỆN ÍCH GIAO DIỆN (UI STYLES)
+    // =====================================================================
+    public static void addCustomEmoji(String categoryName, String emoji) {
+        customEmojiMap.put(categoryName, emoji);
+    }
 
-    // 🌟 ĐÃ CẬP NHẬT: Căn chữ nhãn tiêu đề ra giữa và thiết kế căn lề khối trong BoxLayout
+    private JButton createTypeButton(String text, boolean active) {
+        JButton b = new JButton(text);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        b.setFocusPainted(false);
+        b.setBackground(active ? (text.contains("CHI") || text.contains("EXP") ? new Color(244, 67, 54) : new Color(76, 175, 80)) : SURFACE_COLOR);
+        b.setForeground(Color.WHITE);
+        b.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        return b;
+    }
+
     private JLabel createLabel(String text) {
         JLabel l = new JLabel(text, SwingConstants.CENTER);
         l.setForeground(new Color(150, 150, 150));
@@ -390,16 +420,25 @@ public class AddTransactionDialog extends JDialog {
         return l;
     }
 
-    private JButton createArrowButton(String text) { JButton btn = new JButton(text); btn.setFont(new Font("Segoe UI", Font.BOLD, 14)); btn.setForeground(TEXT_PRIMARY); btn.setBackground(SURFACE_COLOR); btn.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55), 1)); btn.setFocusPainted(false); btn.setPreferredSize(new Dimension(36, 28)); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); return btn; }
+    private JButton createArrowButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(TEXT_PRIMARY);
+        btn.setBackground(SURFACE_COLOR);
+        btn.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55), 1));
+        btn.setFocusPainted(false);
+        btn.setPreferredSize(new Dimension(36, 28));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
 
-    // 🌟 ĐÃ CẬP NHẬT: Căn giữa chữ người dùng nhập vào ô Textfield số tiền
     private void styleTextField(JTextField tf, String placeholder) {
         tf.setBackground(SURFACE_COLOR);
         tf.setForeground(TEXT_PRIMARY);
         tf.setCaretColor(ACCENT_YELLOW);
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         tf.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(50, 50, 50)), BorderFactory.createEmptyBorder(10, 12, 10, 12)));
-        tf.setHorizontalAlignment(JTextField.CENTER); // Căn giữa chữ
-        tf.setAlignmentX(Component.CENTER_ALIGNMENT); // Căn giữa khối
+        tf.setHorizontalAlignment(JTextField.CENTER);
+        tf.setAlignmentX(Component.CENTER_ALIGNMENT);
     }
 }
