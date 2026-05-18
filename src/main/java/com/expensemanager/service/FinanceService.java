@@ -131,4 +131,25 @@ public class FinanceService extends Subject {
         try { JsonUtil.saveToJson(transactionList, JSON_FILE_PATH); }
         catch (DataLoadException e) { System.err.println("Lỗi lưu JSON: " + e.getMessage()); }
     }
+    // ====================================================================
+    // 🌟 THÊM MỚI: LẤY MỐC NGÀY XA NHẤT TRONG QUÁ KHỨ CÓ GIAO DỊCH
+    // ====================================================================
+    public java.time.LocalDate getEarliestTransactionDate() {
+        if (transactionList == null || transactionList.isEmpty()) return null;
+        return transactionList.stream()
+                .map(t -> t.getDateTime().toLocalDate())
+                .min(java.time.LocalDate::compareTo)
+                .orElse(null);
+    }
+
+    // ====================================================================
+    // 🌟 THÊM MỚI: LẤY MỐC NGÀY MỚI NHẤT CÓ GIAO DỊCH TRONG HỆ THỐNG
+    // ====================================================================
+    public java.time.LocalDate getLatestTransactionDate() {
+        if (transactionList == null || transactionList.isEmpty()) return null;
+        return transactionList.stream()
+                .map(t -> t.getDateTime().toLocalDate())
+                .max(java.time.LocalDate::compareTo)
+                .orElse(null);
+    }
 }

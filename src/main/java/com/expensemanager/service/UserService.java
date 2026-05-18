@@ -10,14 +10,16 @@ import java.util.UUID;
 public class UserService {
 
     public static User register(String username, String password, String nickname, String email, String gender) {
+        // 🌟 KHẮC PHỤC: Ném lỗi nghiệp vụ rõ ràng, không âm thầm trả về null
         if (DatabaseUtil.getUserByUsername(username) != null) {
-            return null; // đã tồn tại
+            boolean isVN = "vi".equalsIgnoreCase(SessionManager.getLanguage());
+            throw new IllegalArgumentException(isVN ?
+                    "Tên đăng nhập đã tồn tại trên hệ thống!" : "Username already exists!");
         }
         String id = UUID.randomUUID().toString().substring(0, 8);
         String passwordHash = hashPassword(password);
-        User user = new User(id, username, passwordHash, nickname);
-        user.setEmail(email);
-        user.setGender(gender);
+
+        User user = new User(id, username, passwordHash, nickname, email, gender);
         DatabaseUtil.insertUser(user);
         return user;
     }
@@ -33,7 +35,6 @@ public class UserService {
         return null;
     }
 
-    // Đổi thành public static để ProfilePanel có thể gọi
     public static String hashPassword(String password) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -46,7 +47,7 @@ public class UserService {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Lỗi hệ thống mã hóa bảo mật SHA-256", e);
         }
     }
 }

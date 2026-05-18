@@ -110,7 +110,7 @@ public class SettingsPanel extends JPanel {
 
         if (isVietnamese) {
             lblMainTitle.setText("Cài đặt hệ thống");
-            btnAccountTab.setText("Thông diễn cá nhân");
+            btnAccountTab.setText("Thông tin cá nhân");
             btnConfigTab.setText("Cấu hình hệ thống");
             btnCategoryTab.setText("Quản lý danh mục");
         } else {

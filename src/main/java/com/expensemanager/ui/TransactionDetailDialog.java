@@ -38,9 +38,10 @@ public class TransactionDetailDialog extends JDialog {
         Category cat = transaction.getCategory();
         String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "\uD83D\uDCCD") : "\uD83D\uDCCD";
 
-        // 🌟 KHẮC PHỤC CHÍNH XÁC: Gọi setFont gốc để hiển thị Emoji đầy đủ màu sắc, không dùng thẻ HTML
         JLabel lblIcon = new JLabel(emoji);
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 44));
+        // 🌟 KHẮC PHỤC CHÍNH XÁC: Ép phủ màu trắng sáng cho icon tĩnh xem chi tiết không bị tối mờ
+        lblIcon.setForeground(Color.WHITE);
         headerPanel.add(lblIcon, BorderLayout.WEST);
 
         JPanel textPanel = new JPanel(new GridLayout(2, 1, 0, 4));

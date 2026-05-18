@@ -2,6 +2,8 @@ package com.expensemanager.service;
 
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Budget;
+import com.expensemanager.entity.Transaction;
+import com.expensemanager.entity.TransactionType;
 import com.expensemanager.exception.InvalidAmountException;
 
 public class BudgetManager {
@@ -9,10 +11,6 @@ public class BudgetManager {
 
     public BudgetManager(FinanceService financeService) {
         this.financeService = financeService;
-    }
-
-    public FinanceService getFinanceService() {
-        return financeService;
     }
 
     public void setBudget(int month, int year, double limit) throws InvalidAmountException {
@@ -27,18 +25,30 @@ public class BudgetManager {
     public String checkBudget() {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) return "Chưa đăng nhập";
+
         int month = java.time.LocalDate.now().getMonthValue();
         int year = java.time.LocalDate.now().getYear();
         Budget budget = DatabaseUtil.getBudget(month, year, userId);
         if (budget == null) return "Chưa thiết lập ngân sách.";
-        budget.setSpent(financeService.getTotalExpense());
+
+        // 🌟 KHẮC PHỤC: Chỉ tính tổng CHI TIÊU của đúng THÁNG và NĂM hiện tại
+        double monthlyExpense = financeService.getAllTransactions().stream()
+                .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
+                .filter(t -> t.getDateTime().getMonthValue() == month)
+                .filter(t -> t.getDateTime().getYear() == year)
+                .mapToDouble(Transaction::getAmount)
+                .sum();
+
+        budget.setSpent(monthlyExpense);
         DatabaseUtil.updateBudget(budget);
+
+        boolean isVN = "vi".equalsIgnoreCase(SessionManager.getLanguage());
         if (budget.isOverBudget()) {
-            return String.format("⚠️ Vượt ngân sách! Hạn mức: %,.0f VND, đã chi: %,.0f VND",
+            return String.format(isVN ? "⚠️ Vượt ngân sách! Hạn mức: %,.0f VND, đã chi: %,.0f VND"
+                            : "⚠️ Over Budget! Limit: %,.0f VND, Spent: %,.0f VND",
                     budget.getLimit(), budget.getSpent());
         } else {
-            return String.format("✅ Còn %,.0f VND trong hạn mức %,.0f VND",
-                    budget.getRemaining(), budget.getLimit());
+            return String.format(isVN ? "✅ Còn lại: %,.0f VND" : "✅ Remaining: %,.0f VND", budget.getRemaining());
         }
     }
 }

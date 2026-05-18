@@ -85,17 +85,18 @@ public class StatisticsPanel extends JPanel implements Observer {
         topHeaderPanel.add(chartToggleWrapper, BorderLayout.EAST);
         add(topHeaderPanel, BorderLayout.NORTH);
 
-        // --- KHÔNG GIAN TRUNG TÂM (PHÂN CHIA TỈ LỆ VÀNG 6.5 / 3.5) ---
+        // --- KHÔNG GIAN TRUNG TÂM TỶ LỆ 6.5 / 3.5 CỐ ĐỊNH ---
         JPanel mainGrid = new JPanel(new GridBagLayout());
         mainGrid.setOpaque(false);
         GridBagConstraints mainGbc = new GridBagConstraints();
         mainGbc.fill = GridBagConstraints.BOTH;
         mainGbc.weighty = 1.0;
 
-        // CỘT TRÁI: KHUNG ĐỒ THỊ BIỂU ĐỒ (Chiếm 65% bề rộng)
+        // CỘT TRÁI: KHUNG ĐỒ THỊ BIỂU ĐỒ (65%)
         JPanel leftChartCard = new JPanel(new BorderLayout(0, 10));
         leftChartCard.setBackground(SURFACE_COLOR);
         leftChartCard.setBorder(BorderFactory.createLineBorder(new Color(45, 45, 45), 1, true));
+        leftChartCard.setPreferredSize(new Dimension(0, 0));
 
         JPanel timeNavPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         timeNavPanel.setOpaque(false);
@@ -127,13 +128,14 @@ public class StatisticsPanel extends JPanel implements Observer {
         mainGbc.weightx = 0.65;
         mainGrid.add(leftChartCard, mainGbc);
 
-        // CỘT PHẢI: KHUNG CHÚ THÍCH TIẾN ĐỘ (Chiếm 35% bề rộng)
+        // CỘT PHẢI: KHUNG CHÚ THÍCH TIẾN ĐỘ (35%)
         JPanel rightLegendCard = new JPanel(new BorderLayout(0, 15));
         rightLegendCard.setBackground(SURFACE_COLOR);
         rightLegendCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(45, 45, 45), 1, true),
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
+        rightLegendCard.setPreferredSize(new Dimension(0, 0));
 
         JPanel rightTabsRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 5));
         rightTabsRow.setOpaque(false);
@@ -150,7 +152,6 @@ public class StatisticsPanel extends JPanel implements Observer {
         rightTabsRow.add(btnYearTab);
         rightLegendCard.add(rightTabsRow, BorderLayout.NORTH);
 
-        // 🌟 KHẮC PHỤC TRIỆT ĐỂ: Dùng GridBagLayout trực tiếp cho legendPanel để kiểm soát co giãn chiều rộng 100%
         legendPanel = new JPanel();
         legendPanel.setLayout(new GridBagLayout());
         legendPanel.setBackground(SURFACE_COLOR);
@@ -160,7 +161,6 @@ public class StatisticsPanel extends JPanel implements Observer {
         legendScroll.setOpaque(false);
         legendScroll.getViewport().setOpaque(false);
 
-        // 🌟 KHẮC PHỤC CHÍ MẠNG: Khóa chết thanh cuộn ngang rác, ép con lăn dọc hoạt động mượt tốc độ x32
         legendScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         legendScroll.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
         legendScroll.getVerticalScrollBar().setUnitIncrement(32);
@@ -201,6 +201,53 @@ public class StatisticsPanel extends JPanel implements Observer {
             lblTimeRange.setText(isVietnamese ? "Năm " + targetDate.getYear() : "Year " + targetDate.getYear());
         }
 
+        // 🌟 NÂNG CẤP: LOGIC KHÓA NÚT ĐIỀU HƯỚNG THEO TUẦN/THÁNG/NĂM CHỐNG ĐI VÀO VÙNG KHÔNG CÓ DATA
+        LocalDate earliestTxDate = financeService.getEarliestTransactionDate();
+        LocalDate latestTxDate = financeService.getLatestTransactionDate();
+        LocalDate realTimeNow = LocalDate.now();
+
+        if (earliestTxDate == null || latestTxDate == null) {
+            if (btnPrevTime != null) btnPrevTime.setEnabled(false);
+            if (btnNextTime != null) btnNextTime.setEnabled(false);
+        } else {
+            // Kiểm tra biên lùi (<)
+            LocalDate checkPrev = LocalDate.now();
+            if ("week".equals(currentMode)) checkPrev = realTimeNow.plusWeeks(currentOffset - 1);
+            else if ("month".equals(currentMode)) checkPrev = realTimeNow.plusMonths(currentOffset - 1);
+            else checkPrev = realTimeNow.plusYears(currentOffset - 1);
+
+            if ("week".equals(currentMode)) {
+                btnPrevTime.setEnabled(!checkPrev.with(java.time.DayOfWeek.SUNDAY).isBefore(earliestTxDate.with(java.time.DayOfWeek.MONDAY)));
+            } else if ("month".equals(currentMode)) {
+                btnPrevTime.setEnabled(!checkPrev.withDayOfMonth(1).isBefore(earliestTxDate.withDayOfMonth(1)));
+            } else {
+                btnPrevTime.setEnabled(checkPrev.getYear() >= earliestTxDate.getYear());
+            }
+
+            // Kiểm tra biên tiến (>)
+            LocalDate checkNext = LocalDate.now();
+            if ("week".equals(currentMode)) checkNext = realTimeNow.plusWeeks(currentOffset + 1);
+            else if ("month".equals(currentMode)) checkNext = realTimeNow.plusMonths(currentOffset + 1);
+            else checkNext = realTimeNow.plusYears(currentOffset + 1);
+
+            boolean isNextInFuture = false;
+            boolean isNextPastDataBounds = false;
+
+            if ("week".equals(currentMode)) {
+                isNextInFuture = checkNext.with(java.time.DayOfWeek.MONDAY).isAfter(realTimeNow.with(java.time.DayOfWeek.SUNDAY));
+                isNextPastDataBounds = checkNext.with(java.time.DayOfWeek.MONDAY).isAfter(latestTxDate);
+            } else if ("month".equals(currentMode)) {
+                isNextInFuture = checkNext.withDayOfMonth(1).isAfter(realTimeNow.withDayOfMonth(realTimeNow.lengthOfMonth()));
+                isNextPastDataBounds = checkNext.withDayOfMonth(1).isAfter(latestTxDate.withDayOfMonth(latestTxDate.lengthOfMonth()));
+            } else {
+                isNextInFuture = checkNext.getYear() > realTimeNow.getYear();
+                isNextPastDataBounds = checkNext.getYear() > latestTxDate.getYear();
+            }
+            if (btnNextTime != null) {
+                btnNextTime.setEnabled(!isNextInFuture && !isNextPastDataBounds);
+            }
+        }
+
         int month = targetDate.getMonthValue();
         int year = targetDate.getYear();
         double totalExpense = statsService.calculateTotal(month, year, TransactionType.EXPENSE);
@@ -223,7 +270,6 @@ public class StatisticsPanel extends JPanel implements Observer {
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                 .collect(Collectors.toList());
 
-        // Cấu hình GridBagConstraints cho các dòng danh mục ép căng rộng lấp đầy không gian
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -243,7 +289,7 @@ public class StatisticsPanel extends JPanel implements Observer {
             JPanel textRow = new JPanel(new BorderLayout());
             textRow.setOpaque(false);
 
-            JPanel leftGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+            JPanel leftGroup = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
             leftGroup.setOpaque(false);
 
             JPanel indicator = new JPanel();
@@ -295,7 +341,6 @@ public class StatisticsPanel extends JPanel implements Observer {
             separator.setForeground(new Color(45, 45, 45));
             borderWrapper.add(separator, BorderLayout.SOUTH);
 
-            // 🌟 KHÔI PHỤC CHIỀU CAO LỚN SANG TRỌNG: Gán preferred height cao ráo (60px) cho giãn cách thoáng đẹp
             borderWrapper.setPreferredSize(new Dimension(100, 60));
 
             gbc.gridy = ci;
@@ -303,12 +348,11 @@ public class StatisticsPanel extends JPanel implements Observer {
             ci++;
         }
 
-        // 🌟 GIẢI PHÁP LÒ XO DỌC: Thêm một khối nệm vô hình ở đáy để thu hút khoảng trống thừa, ghim chặt danh sách lên đầu
         GridBagConstraints pushGbc = new GridBagConstraints();
         pushGbc.gridx = 0;
         pushGbc.gridy = ci;
         pushGbc.weightx = 1.0;
-        pushGbc.weighty = 1.0; // Hấp thụ không gian trống dọc
+        pushGbc.weighty = 1.0;
         pushGbc.fill = GridBagConstraints.BOTH;
         JPanel verticalFiller = new JPanel();
         verticalFiller.setOpaque(false);
@@ -316,11 +360,11 @@ public class StatisticsPanel extends JPanel implements Observer {
 
         legendPanel.revalidate();
         legendPanel.repaint();
+        chartDrawPanel.revalidate();
         chartDrawPanel.repaint();
     }
 
     private void paintCustomChart(Graphics g) {
-        // 🌟 ĐÃ SỬA DỨT ĐIỂM: Khôi phục biểu thức ép kiểu Graphics2D sạch lỗi gõ phím sai cú pháp
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
@@ -420,24 +464,35 @@ public class StatisticsPanel extends JPanel implements Observer {
 
             double maxValue = 0;
             for (double v : timeValues) if (v > maxValue) maxValue = v;
-            if (maxValue == 0) maxValue = 1.0;
 
-            int paddingLeft = 45; int paddingRight = 25; int paddingTop = 35; int paddingBottom = 40;
+            double step = Math.ceil((maxValue / 2.0) / 50000.0) * 50000.0;
+            if (step == 0) step = 50000.0;
+            double ceilMaxValue = step * 2;
+
+            int paddingLeft = 75; int paddingRight = 25; int paddingTop = 35; int paddingBottom = 40;
             int chartW = w - paddingLeft - paddingRight; int chartH = h - paddingTop - paddingBottom;
 
-            g2.setStroke(new BasicStroke(1f)); g2.setColor(new Color(50, 50, 50));
-            int numGridLines = 4;
-            for (int i = 0; i <= numGridLines; i++) {
-                int yGrid = paddingTop + (i * chartH / numGridLines);
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+            for (int i = 0; i <= 2; i++) {
+                int yGrid = paddingTop + (i * chartH / 2);
+
+                g2.setStroke(new BasicStroke(1f));
+                g2.setColor(new Color(255, 255, 255, 35));
                 g2.drawLine(paddingLeft, yGrid, w - paddingRight, yGrid);
+
+                double currentTickValue = ceilMaxValue - (i * step);
+                String tickLabel = isVietnamese ? String.format("%,.0f đ", currentTickValue) : String.format("%,.0f", currentTickValue);
+
+                g2.setColor(TEXT_MUTED);
+                int labelW = g2.getFontMetrics().stringWidth(tickLabel);
+                g2.drawString(tickLabel, paddingLeft - labelW - 8, yGrid + 4);
             }
 
             int[] pointsX = new int[numPoints]; int[] pointsY = new int[numPoints];
             int stepX = numPoints > 1 ? chartW / (numPoints - 1) : chartW;
             for (int i = 0; i < numPoints; i++) {
                 pointsX[i] = paddingLeft + (i * stepX);
-                double ratio = timeValues[i] / maxValue;
-                pointsY[i] = h - paddingBottom - (int) (ratio * (chartH - 20));
+                pointsY[i] = (h - paddingBottom) - (int) ((timeValues[i] / ceilMaxValue) * chartH);
             }
 
             for (int i = 0; i < numPoints - 1; i++) {
@@ -513,5 +568,10 @@ public class StatisticsPanel extends JPanel implements Observer {
         refreshData();
     }
 
-    @Override public void update(EventType eventType, Object data) { if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.TRANSACTION_UPDATED || eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) { SwingUtilities.invokeLater(() -> refreshData()); } }
+    @Override
+    public void update(EventType eventType, Object data) {
+        if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.TRANSACTION_UPDATED || eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) {
+            SwingUtilities.invokeLater(() -> refreshData());
+        }
+    }
 }

@@ -16,11 +16,20 @@ public class CategoryManagerPanel extends JPanel {
     private MainFrame mainFrame;
     private boolean isVietnamese;
 
+    // --- CẤU TRÚC MỚI: Khung lưới danh mục đang khả dụng dạng 9x2 ---
     private JPanel listCard;
-    private JLabel lblListTitle;
-    private JList<Category> categoryList;
-    private DefaultListModel<Category> listModel;
+    private JLabel lblListTitle, lblListPageIndicator;
+    private JPanel listGridPanel, listGridWrapper, listPaginationPanel;
+    private JButton btnPrevListPage, btnNextListPage;
     private JButton btnDeleteCategory;
+    private Category selectedCategoryForDelete;
+
+    // 🌟 PHÂN CHIA THU VÀ CHI TRÊN KHUNG DANH SÁCH KHẢ DỤNG
+    private JButton btnListExpense, btnListIncome;
+    private TransactionType currentListType = TransactionType.EXPENSE;
+
+    private int currentListPage = 1;
+    private final int LIST_PER_PAGE = 18; // Lưới 9 cột x 2 hàng cố định
 
     private JPanel addCard;
     private JLabel lblCategoryTitle, lblCatNameHint, lblCatIconHint, lblCatTypeHint, lblEmojiPageIndicator;
@@ -60,6 +69,7 @@ public class CategoryManagerPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
+        // --- CẤU TRÚC LƯỚI KHUNG TRÊN (DANH SÁCH DANH MỤC KHẢ DỤNG) ---
         listCard = new JPanel(new BorderLayout(0, 10));
         listCard.setBackground(SURFACE_COLOR);
         listCard.setBorder(BorderFactory.createCompoundBorder(
@@ -68,23 +78,77 @@ public class CategoryManagerPanel extends JPanel {
         ));
         listCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // Tạo Panel Header chứa tiêu đề (Trái) và Tab phân loại Chi/Thu ghim bên phải (East)
+        JPanel listHeaderPanel = new JPanel(new BorderLayout());
+        listHeaderPanel.setOpaque(false);
+
         lblListTitle = new JLabel();
         lblListTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
         lblListTitle.setForeground(ACCENT_YELLOW);
-        listCard.add(lblListTitle, BorderLayout.NORTH);
+        listHeaderPanel.add(lblListTitle, BorderLayout.WEST);
 
-        listModel = new DefaultListModel<>();
-        categoryList = new JList<>(listModel);
-        categoryList.setBackground(INPUT_BG);
-        categoryList.setForeground(TEXT_PRIMARY);
-        categoryList.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        categoryList.setSelectionBackground(ACCENT_YELLOW);
-        categoryList.setSelectionForeground(SURFACE_COLOR);
-        categoryList.setCellRenderer(new CategoryCellRenderer());
+        JPanel listTypeTabsRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        listTypeTabsRow.setOpaque(false);
 
-        JScrollPane scrollPane = new JScrollPane(categoryList);
-        scrollPane.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55)));
-        listCard.add(scrollPane, BorderLayout.CENTER);
+        btnListExpense = createListTypeTabButton("Khoản chi", true);
+        btnListIncome = createListTypeTabButton("Khoản thu", false);
+
+        btnListExpense.addActionListener(e -> {
+            currentListType = TransactionType.EXPENSE;
+            currentListPage = 1;
+            selectedCategoryForDelete = null; // reset đệm chọn khi chuyển tab
+            selectListTypeTab(btnListExpense);
+            refreshCategories();
+        });
+
+        btnListIncome.addActionListener(e -> {
+            currentListType = TransactionType.INCOME;
+            currentListPage = 1;
+            selectedCategoryForDelete = null; // reset đệm chọn khi chuyển tab
+            selectListTypeTab(btnListIncome);
+            refreshCategories();
+        });
+
+        listTypeTabsRow.add(btnListExpense);
+        listTypeTabsRow.add(btnListIncome);
+        listHeaderPanel.add(listTypeTabsRow, BorderLayout.EAST);
+        listCard.add(listHeaderPanel, BorderLayout.NORTH);
+
+        // Khởi tạo lưới phân trang 9x2 đồng bộ với khung bên dưới
+        listGridPanel = new JPanel(new GridLayout(2, 9, 8, 8));
+        listGridPanel.setBackground(SURFACE_COLOR);
+
+        listGridWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        listGridWrapper.setOpaque(false);
+        listGridWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        listGridWrapper.add(listGridPanel);
+
+        // Thanh điều phối phân trang cho lưới danh mục khả dụng
+        listPaginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        listPaginationPanel.setOpaque(false);
+        listPaginationPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        btnPrevListPage = createPaginationButton("<");
+        btnNextListPage = createPaginationButton(">");
+        lblListPageIndicator = new JLabel();
+        lblListPageIndicator.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblListPageIndicator.setForeground(TEXT_PRIMARY);
+        lblListPageIndicator.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
+
+        btnPrevListPage.addActionListener(e -> { if (currentListPage > 1) { currentListPage--; refreshCategories(); } });
+        btnNextListPage.addActionListener(e -> { currentListPage++; refreshCategories(); });
+
+        listPaginationPanel.add(btnPrevListPage);
+        listPaginationPanel.add(lblListPageIndicator);
+        listPaginationPanel.add(btnNextListPage);
+
+        JPanel listCenterContainer = new JPanel();
+        listCenterContainer.setLayout(new BoxLayout(listCenterContainer, BoxLayout.Y_AXIS));
+        listCenterContainer.setOpaque(false);
+        listCenterContainer.add(listGridWrapper);
+        listCenterContainer.add(Box.createVerticalStrut(8));
+        listCenterContainer.add(listPaginationPanel);
+        listCard.add(listCenterContainer, BorderLayout.CENTER);
 
         btnDeleteCategory = new JButton();
         btnDeleteCategory.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -97,6 +161,7 @@ public class CategoryManagerPanel extends JPanel {
         add(listCard);
         add(Box.createVerticalStrut(20));
 
+        // --- KHUNG DƯỚI (THÊM DANH MỤC MỚI) ---
         addCard = new JPanel(new BorderLayout());
         addCard.setBackground(SURFACE_COLOR);
         addCard.setBorder(BorderFactory.createCompoundBorder(
@@ -146,7 +211,6 @@ public class CategoryManagerPanel extends JPanel {
         add(addCard);
 
         updateResponsiveLayout(isVietnamese, 560);
-        refreshCategories();
     }
 
     public void updateResponsiveLayout(boolean isVN, int fluidWidth) {
@@ -157,15 +221,31 @@ public class CategoryManagerPanel extends JPanel {
 
         setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
 
+        // Tăng chiều cao của listCard để chứa vừa vặn Grid danh mục, thanh phân trang mới và header danh mục
+        int totalListCardH = 42 + gridH + 8 + 32 + 10 + 36 + 15;
         if (listCard != null) {
-            listCard.setPreferredSize(new Dimension(fluidWidth, 210));
-            listCard.setMaximumSize(new Dimension(fluidWidth, 210));
-            listCard.setMinimumSize(new Dimension(fluidWidth, 210));
+            listCard.setPreferredSize(new Dimension(fluidWidth, totalListCardH));
+            listCard.setMaximumSize(new Dimension(fluidWidth, totalListCardH));
+            listCard.setMinimumSize(new Dimension(fluidWidth, totalListCardH));
+        }
+        if (listGridPanel != null) {
+            listGridPanel.setPreferredSize(new Dimension(fluidWidth - 48, gridH));
+            listGridPanel.setMaximumSize(new Dimension(fluidWidth - 48, gridH));
+            listGridPanel.setMinimumSize(new Dimension(fluidWidth - 48, gridH));
+        }
+        if (listGridWrapper != null) {
+            listGridWrapper.setPreferredSize(new Dimension(fluidWidth - 48, gridH));
+            listGridWrapper.setMaximumSize(new Dimension(fluidWidth - 48, gridH));
+        }
+        if (listPaginationPanel != null) {
+            listPaginationPanel.setPreferredSize(new Dimension(fluidWidth - 48, 32));
+            listPaginationPanel.setMaximumSize(new Dimension(fluidWidth - 48, 32));
         }
         if (btnDeleteCategory != null) {
             btnDeleteCategory.setPreferredSize(new Dimension(fluidWidth, 36));
             btnDeleteCategory.setMaximumSize(new Dimension(fluidWidth, 36));
         }
+
         if (addCard != null) {
             addCard.setPreferredSize(new Dimension(fluidWidth, 540));
             addCard.setMaximumSize(new Dimension(fluidWidth, 540));
@@ -199,42 +279,135 @@ public class CategoryManagerPanel extends JPanel {
 
         if (isVN) {
             lblListTitle.setText("Danh sách các danh mục đang khả dụng");
+            if (btnListExpense != null) btnListExpense.setText("Khoản chi");
+            if (btnListIncome != null) btnListIncome.setText("Khoản thu");
             btnDeleteCategory.setText("XÓA DANH MỤC ĐANG CHỌN");
             lblCategoryTitle.setText("Thêm danh mục chi tiêu / thu nhập mới");
             lblCatNameHint.setText("Tên danh mục mới:"); lblCatIconHint.setText("Chọn Icon/Emoji đại diện:"); lblCatTypeHint.setText("Phân loại danh mục:"); btnSaveCategory.setText("XÁC NHẬN THÊM DANH MỤC");
             comboCategoryType.setModel(new DefaultComboBoxModel<>(new String[]{"Khoản chi tiêu (EXPENSE)", "Khoản thu nhập (INCOME)"}));
         } else {
-            // 🌟 ĐÃ SỬA: Chuyển đổi ComboBox sang tiếng Anh chính xác
             lblListTitle.setText("Available System Categories List");
+            if (btnListExpense != null) btnListExpense.setText("Expenses");
+            if (btnListIncome != null) btnListIncome.setText("Incomes");
             btnDeleteCategory.setText("DELETE SELECTED CATEGORY");
             lblCategoryTitle.setText("Add New Expense / Income Category");
             lblCatNameHint.setText("New Category Name:"); lblCatIconHint.setText("Select Representative Icon/Emoji:"); lblCatTypeHint.setText("Category Type:"); btnSaveCategory.setText("CONFIRM ADD CATEGORY");
             comboCategoryType.setModel(new DefaultComboBoxModel<>(new String[]{"Expense (CHI TIÊU)", "Income (THU NHẬP)"}));
         }
+
+        if (btnListExpense != null && btnListIncome != null) {
+            btnListExpense.setBackground(currentListType == TransactionType.EXPENSE ? ACCENT_YELLOW : INPUT_BG);
+            btnListExpense.setForeground(currentListType == TransactionType.EXPENSE ? SURFACE_COLOR : TEXT_PRIMARY);
+            btnListIncome.setBackground(currentListType == TransactionType.INCOME ? ACCENT_YELLOW : INPUT_BG);
+            btnListIncome.setForeground(currentListType == TransactionType.INCOME ? SURFACE_COLOR : TEXT_PRIMARY);
+        }
+
         if (currentTypeIndex >= 0 && currentTypeIndex < comboCategoryType.getItemCount()) comboCategoryType.setSelectedIndex(currentTypeIndex);
 
-        // Ép danh sách hiển thị cập nhật ngay ngôn ngữ mới
-        if (categoryList != null) {
-            categoryList.repaint();
-        }
+        refreshCategories();
         refreshEmojiGrid();
     }
 
+    // 🌟 RENDER LƯỚI KHẢ DỤNG: Lọc theo Chi/Thu độc lập và hiển thị dạng lưới phân trang 9x2
     public void refreshCategories() {
-        listModel.clear();
+        if (listGridPanel == null) return;
+        listGridPanel.removeAll();
+
         List<Category> categories = DatabaseUtil.getAllCategories();
+        // Lọc danh mục bám sát theo tab Chi tiêu hoặc Thu nhập đang chọn
+        List<Category> filteredCategories = new java.util.ArrayList<>();
         for (Category c : categories) {
-            if (c != null) listModel.addElement(c);
+            if (c != null && c.getType() == currentListType) {
+                filteredCategories.add(c);
+            }
         }
+
+        int totalItems = filteredCategories.size();
+        int totalPages = (int) Math.ceil((double) totalItems / LIST_PER_PAGE);
+        if (totalPages == 0) totalPages = 1;
+
+        if (currentListPage > totalPages) currentListPage = totalPages;
+        if (currentListPage < 1) currentListPage = 1;
+
+        lblListPageIndicator.setText((isVietnamese ? "Trang " : "Page ") + currentListPage + " / " + totalPages);
+        btnPrevListPage.setEnabled(currentListPage > 1);
+        btnNextListPage.setEnabled(currentListPage < totalPages);
+
+        int startIndex = (currentListPage - 1) * LIST_PER_PAGE;
+        int endIndex = Math.min(startIndex + LIST_PER_PAGE, totalItems);
+
+        int displayedCount = 0;
+        for (int i = startIndex; i < endIndex; i++) {
+            listGridPanel.add(createCategoryListCellComponent(filteredCategories.get(i)));
+            displayedCount++;
+        }
+
+        // Thêm các ô trống giữ chỗ vô hình ở trang cuối để giữ form lưới 9x2 vuông vắn đối xứng
+        for (int i = displayedCount; i < LIST_PER_PAGE; i++) {
+            JPanel placeholder = new JPanel(); placeholder.setOpaque(false); listGridPanel.add(placeholder);
+        }
+
+        listGridPanel.revalidate();
+        listGridPanel.repaint();
+    }
+
+    // Thành phần ô cấu tạo danh mục khả dụng, bẫy chống tràn chuỗi và logic hoán màu chữ đen nền vàng
+    private JPanel createCategoryListCellComponent(Category c) {
+        JPanel cell = new JPanel(new BorderLayout(0, 4));
+        cell.setPreferredSize(new Dimension(getEmojiCellWidth(), getEmojiCellHeight()));
+        cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cell.setOpaque(false);
+
+        String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
+
+        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        lblIcon.setOpaque(true);
+
+        // Đổi màu tương phản: Được chọn nền vàng chữ đen / Chưa chọn nền tối chữ trắng
+        if (selectedCategoryForDelete != null && selectedCategoryForDelete.getId().equals(c.getId())) {
+            lblIcon.setBackground(ACCENT_YELLOW);
+            lblIcon.setBorder(BorderFactory.createLineBorder(ACCENT_YELLOW, 1, true));
+            lblIcon.setForeground(SURFACE_COLOR);
+        } else {
+            lblIcon.setBackground(INPUT_BG);
+            lblIcon.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55), 1, true));
+            lblIcon.setForeground(Color.WHITE);
+        }
+
+        // 🌟 BẪY CHỐNG TRÀN CHỮ: Nếu tên danh mục lớn hơn 8 ký tự, chủ động cắt chuỗi và chèn thêm '...'
+        String displayName = c.getName();
+        if (displayName != null && displayName.length() > 8) {
+            displayName = displayName.substring(0, 6) + "...";
+        }
+
+        JLabel lblName = new JLabel(displayName, SwingConstants.CENTER);
+        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblName.setForeground(TEXT_PRIMARY);
+
+        cell.add(lblIcon, BorderLayout.CENTER);
+        cell.add(lblName, BorderLayout.SOUTH);
+
+        cell.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                selectedCategoryForDelete = c;
+                refreshCategories(); // Gọi làm tươi để cập nhật highlight vùng chọn real-time
+            }
+        });
+        return cell;
     }
 
     private void deleteCategory() {
-        Category selected = categoryList.getSelectedValue();
-        if (selected != null) {
-            int confirm = JOptionPane.showConfirmDialog(this, (isVietnamese ? "Xóa danh mục \"" : "Delete category \"") + selected.getName() + "\"?", (isVietnamese ? "Xác nhận" : "Confirm"), JOptionPane.YES_NO_OPTION);
+        if (selectedCategoryForDelete != null) {
+            int confirm = JOptionPane.showConfirmDialog(this,
+                    (isVietnamese ? "Xóa danh mục \"" : "Delete category \"") + selectedCategoryForDelete.getName() + "\"?",
+                    (isVietnamese ? "Xác nhận" : "Confirm"), JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
-                DatabaseUtil.deleteCategory(selected.getId());
+                DatabaseUtil.deleteCategory(selectedCategoryForDelete.getId());
+                selectedCategoryForDelete = null;
                 refreshCategories();
+                if (mainFrame != null) mainFrame.refreshAllPanels();
             }
         } else {
             JOptionPane.showMessageDialog(this, isVietnamese ? "Vui lòng chọn một danh mục để xóa." : "Please select a category to delete.");
@@ -274,9 +447,11 @@ public class CategoryManagerPanel extends JPanel {
         if (emoji.equals(selectedEmoji)) {
             cell.setBackground(ACCENT_YELLOW);
             cell.setBorder(BorderFactory.createLineBorder(ACCENT_YELLOW, 1, true));
+            lbl.setForeground(SURFACE_COLOR);
         } else {
             cell.setBackground(INPUT_BG);
             cell.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55), 1, true));
+            lbl.setForeground(Color.WHITE);
         }
         cell.addMouseListener(new MouseAdapter() { @Override public void mouseClicked(MouseEvent e) { selectedEmoji = emoji; refreshEmojiGrid(); } });
         return cell;
@@ -299,49 +474,26 @@ public class CategoryManagerPanel extends JPanel {
             txtCategoryName.setText("");
             this.selectedEmoji = "\uD83D\uDCCD"; this.currentEmojiPage = 1;
             refreshCategories();
+            if (mainFrame != null) mainFrame.refreshAllPanels();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error DB: " + ex.getMessage(), "System Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
+    private void selectListTypeTab(JButton target) {
+        btnListExpense.setBackground(INPUT_BG); btnListExpense.setForeground(TEXT_PRIMARY);
+        btnListIncome.setBackground(INPUT_BG); btnListIncome.setForeground(TEXT_PRIMARY);
+        target.setBackground(ACCENT_YELLOW); target.setForeground(SURFACE_COLOR);
+    }
+
+    private JButton createListTypeTabButton(String text, boolean active) {
+        JButton btn = new JButton(text); btn.setFont(new Font("Segoe UI", Font.BOLD, 13)); btn.setFocusPainted(false);
+        btn.setBackground(active ? ACCENT_YELLOW : INPUT_BG); btn.setForeground(active ? SURFACE_COLOR : TEXT_PRIMARY);
+        btn.setBorder(BorderFactory.createEmptyBorder(5, 14, 5, 14)); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
     private JLabel createLabel() { JLabel lbl = new JLabel(); lbl.setFont(new Font("Segoe UI", Font.BOLD, 14)); lbl.setForeground(TEXT_SECONDARY); lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 6, 0)); lbl.setAlignmentX(Component.LEFT_ALIGNMENT); return lbl; }
     private void styleTextField(JTextField tf) { tf.setBackground(INPUT_BG); tf.setForeground(TEXT_PRIMARY); tf.setCaretColor(ACCENT_YELLOW); tf.setFont(new Font("Segoe UI", Font.PLAIN, 15)); tf.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)), BorderFactory.createEmptyBorder(10, 15, 10, 15))); }
     private JButton createPaginationButton(String text) { JButton btn = new JButton(text); btn.setFont(new Font("Segoe UI", Font.BOLD, 14)); btn.setForeground(TEXT_PRIMARY); btn.setBackground(INPUT_BG); btn.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 1)); btn.setPreferredSize(new Dimension(36, 28)); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); return btn; }
-
-    private class CategoryCellRenderer extends JPanel implements ListCellRenderer<Category> {
-        private final JLabel lblEmoji = new JLabel();
-        private final JLabel lblText = new JLabel();
-
-        public CategoryCellRenderer() {
-            setLayout(new FlowLayout(FlowLayout.LEFT, 10, 4));
-            setOpaque(true);
-            lblEmoji.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
-            lblText.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-            add(lblEmoji);
-            add(lblText);
-        }
-
-        @Override
-        public Component getListCellRendererComponent(JList<? extends Category> list, Category value, int index, boolean isSelected, boolean cellHasFocus) {
-            if (value != null) {
-                String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(value.getName(), "\uD83D\uDCCD");
-                lblEmoji.setText(emoji);
-
-                String typeStr = (value.getType() == TransactionType.INCOME) ?
-                        (isVietnamese ? "Thu" : "Income") : (isVietnamese ? "Chi" : "Expense");
-                lblText.setText(value.getName() + " (" + typeStr + ")");
-            }
-
-            if (isSelected) {
-                setBackground(list.getSelectionBackground());
-                lblEmoji.setForeground(list.getSelectionForeground());
-                lblText.setForeground(list.getSelectionForeground());
-            } else {
-                setBackground(list.getBackground());
-                lblEmoji.setForeground(list.getForeground());
-                lblText.setForeground(list.getForeground());
-            }
-            return this;
-        }
-    }
 }

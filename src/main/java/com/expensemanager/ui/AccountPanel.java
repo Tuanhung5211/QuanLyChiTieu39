@@ -198,7 +198,8 @@ public class AccountPanel extends JPanel implements Observer {
 
     @Override
     public void update(EventType eventType, Object data) {
-        if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.DATA_LOADED) {
+        // 🌟 KHẮC PHỤC: Chỉ làm mới khi nạp lại toàn bộ dữ liệu hệ thống (DATA_LOADED), chặn spam khi thêm giao dịch nhỏ lẻ
+        if (eventType == EventType.DATA_LOADED) {
             SwingUtilities.invokeLater(() -> refreshData());
         }
     }
