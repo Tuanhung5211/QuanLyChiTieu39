@@ -1,106 +1,75 @@
-# 💰 Quản Lý Chi Tiêu Mini (Expense Manager)
+# 💰 Quản Lý Chi Tiêu Mini - Expense Manager
 
-Ứng dụng quản lý tài chính cá nhân đơn giản được xây dựng bằng ngôn ngữ **Java** và thư viện **Swing**. Dự án được phát triển trong khuôn khổ Bài tập lớn môn **Công nghệ Java **.
+Ứng dụng **quản lý tài chính cá nhân** hiện đại, được xây dựng bằng **Java** với giao diện đồ họa trực quan sử dụng **Swing**, kết hợp cơ sở dữ liệu **MySQL** và lưu trữ **JSON** để đảm bảo dữ liệu an toàn và dễ quản lý.
 
-## ✨ Chức năng chính
+---
 
-### 🔰 Chức năng cơ bản
-- **Quản lý Thu nhập**: Thêm, sửa, xóa các khoản thu (lương, học bổng, tiền được cho…).
-- **Quản lý Chi tiêu**: Thêm, sửa, xóa các khoản chi, mỗi khoản gắn với một danh mục (ăn uống, học tập, đi lại, giải trí…).
-- **Lưu vết thời gian thực**: Tự động ghi nhận chính xác ngày giờ phát sinh giao dịch.
-- **Tính toán số dư**: Tự động tổng kết thu – chi, hiển thị số dư khả dụng ngay trên giao diện chính.
-- **Giao diện đồ họa trực quan**: Sử dụng Java Swing, dễ thao tác cho người mới bắt đầu.
+## 📋 Mục Lục
+- [Giới Thiệu](#giới-thiệu)
+- [Chức Năng](#-chức-năng)
+- [Công Nghệ Sử Dụng](#-công-nghệ-sử-dụng)
+- [Cấu Trúc Dự Án](#-cấu-trúc-dự-án)
+- [Cài Đặt](#-cài-đặt)
+- [Hướng Dẫn Sử Dụng](#-hướng-dẫn-sử-dụng)
+- [Cấu Trúc Dữ Liệu](#-cấu-trúc-dữ-liệu)
+- [Tác Giả](#-tác-giả)
 
-### ⭐ Chức năng nâng cao (đáp ứng yêu cầu BTL)
-- **Lọc và tìm kiếm giao dịch**: Theo khoảng thời gian, danh mục, loại (thu/chi) hoặc từ khóa ghi chú.
-- **Thống kê**: Biểu đồ tròn/cột tỉ lệ chi tiêu theo danh mục; báo cáo tổng quan hàng tháng.
-- **Quản lý ngân sách**: Thiết lập hạn mức chi tiêu từng tháng, cảnh báo khi vượt quá.
-- **Lưu trữ bền vững**: 
-  - Ghi/đọc dữ liệu ra file **JSON** để khôi phục khi khởi động lại ứng dụng.
-  - Kết nối cơ sở dữ liệu **MySQL** qua **JDBC**, hỗ trợ đầy đủ CRUD.
-- **Xử lý ngoại lệ toàn diện**: Bắt lỗi nhập liệu, lỗi I/O, lỗi kết nối CSDL; sử dụng custom exception.
+---
 
-## 🛠 Công nghệ sử dụng
+## 🎯 Giới Thiệu
 
-| Công nghệ | Mô tả |
-|-----------|-------|
-| **Java (JDK 17+)** | Ngôn ngữ lập trình chính |
-| **Apache Maven** | Quản lý thư viện và build dự án |
-| **Java Swing** | Xây dựng giao diện người dùng (GUI) |
-| **Gson** | Thư viện đọc/ghi file JSON |
-| **MySQL + JDBC** | Lưu trữ dữ liệu bền vững, thực hiện CRUD |
-| **OOP + Service Pattern** | Kiến trúc phân tách Entity – Service – UI rõ ràng |
+**Quản Lý Chi Tiêu Mini** là một ứng dụng Java desktop nhẹ nhàng nhưng đầy đủ chức năng, giúp bạn:
+- 📊 Theo dõi thu nhập và chi tiêu hàng ngày
+- 📈 Phân tích chi tiêu theo danh mục
+- 💼 Quản lý ngân sách hàng tháng
+- 💾 Lưu trữ dữ liệu an toàn trên MySQL và JSON
 
-## 📁 Cấu trúc dự án (tóm tắt)
+Dự án được thiết kế với kiến trúc **OOP** rõ ràng, dễ mở rộng và bảo trì.
 
-## 📁 Cấu trúc dự án (dự kiến)
-```text
-ExpenseManager/
-│
-├── pom.xml                          # [Cả nhóm] File cấu hình Maven, khai báo dependency (Gson, MySQL Connector...)
-├── README.md                        # [Cả nhóm] Hướng dẫn cài đặt, mô tả dự án
-├── database_script.sql              # [Bạn A] Script tạo database và bảng trong MySQL
-│
-├── src/
-│   ├── main/
-│   │   ├── java/com/expensemanager/
-│   │   │   │
-│   │   │   ├── MainApp.java                    # [Bạn B] Entry point, khởi tạo MainFrame
-│   │   │   │
-│   │   │   ├── entity/                          # ========== BẠN A PHỤ TRÁCH ==========
-│   │   │   │   ├── Transaction.java             #    Class cha: id, amount, date, type, note
-│   │   │   │   ├── IncomeTransaction.java       #    Kế thừa Transaction (đáp ứng yêu cầu kế thừa)
-│   │   │   │   ├── ExpenseTransaction.java      #    Kế thừa Transaction
-│   │   │   │   ├── Category.java                #    Quản lý danh mục (id, name, type)
-│   │   │   │   ├── Budget.java                  #    Quản lý ngân sách tháng (month, limit, spent)
-│   │   │   │   └── TransactionType.java         #    Enum: INCOME, EXPENSE (thay vì String)
-│   │   │   │
-│   │   │   ├── database/                        # ========== BẠN A PHỤ TRÁCH ==========
-│   │   │   │   ├── DatabaseConfig.java          #    Cấu hình kết nối (URL, user, password)
-│   │   │   │   └── DatabaseUtil.java            #    Kết nối JDBC, các hàm CRUD (insert, update, delete, select)
-│   │   │   │
-│   │   │   ├── service/                         # ========== BẠN C & D PHỤ TRÁCH ==========
-│   │   │   │   ├── FinanceService.java          # [C] Logic nghiệp vụ chính (CREDIT cho C đã gợi ý trước)
-│   │   │   │   │                                #     - Quản lý HashMap<String, Category>
-│   │   │   │   │                                #     - Dùng Stream/Lambda để lọc, tính tổng
-│   │   │   │   │                                #     - Phối hợp với D để gọi thống kê
-│   │   │   │   ├── StatisticsService.java       # [D] Logic thống kê (theo danh mục, theo tháng, số dư TB)
-│   │   │   │   └── BudgetManager.java           # [D] Quản lý ngân sách, kiểm tra vượt chi, cảnh báo
-│   │   │   │
-│   │   │   ├── exception/                       # ========== BẠN C PHỤ TRÁCH ==========
-│   │   │   │   ├── InvalidAmountException.java  #    Custom exception: số tiền âm hoặc bằng 0
-│   │   │   │   └── DataLoadException.java       #    Custom exception: lỗi khi đọc file JSON
-│   │   │   │
-│   │   │   ├── util/                            # ========== BẠN C PHỤ TRÁCH ==========
-│   │   │   │   └── JsonUtil.java                #    Đọc/ghi file JSON (dùng Gson)
-│   │   │   │                                    #    - saveToJson(List<Transaction>)
-│   │   │   │                                    #    - loadFromJson(): List<Transaction>
-│   │   │   │
-│   │   │   └── ui/                              # ========== BẠN B & D PHỤ TRÁCH ==========
-│   │   │       ├── MainFrame.java               # [B] JFrame chính, chứa các panel
-│   │   │       ├── DashboardPanel.java          # [B] Màn hình 1: Tổng quan (số dư, thu, chi, nút thêm)
-│   │   │       ├── HistoryPanel.java            # [B] Màn hình 2: Lịch sử giao dịch (JTable)
-│   │   │       ├── AddTransactionDialog.java    # [D] Màn hình 3: Hộp thoại thêm giao dịch
-│   │   │       │                                #     - JTextField: số tiền, ghi chú
-│   │   │       │                                #     - JComboBox: chọn danh mục (lấy từ FinanceService)
-│   │   │       │                                #     - JDatePicker: chọn ngày (nếu cần)
-│   │   │       ├── StatisticsPanel.java         # [D] Màn hình 4: Thống kê (biểu đồ, báo cáo theo tháng)
-│   │   │       └── BudgetDialog.java            # [D] Hộp thoại thiết lập ngân sách tháng
-│   │   │
-│   │   └── resources/
-│   │       ├── data/                            # ========== BẠN C PHỤ TRÁCH ==========
-│   │       │   └── transactions.json            #    File dữ liệu mẫu (nếu cần)
-│   │       └── images/                          # [B, D] Icon, hình ảnh cho giao diện (nếu có)
-│   │
-│   └── test/
-│       └── java/com/expensemanager/
-│           ├── FinanceServiceTest.java          # [C] Test logic nghiệp vụ
-│           ├── DatabaseUtilTest.java            # [A] Test kết nối và CRUD
-│           └── JsonUtilTest.java                # [C] Test đọc/ghi file
-│
-└── docs/                                        # ========== CẢ NHÓM ==========
-    ├── BaoCao.docx
-    ├── BaoCao.pdf
-    ├── ThuyetTrinh.pptx
-    └── HuongDanCaiDat.md                        # Hướng dẫn cài đặt chi tiết
-```
+---
+
+## ✨ Chức Năng
+
+### 🔰 Chức Năng Cơ Bản
+- ✅ **Quản lý Thu nhập**: Thêm, sửa, xóa các khoản thu (lương, học bổng, tiền thưởng, làm thêm...)
+- ✅ **Quản lý Chi tiêu**: Thêm, sửa, xóa các khoản chi với danh mục chi tiết
+- ✅ **Lưu vết thời gian thực**: Tự động ghi nhận chính xác ngày giờ phát sinh giao dịch
+- ✅ **Tính toán số dư**: Tự động tính tổng kết thu – chi, hiển thị số dư khả dụng
+- ✅ **Giao diện đồ họa trực quan**: Dễ thao tác cho người mới bắt đầu
+
+### ⭐ Chức Năng Nâng Cao
+- 🔍 **Lọc và tìm kiếm giao dịch**: Theo khoảng thời gian, danh mục, loại (thu/chi) hoặc từ khóa ghi chú
+- 📊 **Thống kê chi tiết**: 
+  - Biểu đồ tròn/cột tỉ lệ chi tiêu theo danh mục
+  - Báo cáo tổng quan hàng tháng
+- 💼 **Quản lý ngân sách**: 
+  - Thiết lập hạn mức chi tiêu từng tháng
+  - Cảnh báo khi vượt quá hạn mức
+- 💾 **Lưu trữ bền vững**: 
+  - Ghi/đọc dữ liệu file **JSON** để khôi phục khi khởi động lại
+  - Kết nối cơ sở dữ liệu **MySQL** qua **JDBC**, hỗ trợ CRUD đầy đủ
+- ⚠️ **Xử lý ngoại lệ toàn diện**: Bắt lỗi nhập liệu, lỗi I/O, lỗi kết nối CSDL
+
+---
+
+## 🛠 Công Nghệ Sử Dụng
+
+| Công Nghệ | Phiên Bản | Mô Tả |
+|-----------|----------|-------|
+| **Java** | 17+ | Ngôn ngữ lập trình chính |
+| **Apache Maven** | 3.8+ | Quản lý thư viện và build dự án |
+| **Java Swing** | JDK 17 | Xây dựng giao diện người dùng (GUI) |
+| **Gson** | 2.10.1 | Thư viện đọc/ghi file JSON |
+| **MySQL Connector** | 8.0.33 | Kết nối JDBC đến MySQL |
+| **MySQL** | 5.7+ | Cơ sở dữ liệu lưu trữ |
+
+### Kiến Trúc & Design Pattern
+- **OOP** (Object-Oriented Programming): Lớp, kế thừa, đa hình
+- **Service Pattern**: Phân tách Entity – Service – UI rõ ràng
+- **Stream & Lambda**: Xử lý dữ liệu hiệu quả (Java 8+)
+- **MVC Pattern**: Tách biệt Model-View-Controller
+
+---
+
+## 📁 Cấu Trúc Dự Án
+QuanLyChiTieu39/ ├── pom.xml # Cấu hình Maven, khai báo dependency ├── README.md # Tài liệu hướng dẫn dự án ├── config.properties # Cấu hình ứng dụng (ngôn ngữ, kích thước cửa sổ) ├── database_script.sql # Script SQL tạo database và các bảng ├── transactions.json # File dữ liệu mẫu (JSON) │ └── src/ ├── main/ │ ├── java/ │ │ └── com/expensemanager/ │ │ ├── MainApp.java # Entry point, khởi tạo ứng dụng │ │ │ │ │ ├── entity/ # Các lớp dữ liệu │ │ │ ├── Transaction.java # Class giao dịch cơ bản │ │ │ ├── IncomeTransaction.java # Class thu nhập (kế thừa) │ │ │ ├── ExpenseTransaction.java # Class chi tiêu (kế thừa) │ │ │ ├── Category.java # Danh mục (id, name, type) │ │ │ ├── Budget.java # Ngân sách tháng │ │ │ └── TransactionType.java # Enum: INCOME, EXPENSE │ │ │ │ │ ├── database/ # Kết nối database │ │ │ ├── DatabaseConfig.java # Cấu hình kết nối │ │ │ └── DatabaseUtil.java # Hàm CRUD (insert, update, delete, select) │ │ │ │ │ ├── service/ # Logic nghiệp vụ │ │ │ ├── FinanceService.java # Service quản lý tài chính │ │ │ ├── StatisticsService.java # Service thống kê │ │ │ └── BudgetManager.java # Quản lý ngân sách │ │ │ │ │ ├── exception/ # Custom exceptions │ │ │ ├── InvalidAmountException.java # Lỗi số tiền không hợp lệ │ │ │ └── DataLoadException.java # Lỗi khi đọc dữ liệu │ │ │ │ │ ├── util/ # Các utility │ │ │ └── JsonUtil.java # Đọc/ghi file JSON │ │ │ │ │ └── ui/ # Giao diện người dùng │ │ ├── MainFrame.java # JFrame chính │ │ ├── DashboardPanel.java # Panel tổng quan │ │ ├── HistoryPanel.java # Panel lịch sử giao dịch │ │ ├── AddTransactionDialog.java # Dialog thêm giao dịch │ │ ├── StatisticsPanel.java # Panel thống kê │ │ └── BudgetDialog.java # Dialog quản lý ngân sách │ │ │ └── resources/ │ ├── data/ │ │ └── transactions.json # Dữ liệu mẫu │ └── images/ # Icon, hình ảnh │ └── test/ └── java/ └── com/expensemanager/ ├── FinanceServiceTest.java # Test service ├── DatabaseUtilTest.java # Test database └── JsonUtilTest.java # Test JSON
