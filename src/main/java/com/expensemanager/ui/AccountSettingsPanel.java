@@ -13,9 +13,6 @@ import java.awt.event.MouseEvent;
 
 public class AccountSettingsPanel extends JPanel {
 
-    // =====================================================================
-    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
-    // =====================================================================
     private MainFrame mainFrame;
     private boolean isVietnamese;
 
@@ -32,9 +29,6 @@ public class AccountSettingsPanel extends JPanel {
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
     private final Color DANGER_RED = new Color(244, 67, 54);
 
-    // =====================================================================
-    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC FORM
-    // =====================================================================
     public AccountSettingsPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         this.isVietnamese = mainFrame != null && mainFrame.isVietnamese();
@@ -140,9 +134,6 @@ public class AccountSettingsPanel extends JPanel {
         add(profileCard);
     }
 
-    // =====================================================================
-    // 3. XỬ LÝ LOGIC NGHIỆP VỤ (HỒ SƠ, MẬT KHẨU, TÀI KHOẢN)
-    // =====================================================================
     public void refreshData() {
         String username = SessionManager.getCurrentUsername();
         if (username == null) return;
@@ -183,34 +174,68 @@ public class AccountSettingsPanel extends JPanel {
         }
     }
 
+    // Hộp thoại đổi mật khẩu với checkbox hiển thị mật khẩu
     private void openChangePasswordDialog() {
         JDialog passDialog = new JDialog(mainFrame, isVietnamese ? "Thay đổi mật khẩu" : "Change Password", true);
-        passDialog.setSize(400, 320);
+        passDialog.setSize(450, 400);
         passDialog.setLocationRelativeTo(this);
         passDialog.getContentPane().setBackground(new Color(18, 18, 18));
         passDialog.setLayout(new BorderLayout());
 
-        JPanel formPanel = new JPanel(new GridLayout(3, 2, 10, 15));
+        JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(new Color(18, 18, 18));
         formPanel.setBorder(BorderFactory.createEmptyBorder(25, 20, 15, 20));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 8, 8, 8);
 
+        // Mật khẩu cũ
+        gbc.gridx = 0; gbc.gridy = 0;
         JLabel lOld = new JLabel(isVietnamese ? "Mật khẩu cũ:" : "Old Password:");
-        lOld.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lOld.setForeground(TEXT_SECONDARY);
-        JPasswordField txtOldPassword = new JPasswordField(); styleTextField(txtOldPassword);
+        lOld.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lOld.setForeground(TEXT_SECONDARY);
+        formPanel.add(lOld, gbc);
+        gbc.gridx = 1;
+        JPasswordField txtOldPassword = new JPasswordField();
+        stylePasswordField(txtOldPassword);
+        formPanel.add(txtOldPassword, gbc);
 
+        // Mật khẩu mới
+        gbc.gridx = 0; gbc.gridy = 1;
         JLabel lNew = new JLabel(isVietnamese ? "Mật khẩu mới:" : "New Password:");
-        lNew.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lNew.setForeground(TEXT_SECONDARY);
-        JPasswordField txtNewPassword = new JPasswordField(); styleTextField(txtNewPassword);
+        lNew.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lNew.setForeground(TEXT_SECONDARY);
+        formPanel.add(lNew, gbc);
+        gbc.gridx = 1;
+        JPasswordField txtNewPassword = new JPasswordField();
+        stylePasswordField(txtNewPassword);
+        formPanel.add(txtNewPassword, gbc);
 
+        // Xác nhận mật khẩu mới
+        gbc.gridx = 0; gbc.gridy = 2;
         JLabel lConf = new JLabel(isVietnamese ? "Xác nhận MK:" : "Confirm Pass:");
-        lConf.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lConf.setForeground(TEXT_SECONDARY);
-        JPasswordField txtConfirmPassword = new JPasswordField(); styleTextField(txtConfirmPassword);
+        lConf.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lConf.setForeground(TEXT_SECONDARY);
+        formPanel.add(lConf, gbc);
+        gbc.gridx = 1;
+        JPasswordField txtConfirmPassword = new JPasswordField();
+        stylePasswordField(txtConfirmPassword);
+        formPanel.add(txtConfirmPassword, gbc);
 
-        formPanel.add(lOld); formPanel.add(txtOldPassword);
-        formPanel.add(lNew); formPanel.add(txtNewPassword);
-        formPanel.add(lConf); formPanel.add(txtConfirmPassword);
+        // Checkbox hiển thị mật khẩu (cho cả 3 ô)
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.insets = new Insets(10, 8, 5, 8);
+        JCheckBox chkShowPasswords = new JCheckBox(isVietnamese ? "Hiển thị mật khẩu" : "Show passwords");
+        chkShowPasswords.setForeground(TEXT_SECONDARY);
+        chkShowPasswords.setBackground(new Color(18,18,18));
+        chkShowPasswords.setFocusPainted(false);
+        chkShowPasswords.addActionListener(e -> {
+            boolean show = chkShowPasswords.isSelected();
+            txtOldPassword.setEchoChar(show ? (char) 0 : '•');
+            txtNewPassword.setEchoChar(show ? (char) 0 : '•');
+            txtConfirmPassword.setEchoChar(show ? (char) 0 : '•');
+        });
+        formPanel.add(chkShowPasswords, gbc);
+
         passDialog.add(formPanel, BorderLayout.CENTER);
 
+        // Panel nút bấm
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
         btnPanel.setBackground(new Color(18, 18, 18));
 
@@ -232,24 +257,19 @@ public class AccountSettingsPanel extends JPanel {
 
             try {
                 InputValidator.validatePasswordChange(oldPass, newPass, confirmPass, isVietnamese);
-
                 String username = SessionManager.getCurrentUsername();
                 User user = UserService.login(username, oldPass);
-
                 if (user == null) {
                     JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Mật khẩu cũ không đúng!" : "Incorrect old password!", "Error", JOptionPane.ERROR_MESSAGE);
                 } else {
                     user.setPasswordHash(UserService.hashPassword(newPass));
-                    //DatabaseUtil.updateUser(user);
-                    //Cập nhật với code mới
-                    DatabaseUtil.updateUserPassword(user.getId(), UserService.hashPassword(newPass));
+                    DatabaseUtil.updateUserPassword(user.getId(), user.getPasswordHash());
                     JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Đổi mật khẩu thành công! Hãy đăng nhập lại." : "Password changed! Please re-login.");
                     passDialog.dispose();
                     logout();
                 }
             } catch (IllegalArgumentException ex) {
-                JOptionPane.showMessageDialog(passDialog, ex.getMessage(),
-                        isVietnamese ? "Lỗi cấu trúc" : "Validation Error", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(passDialog, ex.getMessage(), isVietnamese ? "Lỗi cấu trúc" : "Validation Error", JOptionPane.WARNING_MESSAGE);
             }
         });
 
@@ -257,6 +277,19 @@ public class AccountSettingsPanel extends JPanel {
         btnPanel.add(btnConfirm);
         passDialog.add(btnPanel, BorderLayout.SOUTH);
         passDialog.setVisible(true);
+    }
+
+    // Helper để style JPasswordField giống các text field khác
+    private void stylePasswordField(JPasswordField pf) {
+        pf.setBackground(INPUT_BG);
+        pf.setForeground(TEXT_PRIMARY);
+        pf.setCaretColor(ACCENT_YELLOW);
+        pf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        pf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(60, 60, 60)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        pf.setPreferredSize(new Dimension(200, 38));
     }
 
     private void deleteAccount() {
@@ -283,9 +316,6 @@ public class AccountSettingsPanel extends JPanel {
         new LoginFrame().setVisible(true);
     }
 
-    // =====================================================================
-    // 4. TIỆN ÍCH GIAO DIỆN VÀ RESPONSIVE MÀN HÌNH
-    // =====================================================================
     private void styleTextField(JTextField tf) {
         tf.setBackground(INPUT_BG); tf.setForeground(TEXT_PRIMARY); tf.setCaretColor(ACCENT_YELLOW);
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));

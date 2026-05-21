@@ -15,25 +15,23 @@ import javax.swing.plaf.basic.ComboPopup;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.UUID;
 
 public class LoginFrame extends JFrame {
     private JPanel cards;
     private CardLayout cardLayout;
     private JPanel loginPanel, registerPanel;
 
-    // --- Components cho Đăng nhập ---
     private JTextField txtLoginUsername;
     private JPasswordField txtLoginPassword;
+    private JCheckBox chkShowLoginPwd;
 
-    // --- Components cho Đăng ký ---
     private JTextField txtRegUsername, txtRegNickname, txtRegEmail;
     private JPasswordField txtRegPassword;
+    private JCheckBox chkShowRegPwd;
     private JComboBox<String> comboGender;
 
     private boolean isVietnamese = true;
 
-    // --- Hệ màu sắc phẳng (Flat Dark Mode) ---
     private final Color BG_COLOR = new Color(18, 18, 18);
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
     private final Color INPUT_BG = new Color(40, 40, 40);
@@ -50,7 +48,6 @@ public class LoginFrame extends JFrame {
     public LoginFrame() {
         setTitle("Money Tracker");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
         setSize(500, 750);
         setResizable(false);
         setLocationRelativeTo(null);
@@ -99,14 +96,32 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 3; txtLoginUsername = new JTextField(); styleTextField(txtLoginUsername); pForm.add(txtLoginUsername, gbc);
 
         gbc.gridy = 4; pForm.add(createLabel("Mật khẩu:"), gbc);
-        gbc.gridy = 5; txtLoginPassword = new JPasswordField(); styleTextField(txtLoginPassword); pForm.add(txtLoginPassword, gbc);
+        gbc.gridy = 5;
+        txtLoginPassword = new JPasswordField();
+        styleTextField(txtLoginPassword);
+        pForm.add(txtLoginPassword, gbc);
 
-        gbc.gridy = 6; gbc.insets = new Insets(25, 0, 15, 0);
+        // Checkbox hiển thị mật khẩu
+        gbc.gridy = 6; gbc.insets = new Insets(0, 0, 15, 0);
+        chkShowLoginPwd = new JCheckBox(isVietnamese ? "Hiển thị mật khẩu" : "Show password");
+        chkShowLoginPwd.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        chkShowLoginPwd.setForeground(TEXT_SECONDARY);
+        chkShowLoginPwd.setBackground(SURFACE_COLOR);
+        chkShowLoginPwd.setFocusPainted(false);
+        chkShowLoginPwd.addActionListener(e -> {
+            if (chkShowLoginPwd.isSelected())
+                txtLoginPassword.setEchoChar((char) 0);
+            else
+                txtLoginPassword.setEchoChar('•');
+        });
+        pForm.add(chkShowLoginPwd, gbc);
+
+        gbc.gridy = 7; gbc.insets = new Insets(5, 0, 15, 0);
         JButton btnLogin = new JButton("ĐĂNG NHẬP"); stylePrimaryButton(btnLogin);
         btnLogin.addActionListener(e -> login());
         pForm.add(btnLogin, gbc);
 
-        gbc.gridy = 7; gbc.insets = new Insets(0, 0, 0, 0);
+        gbc.gridy = 8; gbc.insets = new Insets(0, 0, 0, 0);
         pForm.add(createLink("Chưa có tài khoản? Đăng ký ngay", "register"), gbc);
 
         loginPanel.add(pForm);
@@ -143,31 +158,51 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 3; txtRegUsername = new JTextField(); styleTextField(txtRegUsername); pForm.add(txtRegUsername, gbc);
 
         gbc.gridy = 4; pForm.add(createLabel("Mật khẩu:"), gbc);
-        gbc.gridy = 5; txtRegPassword = new JPasswordField(); styleTextField(txtRegPassword); pForm.add(txtRegPassword, gbc);
+        gbc.gridy = 5;
+        txtRegPassword = new JPasswordField();
+        styleTextField(txtRegPassword);
+        pForm.add(txtRegPassword, gbc);
 
-        gbc.gridy = 6; pForm.add(createLabel("Tên hiển thị:"), gbc);
-        gbc.gridy = 7; txtRegNickname = new JTextField(); styleTextField(txtRegNickname); pForm.add(txtRegNickname, gbc);
+        // Checkbox hiển thị mật khẩu cho đăng ký
+        gbc.gridy = 6; gbc.insets = new Insets(0, 0, 10, 0);
+        chkShowRegPwd = new JCheckBox(isVietnamese ? "Hiển thị mật khẩu" : "Show password");
+        chkShowRegPwd.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        chkShowRegPwd.setForeground(TEXT_SECONDARY);
+        chkShowRegPwd.setBackground(SURFACE_COLOR);
+        chkShowRegPwd.setFocusPainted(false);
+        chkShowRegPwd.addActionListener(e -> {
+            if (chkShowRegPwd.isSelected())
+                txtRegPassword.setEchoChar((char) 0);
+            else
+                txtRegPassword.setEchoChar('•');
+        });
+        pForm.add(chkShowRegPwd, gbc);
 
-        gbc.gridy = 8; pForm.add(createLabel("Email:"), gbc);
-        gbc.gridy = 9; txtRegEmail = new JTextField(); styleTextField(txtRegEmail); pForm.add(txtRegEmail, gbc);
+        gbc.gridy = 7; gbc.insets = new Insets(4, 0, 4, 0);
+        pForm.add(createLabel("Tên hiển thị:"), gbc);
+        gbc.gridy = 8; txtRegNickname = new JTextField(); styleTextField(txtRegNickname); pForm.add(txtRegNickname, gbc);
 
-        gbc.gridy = 10; pForm.add(createLabel("Giới tính:"), gbc);
-        gbc.gridy = 11;
+        gbc.gridy = 9; pForm.add(createLabel("Email:"), gbc);
+        gbc.gridy = 10; txtRegEmail = new JTextField(); styleTextField(txtRegEmail); pForm.add(txtRegEmail, gbc);
+
+        gbc.gridy = 11; pForm.add(createLabel("Giới tính:"), gbc);
+        gbc.gridy = 12;
         comboGender = new JComboBox<>(new String[]{"Nam", "Nữ"});
         styleComboBoxUI(comboGender);
         pForm.add(comboGender, gbc);
 
-        gbc.gridy = 12; gbc.insets = new Insets(20, 0, 15, 0);
+        gbc.gridy = 13; gbc.insets = new Insets(20, 0, 15, 0);
         JButton btnRegister = new JButton("ĐĂNG KÝ NGAY"); stylePrimaryButton(btnRegister);
         btnRegister.addActionListener(e -> register());
         pForm.add(btnRegister, gbc);
 
-        gbc.gridy = 13; gbc.insets = new Insets(0, 0, 0, 0);
+        gbc.gridy = 14; gbc.insets = new Insets(0, 0, 0, 0);
         pForm.add(createLink("Quay lại Đăng nhập", "login"), gbc);
 
         registerPanel.add(pForm);
     }
 
+    // Các phương thức helper giữ nguyên
     private JLabel createLabel(String text) {
         JLabel lbl = new JLabel(text);
         lbl.setFont(FONT_LABEL);
@@ -194,10 +229,7 @@ public class LoginFrame extends JFrame {
         tf.setCaretColor(ACCENT_YELLOW);
         tf.setFont(FONT_INPUT);
         tf.setPreferredSize(new Dimension(300, 42));
-        tf.setBorder(new CompoundBorder(
-                new LineBorder(BORDER_COLOR, 1, true),
-                new EmptyBorder(0, 12, 0, 12)
-        ));
+        tf.setBorder(new CompoundBorder(new LineBorder(BORDER_COLOR, 1, true), new EmptyBorder(0, 12, 0, 12)));
     }
 
     private void styleComboBoxUI(JComboBox<?> combo) {
@@ -205,7 +237,6 @@ public class LoginFrame extends JFrame {
         combo.setForeground(TEXT_PRIMARY);
         combo.setFont(FONT_INPUT);
         combo.setPreferredSize(new Dimension(300, 42));
-
         combo.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -216,7 +247,6 @@ public class LoginFrame extends JFrame {
                 return l;
             }
         });
-
         combo.setUI(new BasicComboBoxUI() {
             @Override protected ComboPopup createPopup() {
                 BasicComboPopup popup = new BasicComboPopup(comboBox);
@@ -231,40 +261,32 @@ public class LoginFrame extends JFrame {
                 return btn;
             }
         });
-
-        combo.setBorder(new CompoundBorder(
-                new LineBorder(BORDER_COLOR, 1, true),
-                new EmptyBorder(0, 0, 0, 0)
-        ));
+        combo.setBorder(new CompoundBorder(new LineBorder(BORDER_COLOR, 1, true), new EmptyBorder(0, 0, 0, 0)));
     }
 
     private void stylePrimaryButton(JButton btn) {
         btn.setBackground(ACCENT_YELLOW);
-        btn.setForeground(new Color(18, 18, 18));
+        btn.setForeground(BG_COLOR);
         btn.setFont(FONT_BUTTON);
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setPreferredSize(new Dimension(300, 45));
         btn.setBorder(new LineBorder(ACCENT_YELLOW, 1, true));
-
         btn.addMouseListener(new MouseAdapter() {
             @Override public void mouseEntered(MouseEvent e) { btn.setBackground(new Color(230, 170, 0)); }
             @Override public void mouseExited(MouseEvent e) { btn.setBackground(ACCENT_YELLOW); }
         });
     }
 
-    // 🌟 KHẮC PHỤC TRIỆT ĐỂ LUỒNG ĐĂNG NHẬP CHỐNG ĐỂ TRỐNG DỮ LIỆU
     private void login() {
         String username = txtLoginUsername.getText();
         String password = new String(txtLoginPassword.getPassword());
-
         try {
             InputValidator.validateLogin(username, password, isVietnamese);
-
             User user = UserService.login(username.trim(), password.trim());
             if (user != null) {
                 new MainFrame().setVisible(true);
-                this.dispose();
+                dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "Lỗi đăng nhập: Tên người dùng hoặc mật khẩu không đúng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             }
@@ -273,7 +295,6 @@ public class LoginFrame extends JFrame {
         }
     }
 
-    // 🌟 KHẮC PHỤC TRIỆT ĐỂ LUỒNG ĐĂNG KÝ HỘI VIÊN TOÀN DIỆN
     private void register() {
         String username = txtRegUsername.getText();
         String password = new String(txtRegPassword.getPassword());
@@ -282,17 +303,15 @@ public class LoginFrame extends JFrame {
         String gender = (String) comboGender.getSelectedItem();
 
         try {
-            // Do form UI gộp chung, ta truyền password vào cả 2 tham số để bỏ qua kiểm tra khớp pass, tập trung quét format
             InputValidator.validateRegister(username, password, password, email, nickname, isVietnamese);
-
             User user = UserService.register(username.trim(), password.trim(), nickname.trim(), email.trim(), gender);
             if (user == null) {
-                JOptionPane.showMessageDialog(this, "Lỗi đăng ký: Tên đăng nhập đã tồn tại trong hệ thống!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Lỗi đăng ký: Tên đăng nhập đã tồn tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(this, "Đăng ký" + nickname.trim() + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
-
+                JOptionPane.showMessageDialog(this, "Đăng ký " + nickname.trim() + " thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
                 txtLoginUsername.setText(username.trim());
                 txtLoginPassword.setText("");
+                chkShowLoginPwd.setSelected(false);
                 cardLayout.show(cards, "login");
             }
         } catch (IllegalArgumentException ex) {
