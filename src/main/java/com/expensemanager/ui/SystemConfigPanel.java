@@ -100,8 +100,24 @@ public class SystemConfigPanel extends JPanel {
         lblSizeHint.setForeground(TEXT_PRIMARY);
         gbc.gridy = 6; configCard.add(lblSizeHint, gbc);
 
+//        comboWindowSize = new JComboBox<>();
+//        comboWindowSize.setBackground(INPUT_BG); comboWindowSize.setForeground(TEXT_PRIMARY); comboWindowSize.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+//        gbc.gridy = 7; configCard.add(comboWindowSize, gbc);
+        //Cập nhật đổi màu
         comboWindowSize = new JComboBox<>();
-        comboWindowSize.setBackground(INPUT_BG); comboWindowSize.setForeground(TEXT_PRIMARY); comboWindowSize.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        comboWindowSize.setBackground(INPUT_BG);
+        comboWindowSize.setForeground(TEXT_PRIMARY);
+        comboWindowSize.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        comboWindowSize.setUI(new javax.swing.plaf.basic.BasicComboBoxUI() {
+            @Override
+            protected JButton createArrowButton() {
+                JButton btn = super.createArrowButton();
+                btn.setBackground(new Color(100, 100, 100));  // màu nền sáng
+                btn.setForeground(Color.WHITE);
+                btn.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+                return btn;
+            }
+        });
         gbc.gridy = 7; configCard.add(comboWindowSize, gbc);
 
         btnSaveSize = new JButton();

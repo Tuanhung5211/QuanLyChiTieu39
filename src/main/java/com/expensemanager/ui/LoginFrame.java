@@ -188,7 +188,19 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 11; pForm.add(createLabel("Giới tính:"), gbc);
         gbc.gridy = 12;
         comboGender = new JComboBox<>(new String[]{"Nam", "Nữ"});
-        styleComboBoxUI(comboGender);
+        comboGender.setBackground(INPUT_BG);
+        comboGender.setForeground(TEXT_PRIMARY);
+        comboGender.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        comboGender.setUI(new BasicComboBoxUI() {
+            @Override
+            protected JButton createArrowButton() {
+                JButton btn = super.createArrowButton();
+                btn.setBackground(new Color(80, 80, 80));
+                btn.setForeground(Color.WHITE);
+                btn.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+                return btn;
+            }
+        });
         pForm.add(comboGender, gbc);
 
         gbc.gridy = 13; gbc.insets = new Insets(20, 0, 15, 0);
