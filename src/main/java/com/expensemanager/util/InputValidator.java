@@ -5,8 +5,14 @@ import java.util.regex.Pattern;
 public class InputValidator {
 
     // Regex kiểm tra cấu trúc định dạng Email quốc tế
-    private static final Pattern EMAIL_PATTERN = Pattern.compile(
-            "^[A-Za-z0-9+_.-]+@(.+)$"
+    //private static final Pattern EMAIL_PATTERN = Pattern.compile(
+    //        "^[A-Za-z0-9+_.-]+@(.+)$"
+    //);
+
+    // Update regex kiểm tra email mới theo dạng @gmail.com
+    private static final Pattern GMAIL_PATTERN = Pattern.compile(
+            "^[A-Za-z0-9+_.-]+@gmail\\.com$",
+            Pattern.CASE_INSENSITIVE
     );
 
     // Giới hạn số tiền tối đa tránh lỗi tràn số dữ liệu (99 Tỷ VND)
@@ -161,15 +167,34 @@ public class InputValidator {
     /**
      * Helper: Kiểm tra cấu trúc Email
      */
+//    public static String validateEmail(String email, boolean isVietnamese) throws IllegalArgumentException {
+//        if (email == null || email.trim().isEmpty()) {
+//            throw new IllegalArgumentException(isVietnamese ?
+//                    "Địa chỉ Email không được để trống!" : "Email address cannot be empty!");
+//        }
+//        String cleanEmail = email.trim();
+//        if (!EMAIL_PATTERN.matcher(cleanEmail).matches()) {
+//            throw new IllegalArgumentException(isVietnamese ?
+//                    "Định dạng Email không hợp lệ (Ví dụ: abc@gmail.com)!" : "Invalid email format!");
+//        }
+//        if (cleanEmail.length() > 50) {
+//            throw new IllegalArgumentException(isVietnamese ?
+//                    "Độ dài Email không được vượt quá 50 ký tự!" : "Email address cannot exceed 50 characters!");
+//        }
+//        return cleanEmail;
+//    }
+
+    //Update phương thức kiểm tả gmail mới
     public static String validateEmail(String email, boolean isVietnamese) throws IllegalArgumentException {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException(isVietnamese ?
                     "Địa chỉ Email không được để trống!" : "Email address cannot be empty!");
         }
         String cleanEmail = email.trim();
-        if (!EMAIL_PATTERN.matcher(cleanEmail).matches()) {
+        if (!GMAIL_PATTERN.matcher(cleanEmail).matches()) {
             throw new IllegalArgumentException(isVietnamese ?
-                    "Định dạng Email không hợp lệ (Ví dụ: abc@gmail.com)!" : "Invalid email format!");
+                    "Email phải có đuôi @gmail.com (ví dụ: ten@gmail.com)!" :
+                    "Email must end with @gmail.com (e.g., name@gmail.com)!");
         }
         if (cleanEmail.length() > 50) {
             throw new IllegalArgumentException(isVietnamese ?
