@@ -34,7 +34,9 @@ public class SystemConfigPanel extends JPanel {
         setOpaque(false);
 
         initComponents();
+        syncComboWithCurrentSize();
         updateResponsiveLayout(isVietnamese, 560);
+        syncComboWithCurrentSize();
     }
 
     private void initComponents() {
@@ -203,6 +205,21 @@ public class SystemConfigPanel extends JPanel {
 
         if (currentSizeIndex >= 0 && currentSizeIndex < comboWindowSize.getItemCount()) {
             comboWindowSize.setSelectedIndex(currentSizeIndex);
+        }
+    }
+    //Thêm phương thức cập nhật chỉ số cấu hình
+    private void syncComboWithCurrentSize() {
+        if (mainFrame == null) return;
+        int currentWidth = mainFrame.getWidth();
+        int currentHeight = mainFrame.getHeight();
+        int index = 0; // mặc định 1200x750
+        if (currentWidth == 1400 && currentHeight == 800) {
+            index = 1;
+        } else if (currentWidth == 1600 && currentHeight == 950) {
+            index = 2;
+        }
+        if (comboWindowSize != null && comboWindowSize.getItemCount() > index) {
+            comboWindowSize.setSelectedIndex(index);
         }
     }
 }
