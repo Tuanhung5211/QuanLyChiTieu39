@@ -240,7 +240,9 @@ public class AccountSettingsPanel extends JPanel {
                     JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Mật khẩu cũ không đúng!" : "Incorrect old password!", "Error", JOptionPane.ERROR_MESSAGE);
                 } else {
                     user.setPasswordHash(UserService.hashPassword(newPass));
-                    DatabaseUtil.updateUser(user);
+                    //DatabaseUtil.updateUser(user);
+                    //Cập nhật với code mới
+                    DatabaseUtil.updateUserPassword(user.getId(), UserService.hashPassword(newPass));
                     JOptionPane.showMessageDialog(passDialog, isVietnamese ? "Đổi mật khẩu thành công! Hãy đăng nhập lại." : "Password changed! Please re-login.");
                     passDialog.dispose();
                     logout();

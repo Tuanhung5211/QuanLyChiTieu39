@@ -292,6 +292,18 @@ public class DatabaseUtil {
             throw new RuntimeException("Lỗi khi thực hiện cập nhật thông tin hồ sơ User", e);
         }
     }
+    //Update phương thức câph nhật mật khẩu mật khẩu
+    public static void updateUserPassword(String userId, String newPasswordHash) {
+        String sql = "UPDATE users SET password_hash=? WHERE id=?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, newPasswordHash);
+            stmt.setString(2, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi cập nhật mật khẩu", e);
+        }
+    }
 
     // ========== XÓA DỮ LIỆU THEO USER ==========
     public static void deleteTransactionsByUser(String userId) {
