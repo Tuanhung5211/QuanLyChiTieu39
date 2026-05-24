@@ -2,23 +2,20 @@ package com.expensemanager.service;
 
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
+import com.expensemanager.util.EmailService;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.UUID;
+import java.security.SecureRandom;
 
 public class UserService {
 
     public static User register(String username, String password, String nickname, String email, String gender) {
-        // 🌟 KHẮC PHỤC: Ném lỗi nghiệp vụ rõ ràng, không âm thầm trả về null
         if (DatabaseUtil.getUserByUsername(username) != null) {
-            boolean isVN = "vi".equalsIgnoreCase(SessionManager.getLanguage());
-            throw new IllegalArgumentException(isVN ?
-                    "Tên đăng nhập đã tồn tại trên hệ thống!" : "Username already exists!");
+            throw new IllegalArgumentException("Username already exists!");
         }
-        String id = UUID.randomUUID().toString().substring(0, 8);
+        String id = java.util.UUID.randomUUID().toString().substring(0, 8);
         String passwordHash = hashPassword(password);
-
         User user = new User(id, username, passwordHash, nickname, email, gender);
         DatabaseUtil.insertUser(user);
         return user;
@@ -47,7 +44,31 @@ public class UserService {
             }
             return hexString.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Lỗi hệ thống mã hóa bảo mật SHA-256", e);
+            throw new RuntimeException("Lỗi mã hóa", e);
         }
+    }
+
+    // ========== THÊM CÁC PHƯƠNG THỨC CHO QUÊN MẬT KHẨU ==========
+    private static String generateRandomPassword(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
+        StringBuilder sb = new StringBuilder();
+        SecureRandom random = new SecureRandom();
+        for (int i = 0; i < length; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
+
+    public static boolean resetPasswordByEmail(String email) {
+        User user = DatabaseUtil.getUserByEmail(email);
+        if (user == null) return false;
+        String newPlainPassword = generateRandomPassword(8);
+        String newHashed = hashPassword(newPlainPassword);
+        boolean updated = DatabaseUtil.updatePasswordByEmail(email, newHashed);
+        if (updated) {
+            EmailService.sendNewPassword(email, newPlainPassword);
+            return true;
+        }
+        return false;
     }
 }

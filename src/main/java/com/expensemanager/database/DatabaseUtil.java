@@ -338,4 +338,42 @@ public class DatabaseUtil {
             throw new RuntimeException("Lỗi khi xóa vĩnh viễn tài khoản người dùng khỏi hệ thống", e);
         }
     }
+
+    // Tìm user theo email
+    public static User getUserByEmail(String email) {
+        String sql = "SELECT * FROM users WHERE email = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, email);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                String id = rs.getString("id");
+                String username = rs.getString("username");
+                String passwordHash = rs.getString("password_hash");
+                String nickname = rs.getString("nickname");
+                String gender = rs.getString("gender");
+                String avatar = rs.getString("avatar");
+                User user = new User(id, username, passwordHash, nickname, email, gender);
+                user.setAvatar(avatar);
+                return user;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    // Cập nhật mật khẩu theo email
+    public static boolean updatePasswordByEmail(String email, String newPasswordHash) {
+        String sql = "UPDATE users SET password_hash = ? WHERE email = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, newPasswordHash);
+            stmt.setString(2, email);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
