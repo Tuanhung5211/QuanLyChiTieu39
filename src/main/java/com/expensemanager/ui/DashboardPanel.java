@@ -29,6 +29,8 @@ public class DashboardPanel extends JPanel implements Observer {
     private MainFrame mainFrame;
     private FinanceService financeService;
     private BudgetManager budgetManager;
+    private int currentPage = 0;
+    private final int PAGE_SIZE = 20;
 
     private int currentMonthOffset = 0;
     private boolean isVietnamese = true;
@@ -217,6 +219,7 @@ public class DashboardPanel extends JPanel implements Observer {
     // =====================================================================
     public void refreshData() {
         if (financeService == null) return;
+        List<Transaction> allTransactions = financeService.getTransactionsWithPagination(0, 50); // chỉ lấy 50 gần nhất
 
         LocalDate targetDate = LocalDate.now().plusMonths(currentMonthOffset);
         int targetMonth = targetDate.getMonthValue();

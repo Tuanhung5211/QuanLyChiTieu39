@@ -174,4 +174,17 @@ public class FinanceService extends Subject {
                 .max(LocalDate::compareTo)
                 .orElse(null);
     }
+
+    // Update phân trang
+    public List<Transaction> getTransactionsWithPagination(int offset, int limit) {
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) return new ArrayList<>();
+        return DatabaseUtil.getTransactionsWithPagination(userId, offset, limit);
+    }
+
+    public int getTransactionCount() {
+        String userId = SessionManager.getCurrentUserId();
+        if (userId == null) return 0;
+        return DatabaseUtil.getTransactionCount(userId);
+    }
 }

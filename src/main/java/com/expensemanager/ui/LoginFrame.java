@@ -4,6 +4,7 @@ import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
 import com.expensemanager.service.UserService;
 import com.expensemanager.util.InputValidator;
+import com.expensemanager.util.ValidationUI;
 
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -93,12 +94,21 @@ public class LoginFrame extends JFrame {
 
         gbc.insets = new Insets(5, 0, 5, 0);
         gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
-        gbc.gridy = 3; txtLoginUsername = new JTextField(); styleTextField(txtLoginUsername); pForm.add(txtLoginUsername, gbc);
+        gbc.gridy = 3;
+        txtLoginUsername = new JTextField();
+        styleTextField(txtLoginUsername);
+        // *** KHỞI TẠO BORDER MẶC ĐỊNH CHO VALIDATIONUI ***
+        ValidationUI.initDefaultBorder(txtLoginUsername);
+        // *** GẮN AUTO RESET KHI GÕ HOẶC FOCUS ***
+        ValidationUI.addAutoReset(txtLoginUsername);
+        pForm.add(txtLoginUsername, gbc);
 
         gbc.gridy = 4; pForm.add(createLabel("Mật khẩu:"), gbc);
         gbc.gridy = 5;
         txtLoginPassword = new JPasswordField();
         styleTextField(txtLoginPassword);
+        // *** GẮN AUTO RESET CHO MẬT KHẨU ***
+        ValidationUI.addAutoReset(txtLoginPassword);
         pForm.add(txtLoginPassword, gbc);
 
         // Checkbox hiển thị mật khẩu
@@ -117,15 +127,19 @@ public class LoginFrame extends JFrame {
         pForm.add(chkShowLoginPwd, gbc);
 
         gbc.gridy = 7; gbc.insets = new Insets(5, 0, 15, 0);
-        JButton btnLogin = new JButton("ĐĂNG NHẬP"); stylePrimaryButton(btnLogin);
+        JButton btnLogin = new JButton("ĐĂNG NHẬP");
+        stylePrimaryButton(btnLogin);
         btnLogin.addActionListener(e -> login());
         pForm.add(btnLogin, gbc);
+        getRootPane().setDefaultButton(btnLogin);
 
         gbc.gridy = 8; gbc.insets = new Insets(0, 0, 0, 0);
         pForm.add(createLink("Chưa có tài khoản? Đăng ký ngay", "register"), gbc);
 
         loginPanel.add(pForm);
     }
+
+
 
     private void createRegisterPanel() {
         registerPanel = new JPanel(new GridBagLayout());
@@ -291,8 +305,13 @@ public class LoginFrame extends JFrame {
     }
 
     private void login() {
+        // Reset viền cũ trước khi kiểm tra
+        ValidationUI.resetBorder(txtLoginUsername);
+        ValidationUI.resetBorder(txtLoginPassword);
+
         String username = txtLoginUsername.getText();
         String password = new String(txtLoginPassword.getPassword());
+
         try {
             InputValidator.validateLogin(username, password, isVietnamese);
             User user = UserService.login(username.trim(), password.trim());
@@ -300,10 +319,23 @@ public class LoginFrame extends JFrame {
                 new MainFrame().setVisible(true);
                 dispose();
             } else {
-                JOptionPane.showMessageDialog(this, "Lỗi đăng nhập: Tên người dùng hoặc mật khẩu không đúng!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                // Sai tài khoản hoặc mật khẩu → đỏ cả hai
+                ValidationUI.setErrorBorder(txtLoginUsername);
+                ValidationUI.setErrorBorder(txtLoginPassword);
+                JOptionPane.showMessageDialog(this,
+                        isVietnamese ? "Sai tên đăng nhập hoặc mật khẩu!" : "Invalid username or password!",
+                        "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi đăng nhập", JOptionPane.WARNING_MESSAGE);
+            // Lỗi do để trống
+            if (username.trim().isEmpty()) {
+                ValidationUI.setErrorBorder(txtLoginUsername);
+            }
+            if (password.isEmpty()) {
+                ValidationUI.setErrorBorder(txtLoginPassword);
+            }
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    isVietnamese ? "Lỗi nhập liệu" : "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
 
