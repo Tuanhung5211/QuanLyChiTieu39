@@ -46,6 +46,11 @@ public class Transaction {
     public void setAmount(double amount) { this.amount = amount; }
     public void setNote(String note) { this.note = note; }
     public void setDateTime(LocalDateTime dateTime) { this.dateTime = dateTime; }
+    // Thêm vào cuối lớp Transaction, sau các getter/setter hiện có:
+
+    public void setCategory(Category category) {
+        this.category = category;
+    }
 
     @Override
     public String toString() {

@@ -7,7 +7,6 @@ import java.util.Properties;
 public class ConfigLocalStorage {
     private static final String CONFIG_FILE = "config.properties";
 
-    // Hàm lưu trạng thái cấu hình xuống file vật lý
     public static void saveConfig(boolean isVietnamese, int width, int height) {
         Properties prop = new Properties();
         prop.setProperty("language", isVietnamese ? "vn" : "en");
@@ -20,18 +19,16 @@ public class ConfigLocalStorage {
         }
     }
 
-    // Hàm nạp ngôn ngữ đã lưu
     public static boolean loadLanguage() {
         Properties prop = new Properties();
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
             prop.load(input);
             return "vn".equalsIgnoreCase(prop.getProperty("language", "vn"));
         } catch (IOException ex) {
-            return true; // Mặc định là Tiếng Việt nếu chưa có file
+            return true;
         }
     }
 
-    // Hàm nạp kích thước cửa sổ đã lưu
     public static Dimension loadWindowSize() {
         Properties prop = new Properties();
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
@@ -40,7 +37,30 @@ public class ConfigLocalStorage {
             int h = Integer.parseInt(prop.getProperty("windowHeight", "750"));
             return new Dimension(w, h);
         } catch (IOException ex) {
-            return new Dimension(1200, 750); // Mặc định nếu chưa cài đặt
+            return new Dimension(1200, 750);
+        }
+    }
+
+    public static void saveTheme(boolean isDark) {
+        Properties prop = new Properties();
+        try (InputStream input = new FileInputStream(CONFIG_FILE)) {
+            prop.load(input);
+        } catch (IOException ignored) {}
+        prop.setProperty("theme", isDark ? "dark" : "light");
+        try (OutputStream output = new FileOutputStream(CONFIG_FILE)) {
+            prop.store(output, "Money Tracker Local Configurations");
+        } catch (IOException io) {
+            io.printStackTrace();
+        }
+    }
+
+    public static boolean loadTheme() {
+        Properties prop = new Properties();
+        try (InputStream input = new FileInputStream(CONFIG_FILE)) {
+            prop.load(input);
+            return "dark".equalsIgnoreCase(prop.getProperty("theme", "light"));
+        } catch (IOException ex) {
+            return false;
         }
     }
 }
