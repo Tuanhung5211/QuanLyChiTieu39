@@ -58,9 +58,33 @@ public class ConfigLocalStorage {
         Properties prop = new Properties();
         try (InputStream input = new FileInputStream(CONFIG_FILE)) {
             prop.load(input);
-            return "dark".equalsIgnoreCase(prop.getProperty("theme", "light"));
+            return "dark".equalsIgnoreCase(prop.getProperty("theme", "dark"));
         } catch (IOException ex) {
-            return false;
+            return true;
+        }
+    }
+
+    // Thêm cho theme preset
+    public static void saveThemePreset(String preset) {
+        Properties prop = new Properties();
+        try (InputStream input = new FileInputStream(CONFIG_FILE)) {
+            prop.load(input);
+        } catch (IOException ignored) {}
+        prop.setProperty("themePreset", preset);
+        try (OutputStream output = new FileOutputStream(CONFIG_FILE)) {
+            prop.store(output, null);
+        } catch (IOException io) {
+            io.printStackTrace();
+        }
+    }
+
+    public static String loadThemePreset() {
+        Properties prop = new Properties();
+        try (InputStream input = new FileInputStream(CONFIG_FILE)) {
+            prop.load(input);
+            return prop.getProperty("themePreset", "DARK");
+        } catch (IOException ex) {
+            return "DARK";
         }
     }
 }

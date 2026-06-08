@@ -5,14 +5,16 @@ import com.expensemanager.entity.Budget;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.exception.InvalidAmountException;
+
 import java.time.LocalDate;
 
 public class BudgetManager {
-
     private FinanceService financeService;
+    private ReminderService reminderService;
 
-    public BudgetManager(FinanceService financeService) {
+    public BudgetManager(FinanceService financeService, ReminderService reminderService) {
         this.financeService = financeService;
+        this.reminderService = reminderService;
     }
 
     public void setBudget(int month, int year, double limit) throws InvalidAmountException {
@@ -29,6 +31,7 @@ public class BudgetManager {
             Budget newBudget = new Budget(id, month, year, limit);
             DatabaseUtil.insertBudget(newBudget, userId);
         }
+        if (reminderService != null) reminderService.autoCreateBudgetAlerts();
     }
 
     public String checkBudget() {
@@ -50,6 +53,8 @@ public class BudgetManager {
 
         budget.setSpent(monthlyExpense);
         DatabaseUtil.updateBudget(budget);
+
+        if (reminderService != null) reminderService.autoCreateBudgetAlerts();
 
         return formatBudgetStatus(budget);
     }

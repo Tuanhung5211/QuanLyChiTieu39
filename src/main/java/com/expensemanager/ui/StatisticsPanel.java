@@ -8,6 +8,7 @@ import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.service.StatisticsService;
 import com.expensemanager.util.EmojiUtil;
+import com.expensemanager.util.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -494,5 +495,27 @@ public class StatisticsPanel extends JPanel implements Observer {
                 eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) {
             SwingUtilities.invokeLater(this::refreshData);
         }
+    }
+
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+        if (chartDrawPanel != null) chartDrawPanel.setBackground(ThemeManager.getColor("surface"));
+        if (rankingTable != null) {
+            rankingTable.setBackground(ThemeManager.getColor("surface"));
+            rankingTable.setForeground(ThemeManager.getColor("textPrimary"));
+            rankingTable.getTableHeader().setBackground(ThemeManager.getColor("input"));
+            rankingTable.getTableHeader().setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (lblMainTitle != null) lblMainTitle.setForeground(ThemeManager.getColor("textPrimary"));
+        if (lblTimeRange != null) lblTimeRange.setForeground(ThemeManager.getColor("accent"));
+        // Cập nhật các button
+        JButton[] btns = {btnPieChartToggle, btnLineChartToggle, btnWeekTab, btnMonthTab, btnYearTab};
+        for (JButton btn : btns) {
+            if (btn != null) {
+                btn.setBackground(ThemeManager.getColor("input"));
+                btn.setForeground(ThemeManager.getColor("textPrimary"));
+            }
+        }
+        refreshData();
     }
 }

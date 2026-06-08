@@ -1,6 +1,7 @@
 package com.expensemanager.ui;
 
 import com.expensemanager.database.DatabaseUtil;
+import com.expensemanager.entity.Budget;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.observer.EventType;
@@ -8,6 +9,7 @@ import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.service.SessionManager;
+import com.expensemanager.util.ThemeManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -118,7 +120,7 @@ public class CalendarPanel extends JPanel implements Observer {
         double dailyBudget = 0;
         String userId = SessionManager.getCurrentUserId();
         if (userId != null) {
-            var budget = DatabaseUtil.getBudget(currentDate.getMonthValue(), currentDate.getYear(), userId);
+            Budget budget = DatabaseUtil.getBudget(currentDate.getMonthValue(), currentDate.getYear(), userId);
             if (budget != null && budget.getLimit() > 0) {
                 dailyBudget = budget.getLimit() / daysInMonth;
             }
@@ -225,5 +227,21 @@ public class CalendarPanel extends JPanel implements Observer {
                 eventType == EventType.DATA_LOADED) {
             SwingUtilities.invokeLater(this::refreshCalendar);
         }
+    }
+
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+        if (daysPanel != null) daysPanel.setBackground(ThemeManager.getColor("bg"));
+        if (lblMonthYear != null) lblMonthYear.setForeground(ThemeManager.getColor("accent"));
+        // Các button điều hướng
+        if (btnPrevMonth != null) {
+            btnPrevMonth.setBackground(ThemeManager.getColor("input"));
+            btnPrevMonth.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnNextMonth != null) {
+            btnNextMonth.setBackground(ThemeManager.getColor("input"));
+            btnNextMonth.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        refreshCalendar();
     }
 }

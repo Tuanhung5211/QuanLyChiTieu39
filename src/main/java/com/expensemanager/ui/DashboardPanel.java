@@ -8,6 +8,7 @@ import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.util.EmojiUtil;
+import com.expensemanager.util.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -374,5 +375,47 @@ public class DashboardPanel extends JPanel implements Observer {
                 eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) {
             SwingUtilities.invokeLater(this::refreshData);
         }
+    }
+
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+        if (transactionListPanel != null) transactionListPanel.setBackground(ThemeManager.getColor("bg"));
+        if (scrollPane != null) scrollPane.getViewport().setBackground(ThemeManager.getColor("bg"));
+        if (lblIncome != null) lblIncome.setForeground(ThemeManager.getColor("success"));
+        if (lblExpense != null) lblExpense.setForeground(ThemeManager.getColor("danger"));
+        if (lblBalance != null) lblBalance.setForeground(ThemeManager.getColor("textPrimary"));
+        if (lblIncomeTitle != null) lblIncomeTitle.setForeground(ThemeManager.getColor("textSecondary"));
+        if (lblExpenseTitle != null) lblExpenseTitle.setForeground(ThemeManager.getColor("textSecondary"));
+        if (lblBalanceTitle != null) lblBalanceTitle.setForeground(ThemeManager.getColor("textSecondary"));
+        if (txtSearch != null) {
+            txtSearch.setBackground(ThemeManager.getColor("input"));
+            txtSearch.setForeground(ThemeManager.getColor("textPrimary"));
+            txtSearch.setCaretColor(ThemeManager.getColor("accent"));
+            txtSearch.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+                    BorderFactory.createEmptyBorder(6,10,6,10)
+            ));
+        }
+        if (cmbFilter != null) {
+            cmbFilter.setBackground(ThemeManager.getColor("input"));
+            cmbFilter.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (txtStartDate != null) {
+            txtStartDate.setBackground(ThemeManager.getColor("input"));
+            txtStartDate.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (txtEndDate != null) {
+            txtEndDate.setBackground(ThemeManager.getColor("input"));
+            txtEndDate.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnApplyFilter != null) {
+            btnApplyFilter.setBackground(ThemeManager.getColor("accent"));
+            btnApplyFilter.setForeground(ThemeManager.getColor("bg"));
+        }
+        if (btnAdd != null) {
+            btnAdd.setBackground(new Color(76, 175, 80));
+            btnAdd.setForeground(Color.WHITE);
+        }
+        refreshData();
     }
 }
