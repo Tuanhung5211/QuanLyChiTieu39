@@ -23,13 +23,6 @@ public class AccountSettingsPanel extends JPanel {
     private JComboBox<String> cmbGender;
     private JButton btnUpdateProfile, btnOpenChangePass, btnDeleteAccount;
 
-    private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color INPUT_BG = new Color(40, 40, 40);
-    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
-    private final Color TEXT_SECONDARY = new Color(150, 150, 150);
-    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
-    private final Color DANGER_RED = new Color(244, 67, 54);
-
     public AccountSettingsPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         this.isVietnamese = mainFrame != null && mainFrame.isVietnamese();
@@ -40,20 +33,19 @@ public class AccountSettingsPanel extends JPanel {
         initComponents();
         updateResponsiveLayout(isVietnamese, 560);
         refreshData();
+        applyTheme();
     }
 
     private void initComponents() {
         profileCard = new JPanel(new BorderLayout(0, 15));
-        profileCard.setBackground(SURFACE_COLOR);
         profileCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(45, 45, 45), 1, true),
+                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
                 BorderFactory.createEmptyBorder(20, 20, 20, 20)
         ));
         profileCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         lblProfileTitle = new JLabel();
         lblProfileTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblProfileTitle.setForeground(ACCENT_YELLOW);
         profileCard.add(lblProfileTitle, BorderLayout.NORTH);
 
         JPanel pForm = new JPanel(new GridBagLayout());
@@ -62,77 +54,120 @@ public class AccountSettingsPanel extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 8, 8, 8);
 
-        // Hàng 1: Nickname
+        // Nickname
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.25;
-        lblNickname = new JLabel(); lblNickname.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lblNickname.setForeground(TEXT_SECONDARY);
+        lblNickname = new JLabel(); lblNickname.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         pForm.add(lblNickname, gbc);
 
         gbc.gridx = 1; gbc.weightx = 0.75;
         txtNickname = new JTextField(); styleTextField(txtNickname);
         pForm.add(txtNickname, gbc);
 
-        // Hàng 2: Email
+        // Email
         gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0.25;
-        lblEmail = new JLabel(); lblEmail.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lblEmail.setForeground(TEXT_SECONDARY);
+        lblEmail = new JLabel(); lblEmail.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         pForm.add(lblEmail, gbc);
 
         gbc.gridx = 1; gbc.weightx = 0.75;
         txtEmail = new JTextField(); styleTextField(txtEmail);
         pForm.add(txtEmail, gbc);
 
-        // Hàng 3: Gender
+        // Gender
         gbc.gridx = 0; gbc.gridy = 2; gbc.weightx = 0.25;
-        lblGender = new JLabel(); lblGender.setFont(new Font("Segoe UI", Font.PLAIN, 15)); lblGender.setForeground(TEXT_SECONDARY);
+        lblGender = new JLabel(); lblGender.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         pForm.add(lblGender, gbc);
 
         gbc.gridx = 1; gbc.weightx = 0.75;
         cmbGender = new JComboBox<>(isVietnamese ? new String[]{"Nam", "Nữ", "Khác"} : new String[]{"Male", "Female", "Other"});
-        cmbGender.setBackground(INPUT_BG); cmbGender.setForeground(TEXT_PRIMARY); cmbGender.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        cmbGender.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         pForm.add(cmbGender, gbc);
 
-        // Hàng 4: Button Lưu
+        // Save
         gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.insets = new Insets(15, 8, 5, 8);
         btnUpdateProfile = new JButton(); stylePrimaryButton(btnUpdateProfile);
         btnUpdateProfile.addActionListener(e -> updateProfile());
         pForm.add(btnUpdateProfile, gbc);
 
-        // Hàng 5: Button Đổi MK
+        // Change password
         gbc.gridy = 4;
         btnOpenChangePass = new JButton();
         btnOpenChangePass.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btnOpenChangePass.setBackground(INPUT_BG);
-        btnOpenChangePass.setForeground(TEXT_PRIMARY);
         btnOpenChangePass.setFocusPainted(false);
         btnOpenChangePass.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnOpenChangePass.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(65, 65, 65), 1, true),
+                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
                 BorderFactory.createEmptyBorder(10, 0, 10, 0)
         ));
         btnOpenChangePass.addActionListener(e -> openChangePasswordDialog());
         pForm.add(btnOpenChangePass, gbc);
 
-        // Hàng 6: Button Xóa Tài Khoản
+        // Delete account
         gbc.gridy = 5;
-        gbc.insets = new Insets(15, 8, 5, 8);
         btnDeleteAccount = new JButton();
-        btnDeleteAccount.setBackground(SURFACE_COLOR);
-        btnDeleteAccount.setForeground(DANGER_RED);
         btnDeleteAccount.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btnDeleteAccount.setFocusPainted(false);
         btnDeleteAccount.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnDeleteAccount.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(DANGER_RED, 1, true),
+                BorderFactory.createLineBorder(ThemeManager.getColor("danger"), 1, true),
                 BorderFactory.createEmptyBorder(10, 0, 10, 0)
         ));
         btnDeleteAccount.addActionListener(e -> deleteAccount());
         btnDeleteAccount.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btnDeleteAccount.setBackground(DANGER_RED); btnDeleteAccount.setForeground(Color.WHITE); }
-            @Override public void mouseExited(MouseEvent e) { btnDeleteAccount.setBackground(SURFACE_COLOR); btnDeleteAccount.setForeground(DANGER_RED); }
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btnDeleteAccount.setBackground(ThemeManager.getColor("danger"));
+                btnDeleteAccount.setForeground(ThemeManager.getColor("bg"));
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                applyTheme();
+            }
         });
         pForm.add(btnDeleteAccount, gbc);
 
         profileCard.add(pForm, BorderLayout.CENTER);
         add(profileCard);
+    }
+
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+        if (profileCard != null) {
+            profileCard.setBackground(ThemeManager.getColor("surface"));
+            profileCard.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
+                    BorderFactory.createEmptyBorder(20, 20, 20, 20)
+            ));
+        }
+        if (lblProfileTitle != null) lblProfileTitle.setForeground(ThemeManager.getColor("accent"));
+        if (lblNickname != null) lblNickname.setForeground(ThemeManager.getColor("textSecondary"));
+        if (lblEmail != null) lblEmail.setForeground(ThemeManager.getColor("textSecondary"));
+        if (lblGender != null) lblGender.setForeground(ThemeManager.getColor("textSecondary"));
+        if (txtNickname != null) {
+            txtNickname.setBackground(ThemeManager.getColor("input"));
+            txtNickname.setForeground(ThemeManager.getColor("textPrimary"));
+            txtNickname.setCaretColor(ThemeManager.getColor("accent"));
+        }
+        if (txtEmail != null) {
+            txtEmail.setBackground(ThemeManager.getColor("input"));
+            txtEmail.setForeground(ThemeManager.getColor("textPrimary"));
+            txtEmail.setCaretColor(ThemeManager.getColor("accent"));
+        }
+        if (cmbGender != null) {
+            cmbGender.setBackground(ThemeManager.getColor("input"));
+            cmbGender.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnUpdateProfile != null) {
+            btnUpdateProfile.setBackground(ThemeManager.getColor("accent"));
+            btnUpdateProfile.setForeground(ThemeManager.getColor("bg"));
+        }
+        if (btnOpenChangePass != null) {
+            btnOpenChangePass.setBackground(ThemeManager.getColor("input"));
+            btnOpenChangePass.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnDeleteAccount != null) {
+            btnDeleteAccount.setBackground(ThemeManager.getColor("surface"));
+            btnDeleteAccount.setForeground(ThemeManager.getColor("danger"));
+        }
     }
 
     public void refreshData() {
@@ -175,56 +210,51 @@ public class AccountSettingsPanel extends JPanel {
         }
     }
 
-    // Hộp thoại đổi mật khẩu với checkbox hiển thị mật khẩu
     private void openChangePasswordDialog() {
         JDialog passDialog = new JDialog(mainFrame, isVietnamese ? "Thay đổi mật khẩu" : "Change Password", true);
         passDialog.setSize(450, 400);
         passDialog.setLocationRelativeTo(this);
-        passDialog.getContentPane().setBackground(new Color(18, 18, 18));
+        passDialog.getContentPane().setBackground(ThemeManager.getColor("bg"));
         passDialog.setLayout(new BorderLayout());
 
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBackground(new Color(18, 18, 18));
+        formPanel.setBackground(ThemeManager.getColor("bg"));
         formPanel.setBorder(BorderFactory.createEmptyBorder(25, 20, 15, 20));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 8, 8, 8);
 
-        // Mật khẩu cũ
         gbc.gridx = 0; gbc.gridy = 0;
         JLabel lOld = new JLabel(isVietnamese ? "Mật khẩu cũ:" : "Old Password:");
-        lOld.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lOld.setForeground(TEXT_SECONDARY);
+        lOld.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lOld.setForeground(ThemeManager.getColor("textSecondary"));
         formPanel.add(lOld, gbc);
         gbc.gridx = 1;
         JPasswordField txtOldPassword = new JPasswordField();
         stylePasswordField(txtOldPassword);
         formPanel.add(txtOldPassword, gbc);
 
-        // Mật khẩu mới
         gbc.gridx = 0; gbc.gridy = 1;
         JLabel lNew = new JLabel(isVietnamese ? "Mật khẩu mới:" : "New Password:");
-        lNew.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lNew.setForeground(TEXT_SECONDARY);
+        lNew.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lNew.setForeground(ThemeManager.getColor("textSecondary"));
         formPanel.add(lNew, gbc);
         gbc.gridx = 1;
         JPasswordField txtNewPassword = new JPasswordField();
         stylePasswordField(txtNewPassword);
         formPanel.add(txtNewPassword, gbc);
 
-        // Xác nhận mật khẩu mới
         gbc.gridx = 0; gbc.gridy = 2;
         JLabel lConf = new JLabel(isVietnamese ? "Xác nhận MK:" : "Confirm Pass:");
-        lConf.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lConf.setForeground(TEXT_SECONDARY);
+        lConf.setFont(new Font("Segoe UI", Font.PLAIN, 14)); lConf.setForeground(ThemeManager.getColor("textSecondary"));
         formPanel.add(lConf, gbc);
         gbc.gridx = 1;
         JPasswordField txtConfirmPassword = new JPasswordField();
         stylePasswordField(txtConfirmPassword);
         formPanel.add(txtConfirmPassword, gbc);
 
-        // Checkbox hiển thị mật khẩu (cho cả 3 ô)
         gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.insets = new Insets(10, 8, 5, 8);
         JCheckBox chkShowPasswords = new JCheckBox(isVietnamese ? "Hiển thị mật khẩu" : "Show passwords");
-        chkShowPasswords.setForeground(TEXT_SECONDARY);
-        chkShowPasswords.setBackground(new Color(18,18,18));
+        chkShowPasswords.setForeground(ThemeManager.getColor("textSecondary"));
+        chkShowPasswords.setBackground(ThemeManager.getColor("bg"));
         chkShowPasswords.setFocusPainted(false);
         chkShowPasswords.addActionListener(e -> {
             boolean show = chkShowPasswords.isSelected();
@@ -236,19 +266,18 @@ public class AccountSettingsPanel extends JPanel {
 
         passDialog.add(formPanel, BorderLayout.CENTER);
 
-        // Panel nút bấm
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
-        btnPanel.setBackground(new Color(18, 18, 18));
+        btnPanel.setBackground(ThemeManager.getColor("bg"));
 
         JButton btnCancel = new JButton(isVietnamese ? "HỦY BỎ" : "CANCEL");
         btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnCancel.setBackground(SURFACE_COLOR); btnCancel.setForeground(TEXT_PRIMARY);
+        btnCancel.setBackground(ThemeManager.getColor("surface")); btnCancel.setForeground(ThemeManager.getColor("textPrimary"));
         btnCancel.setFocusPainted(false); btnCancel.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 20));
         btnCancel.addActionListener(e -> passDialog.dispose());
 
         JButton btnConfirm = new JButton(isVietnamese ? "XÁC NHẬN" : "CONFIRM");
         btnConfirm.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnConfirm.setBackground(ACCENT_YELLOW); btnConfirm.setForeground(new Color(18, 18, 18));
+        btnConfirm.setBackground(ThemeManager.getColor("accent")); btnConfirm.setForeground(ThemeManager.getColor("bg"));
         btnConfirm.setFocusPainted(false); btnConfirm.setBorder(BorderFactory.createEmptyBorder(8, 20, 8, 20));
 
         btnConfirm.addActionListener(e -> {
@@ -280,14 +309,13 @@ public class AccountSettingsPanel extends JPanel {
         passDialog.setVisible(true);
     }
 
-    // Helper để style JPasswordField giống các text field khác
     private void stylePasswordField(JPasswordField pf) {
-        pf.setBackground(INPUT_BG);
-        pf.setForeground(TEXT_PRIMARY);
-        pf.setCaretColor(ACCENT_YELLOW);
+        pf.setBackground(ThemeManager.getColor("input"));
+        pf.setForeground(ThemeManager.getColor("textPrimary"));
+        pf.setCaretColor(ThemeManager.getColor("accent"));
         pf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         pf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(60, 60, 60)),
+                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)
         ));
         pf.setPreferredSize(new Dimension(200, 38));
@@ -318,14 +346,20 @@ public class AccountSettingsPanel extends JPanel {
     }
 
     private void styleTextField(JTextField tf) {
-        tf.setBackground(INPUT_BG); tf.setForeground(TEXT_PRIMARY); tf.setCaretColor(ACCENT_YELLOW);
+        tf.setBackground(ThemeManager.getColor("input"));
+        tf.setForeground(ThemeManager.getColor("textPrimary"));
+        tf.setCaretColor(ThemeManager.getColor("accent"));
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        tf.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)), BorderFactory.createEmptyBorder(10, 15, 10, 15)));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
     }
 
     private void stylePrimaryButton(JButton btn) {
-        btn.setBackground(ACCENT_YELLOW); btn.setForeground(SURFACE_COLOR); btn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btn.setFocusPainted(false); btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
     }
 
@@ -357,42 +391,5 @@ public class AccountSettingsPanel extends JPanel {
         if (currentGenderIndex >= 0 && currentGenderIndex < cmbGender.getItemCount()) {
             cmbGender.setSelectedIndex(currentGenderIndex);
         }
-    }
-
-    public void applyTheme() {
-        setBackground(ThemeManager.getColor("bg"));
-        if (profileCard != null) {
-            profileCard.setBackground(ThemeManager.getColor("surface"));
-            profileCard.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
-        }
-        if (lblProfileTitle != null) lblProfileTitle.setForeground(ThemeManager.getColor("accent"));
-        if (lblNickname != null) lblNickname.setForeground(ThemeManager.getColor("textSecondary"));
-        if (lblEmail != null) lblEmail.setForeground(ThemeManager.getColor("textSecondary"));
-        if (lblGender != null) lblGender.setForeground(ThemeManager.getColor("textSecondary"));
-        if (txtNickname != null) {
-            txtNickname.setBackground(ThemeManager.getColor("input"));
-            txtNickname.setForeground(ThemeManager.getColor("textPrimary"));
-        }
-        if (txtEmail != null) {
-            txtEmail.setBackground(ThemeManager.getColor("input"));
-            txtEmail.setForeground(ThemeManager.getColor("textPrimary"));
-        }
-        if (cmbGender != null) {
-            cmbGender.setBackground(ThemeManager.getColor("input"));
-            cmbGender.setForeground(ThemeManager.getColor("textPrimary"));
-        }
-        if (btnUpdateProfile != null) {
-            btnUpdateProfile.setBackground(ThemeManager.getColor("accent"));
-            btnUpdateProfile.setForeground(ThemeManager.getColor("bg"));
-        }
-        if (btnOpenChangePass != null) {
-            btnOpenChangePass.setBackground(ThemeManager.getColor("input"));
-            btnOpenChangePass.setForeground(ThemeManager.getColor("textPrimary"));
-        }
-        if (btnDeleteAccount != null) {
-            btnDeleteAccount.setBackground(ThemeManager.getColor("surface"));
-            btnDeleteAccount.setForeground(ThemeManager.getColor("danger"));
-        }
-        refreshData();
     }
 }

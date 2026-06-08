@@ -22,15 +22,15 @@ public class ReminderManagerPanel extends JPanel {
         this.reminderService = reminderService;
         this.isVietnamese = isVietnamese;
         setLayout(new BorderLayout());
-        setBackground(new Color(30,30,30));
         initComponents();
         refreshTable();
+        applyTheme();
     }
 
     private void initComponents() {
         JLabel title = new JLabel(isVietnamese ? "Quản lý nhắc nhở" : "Reminder Manager");
         title.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        title.setForeground(new Color(255,193,7));
+        title.setForeground(ThemeManager.getColor("accent"));
         add(title, BorderLayout.NORTH);
 
         String[] columns = isVietnamese ?
@@ -40,10 +40,6 @@ public class ReminderManagerPanel extends JPanel {
             @Override public boolean isCellEditable(int row, int col) { return false; }
         };
         reminderTable = new JTable(tableModel);
-        reminderTable.setBackground(new Color(40,40,40));
-        reminderTable.setForeground(Color.WHITE);
-        reminderTable.getTableHeader().setBackground(new Color(60,60,60));
-        reminderTable.getTableHeader().setForeground(Color.WHITE);
         reminderTable.setRowHeight(25);
         JScrollPane scroll = new JScrollPane(reminderTable);
         add(scroll, BorderLayout.CENTER);
@@ -86,6 +82,32 @@ public class ReminderManagerPanel extends JPanel {
         add(btnPanel, BorderLayout.SOUTH);
     }
 
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+        if (reminderTable != null) {
+            reminderTable.setBackground(ThemeManager.getColor("input"));
+            reminderTable.setForeground(ThemeManager.getColor("textPrimary"));
+            reminderTable.getTableHeader().setBackground(ThemeManager.getColor("surface"));
+            reminderTable.getTableHeader().setForeground(ThemeManager.getColor("textPrimary"));
+            reminderTable.setGridColor(ThemeManager.getColor("border"));
+        }
+        // Cập nhật màu cho tiêu đề
+        for (Component comp : getComponents()) {
+            if (comp instanceof JLabel) {
+                ((JLabel) comp).setForeground(ThemeManager.getColor("accent"));
+            } else if (comp instanceof JPanel && ((JPanel) comp).getComponentCount() > 0) {
+                JPanel panel = (JPanel) comp;
+                for (Component btnComp : panel.getComponents()) {
+                    if (btnComp instanceof JButton) {
+                        JButton btn = (JButton) btnComp;
+                        btn.setBackground(ThemeManager.getColor("accent"));
+                        btn.setForeground(ThemeManager.getColor("bg"));
+                    }
+                }
+            }
+        }
+    }
+
     private void refreshTable() {
         tableModel.setRowCount(0);
         List<Reminder> reminders = reminderService.getUserReminders();
@@ -111,15 +133,18 @@ public class ReminderManagerPanel extends JPanel {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), isVietnamese ? "Nhắc nhở" : "Reminder", true);
         dialog.setSize(480, 500);
         dialog.setLocationRelativeTo(this);
+        dialog.getContentPane().setBackground(ThemeManager.getColor("bg"));
         JPanel form = new JPanel(new GridBagLayout());
-        form.setBackground(new Color(30,30,30));
+        form.setBackground(ThemeManager.getColor("bg"));
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5,5,5,5);
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         JComboBox<String> typeCombo = new JComboBox<>(new String[]{"DAILY", "BILL", "BUDGET"});
-        JTextField titleField = new JTextField(20);
-        JTextArea descArea = new JTextArea(3,20);
+        styleCombo(typeCombo);
+        JTextField titleField = new JTextField(20); styleTextField(titleField);
+        JTextArea descArea = new JTextArea(3,20); descArea.setLineWrap(true); descArea.setWrapStyleWord(true);
+        styleTextArea(descArea);
         JSpinner timeSpinner = new JSpinner(new SpinnerDateModel());
         JSpinner.DateEditor timeEditor = new JSpinner.DateEditor(timeSpinner, "HH:mm:ss");
         timeSpinner.setEditor(timeEditor);
@@ -127,10 +152,12 @@ public class ReminderManagerPanel extends JPanel {
         JSpinner.DateEditor dateEditor = new JSpinner.DateEditor(dateSpinner, "yyyy-MM-dd");
         dateSpinner.setEditor(dateEditor);
         JComboBox<String> recurringCombo = new JComboBox<>(new String[]{"NONE", "MONTHLY", "YEARLY"});
+        styleCombo(recurringCombo);
         JSpinner percentSpinner = new JSpinner(new SpinnerNumberModel(80, 0, 100, 5));
         JCheckBox activeCheck = new JCheckBox(isVietnamese ? "Kích hoạt" : "Active", true);
         activeCheck.setOpaque(false);
-        activeCheck.setForeground(Color.WHITE);
+        activeCheck.setForeground(ThemeManager.getColor("textPrimary"));
+        activeCheck.setBackground(ThemeManager.getColor("bg"));
 
         if (existing != null) {
             typeCombo.setSelectedItem(existing.getType().name());
@@ -162,8 +189,8 @@ public class ReminderManagerPanel extends JPanel {
         addRow(form, gbc, "", activeCheck, y++);
 
         JButton saveBtn = new JButton(isVietnamese ? "Lưu" : "Save");
-        saveBtn.setBackground(new Color(255,193,7));
-        saveBtn.setForeground(Color.BLACK);
+        saveBtn.setBackground(ThemeManager.getColor("accent"));
+        saveBtn.setForeground(ThemeManager.getColor("bg"));
         saveBtn.addActionListener(e -> {
             try {
                 Reminder.ReminderType type = Reminder.ReminderType.valueOf((String) typeCombo.getSelectedItem());
@@ -213,33 +240,40 @@ public class ReminderManagerPanel extends JPanel {
     private void addRow(JPanel panel, GridBagConstraints gbc, String label, Component comp, int y) {
         gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 1;
         JLabel lbl = new JLabel(label);
-        lbl.setForeground(Color.WHITE);
+        lbl.setForeground(ThemeManager.getColor("textPrimary"));
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         panel.add(lbl, gbc);
         gbc.gridx = 1; gbc.gridwidth = 2;
         panel.add(comp, gbc);
     }
 
-    public void updateLanguage(boolean isVN) {
-        this.isVietnamese = isVN;
-        refreshTable();
+    private void styleTextField(JTextField tf) {
+        tf.setBackground(ThemeManager.getColor("input"));
+        tf.setForeground(ThemeManager.getColor("textPrimary"));
+        tf.setCaretColor(ThemeManager.getColor("accent"));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+                BorderFactory.createEmptyBorder(5,8,5,8)
+        ));
     }
 
-    public void applyTheme() {
-        setBackground(ThemeManager.getColor("bg"));
-        if (reminderTable != null) {
-            reminderTable.setBackground(ThemeManager.getColor("input"));
-            reminderTable.setForeground(ThemeManager.getColor("textPrimary"));
-            reminderTable.getTableHeader().setBackground(ThemeManager.getColor("surface"));
-            reminderTable.getTableHeader().setForeground(ThemeManager.getColor("textPrimary"));
-        }
-        // Các button
-        for (Component comp : getComponents()) {
-            if (comp instanceof JButton) {
-                JButton btn = (JButton) comp;
-                btn.setBackground(ThemeManager.getColor("accent"));
-                btn.setForeground(ThemeManager.getColor("bg"));
-            }
-        }
+    private void styleTextArea(JTextArea ta) {
+        ta.setBackground(ThemeManager.getColor("input"));
+        ta.setForeground(ThemeManager.getColor("textPrimary"));
+        ta.setCaretColor(ThemeManager.getColor("accent"));
+        ta.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+                BorderFactory.createEmptyBorder(5,8,5,8)
+        ));
+    }
+
+    private void styleCombo(JComboBox<?> combo) {
+        combo.setBackground(ThemeManager.getColor("input"));
+        combo.setForeground(ThemeManager.getColor("textPrimary"));
+    }
+
+    public void updateLanguage(boolean isVN) {
+        this.isVietnamese = isVN;
         refreshTable();
     }
 }

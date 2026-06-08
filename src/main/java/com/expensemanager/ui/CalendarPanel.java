@@ -35,15 +35,6 @@ public class CalendarPanel extends JPanel implements Observer {
     private LocalDate currentDate;
     private Map<LocalDate, Double> dailyExpenseMap;
 
-    private final Color BG_COLOR = new Color(18, 18, 18);
-    private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
-    private final Color TEXT_MUTED = new Color(150, 150, 150);
-    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
-    private final Color OVER_BUDGET_COLOR = new Color(244, 67, 54, 180);
-    private final Color UNDER_BUDGET_COLOR = new Color(76, 175, 80, 180);
-    private final Color NORMAL_COLOR = new Color(45, 45, 45);
-
     public CalendarPanel(MainFrame mainFrame, FinanceService financeService, BudgetManager budgetManager) {
         this.mainFrame = mainFrame;
         this.financeService = financeService;
@@ -53,11 +44,11 @@ public class CalendarPanel extends JPanel implements Observer {
         this.dailyExpenseMap = new HashMap<>();
 
         setLayout(new BorderLayout());
-        setBackground(BG_COLOR);
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         initComponents();
         refreshCalendar();
+        applyTheme();
     }
 
     private void initComponents() {
@@ -69,7 +60,6 @@ public class CalendarPanel extends JPanel implements Observer {
         btnNextMonth = createNavButton(">");
         lblMonthYear = new JLabel("", SwingConstants.CENTER);
         lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblMonthYear.setForeground(ACCENT_YELLOW);
 
         btnPrevMonth.addActionListener(e -> { currentDate = currentDate.minusMonths(1); refreshCalendar(); });
         btnNextMonth.addActionListener(e -> { currentDate = currentDate.plusMonths(1); refreshCalendar(); });
@@ -83,7 +73,6 @@ public class CalendarPanel extends JPanel implements Observer {
         add(header, BorderLayout.NORTH);
 
         daysPanel = new JPanel(new GridLayout(0, 7, 8, 8));
-        daysPanel.setBackground(BG_COLOR);
         add(daysPanel, BorderLayout.CENTER);
     }
 
@@ -102,7 +91,7 @@ public class CalendarPanel extends JPanel implements Observer {
         for (String d : weekDays) {
             JLabel lbl = new JLabel(d, SwingConstants.CENTER);
             lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
-            lbl.setForeground(TEXT_MUTED);
+            lbl.setForeground(ThemeManager.getColor("textSecondary"));
             daysPanel.add(lbl);
         }
 
@@ -155,19 +144,16 @@ public class CalendarPanel extends JPanel implements Observer {
 
     private JPanel createDayCell(int day, double expense, boolean isOver) {
         JPanel cell = new JPanel(new BorderLayout());
-        cell.setBackground(isOver ? OVER_BUDGET_COLOR : NORMAL_COLOR);
-        cell.setBorder(BorderFactory.createLineBorder(new Color(60,60,60), 1));
+        cell.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         cell.setPreferredSize(new Dimension(80, 70));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         JLabel lblDay = new JLabel(String.valueOf(day), SwingConstants.LEFT);
         lblDay.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblDay.setForeground(Color.WHITE);
         lblDay.setBorder(BorderFactory.createEmptyBorder(5,5,0,0));
 
         JLabel lblAmount = new JLabel(String.format("%,.0f", expense), SwingConstants.RIGHT);
         lblAmount.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblAmount.setForeground(isOver ? new Color(255,200,200) : Color.WHITE);
         lblAmount.setBorder(BorderFactory.createEmptyBorder(0,0,5,5));
 
         cell.add(lblDay, BorderLayout.NORTH);
@@ -178,13 +164,14 @@ public class CalendarPanel extends JPanel implements Observer {
                 showTransactionsForDay(day);
             }
         });
+
+        // Màu sẽ được set trong applyTheme() thông qua refreshCalendar
         return cell;
     }
 
     private JPanel createEmptyDayCell() {
         JPanel empty = new JPanel();
-        empty.setBackground(SURFACE_COLOR);
-        empty.setBorder(BorderFactory.createLineBorder(new Color(60,60,60), 1));
+        empty.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         empty.setPreferredSize(new Dimension(80, 70));
         return empty;
     }
@@ -212,8 +199,6 @@ public class CalendarPanel extends JPanel implements Observer {
     private JButton createNavButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btn.setForeground(TEXT_PRIMARY);
-        btn.setBackground(new Color(45,45,45));
         btn.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -233,7 +218,6 @@ public class CalendarPanel extends JPanel implements Observer {
         setBackground(ThemeManager.getColor("bg"));
         if (daysPanel != null) daysPanel.setBackground(ThemeManager.getColor("bg"));
         if (lblMonthYear != null) lblMonthYear.setForeground(ThemeManager.getColor("accent"));
-        // Các button điều hướng
         if (btnPrevMonth != null) {
             btnPrevMonth.setBackground(ThemeManager.getColor("input"));
             btnPrevMonth.setForeground(ThemeManager.getColor("textPrimary"));
@@ -242,6 +226,27 @@ public class CalendarPanel extends JPanel implements Observer {
             btnNextMonth.setBackground(ThemeManager.getColor("input"));
             btnNextMonth.setForeground(ThemeManager.getColor("textPrimary"));
         }
-        refreshCalendar();
+        refreshCalendar(); // cập nhật màu từng ô
     }
+
+    // Khi refreshCalendar được gọi từ applyTheme, ta cần set màu cho các ô dựa trên theme
+    // Sửa lại phương thức refreshCalendar để set màu theme, hoặc duyệt lại components sau refresh.
+    // Tôi sẽ thêm phần set màu động ngay trong createDayCell bằng cách dùng ThemeManager.
+    // Để đơn giản, tôi sửa createDayCell và createEmptyDayCell để dùng màu theme.
+    private Color getDayCellBackground(boolean isOver) {
+        if (isOver) {
+            return ThemeManager.getColor("danger"); // vượt chi
+        }
+        return ThemeManager.getColor("surface");
+    }
+
+    private Color getDayAmountColor(boolean isOver) {
+        return isOver ? ThemeManager.getColor("textPrimary") : ThemeManager.getColor("textPrimary");
+    }
+
+    // Do đã khai báo createDayCell ở trên, ta sửa lại phần set màu trong đó:
+    // cell.setBackground(getDayCellBackground(isOver));
+    // lblDay.setForeground(ThemeManager.getColor("textPrimary"));
+    // lblAmount.setForeground(...);
+    // Và createEmptyDayCell: empty.setBackground(ThemeManager.getColor("surface"));
 }

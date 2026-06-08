@@ -27,7 +27,6 @@ public class DatabaseUtil {
             stmt.setString(3, category.getType().name());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            // 🌟 KHẮC PHỤC: Sử dụng RuntimeException để chặn lỗi compile do checked exception gây ra
             throw new RuntimeException("Lỗi khi thêm danh mục: " + category.getName(), e);
         }
     }
@@ -79,7 +78,7 @@ public class DatabaseUtil {
         }
     }
 
-    // Hàm phụ trợ ánh xạ dữ liệu ResultSet sang thực thể lớp con đa hình (Thu hoặc Chi)
+    // Hàm phụ trợ ánh xạ dữ liệu ResultSet
     private static List<Transaction> mapTransactions(ResultSet rs) throws SQLException {
         List<Transaction> list = new ArrayList<>();
         while (rs.next()) {
@@ -93,7 +92,6 @@ public class DatabaseUtil {
             LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
             String note = rs.getString("note");
 
-            // 🌟 SỬA LỖI ĐA HÌNH: Trả về đúng IncomeTransaction hoặc ExpenseTransaction lớp con
             Transaction transaction = (type == TransactionType.INCOME)
                     ? new IncomeTransaction(id, amount, category, note)
                     : new ExpenseTransaction(id, amount, category, note);
@@ -118,7 +116,6 @@ public class DatabaseUtil {
         }
     }
 
-    // 🌟 KHÔI PHỤC: Hàm phân trang giao dịch bằng Connection thuần để tránh lỗi biên dịch hệ thống
     public static List<Transaction> getTransactionsWithPagination(String userId, int offset, int limit) {
         String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
                 "FROM transactions t JOIN categories c ON t.category_id = c.id " +
@@ -138,7 +135,6 @@ public class DatabaseUtil {
         }
     }
 
-    // 🌟 KHÔI PHỤC: Hàm đếm tổng số bản ghi giao dịch phục vụ phân trang hiển thị trên UI
     public static int getTransactionCount(String userId) {
         String sql = "SELECT COUNT(*) FROM transactions WHERE user_id = ?";
         try (Connection conn = getConnection();
@@ -181,39 +177,27 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== BUDGETS ==========
-    public static void insertBudget(Budget budget, String userId) {
-        String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?)";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, budget.getId());
-            stmt.setInt(2, budget.getMonth());
-            stmt.setInt(3, budget.getYear());
-            stmt.setDouble(4, budget.getLimit());
-            stmt.setDouble(5, budget.getSpent());
-            stmt.setString(6, userId);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
+    // ==========================================================
+    // CÁC HÀM QUẢN LÝ NGÂN SÁCH (ĐÃ ĐỒNG BỘ CẤU TRÚC MỚI & XÓA HÀM THỪA)
+    // ==========================================================
 
     public static Budget getBudget(int month, int year, String userId) {
-        String sql = "SELECT * FROM budgets WHERE month = ? AND year = ? AND user_id = ?";
+        String query = "SELECT * FROM budgets WHERE user_id = ? AND MONTH(start_date) = ? AND YEAR(start_date) = ? LIMIT 1";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setInt(1, month);
-            stmt.setInt(2, year);
-            stmt.setString(3, userId);
-            ResultSet rs = stmt.executeQuery();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, userId);
+            pstmt.setInt(2, month);
+            pstmt.setInt(3, year);
+            ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
-                Budget b = new Budget(
-                        rs.getString("id"),
-                        rs.getInt("month"),
-                        rs.getInt("year"),
-                        rs.getDouble("budget_limit")
-                );
+                Budget b = new Budget();
+                b.setId(rs.getString("id"));
+                b.setLimit(rs.getDouble("budget_limit"));
                 b.setSpent(rs.getDouble("spent"));
+                b.setStartDate(rs.getDate("start_date").toLocalDate());
+                b.setEndDate(rs.getDate("end_date").toLocalDate());
+                b.setThreshold(rs.getInt("threshold"));
+                b.setUserId(userId);
                 return b;
             }
         } catch (SQLException e) {
@@ -222,14 +206,80 @@ public class DatabaseUtil {
         return null;
     }
 
-    public static void updateBudget(Budget budget) {
-        String sql = "UPDATE budgets SET budget_limit = ?, spent = ? WHERE id = ?";
+    public static java.util.List<Budget> getAllBudgets(String userId) {
+        java.util.List<Budget> list = new java.util.ArrayList<>();
+        String query = "SELECT b.*, c.name AS cat_name FROM budgets b LEFT JOIN categories c ON b.category_id = c.id WHERE b.user_id = ?";
         try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setDouble(1, budget.getLimit());
-            stmt.setDouble(2, budget.getSpent());
-            stmt.setString(3, budget.getId());
-            stmt.executeUpdate();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, userId);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                Budget b = new Budget();
+                b.setId(rs.getString("id"));
+                b.setLimit(rs.getDouble("budget_limit"));
+                b.setSpent(rs.getDouble("spent"));
+                b.setStartDate(rs.getDate("start_date").toLocalDate());
+                b.setEndDate(rs.getDate("end_date").toLocalDate());
+                b.setThreshold(rs.getInt("threshold"));
+                b.setUserId(userId);
+
+                String catId = rs.getString("category_id");
+                if (catId != null) {
+                    Category cat = new Category();
+                    cat.setId(catId);
+                    cat.setName(rs.getString("cat_name"));
+                    b.setCategory(cat);
+                }
+                list.add(b);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public static void insertBudget(Budget b) {
+        String query = "INSERT INTO budgets (id, budget_limit, spent, start_date, end_date, threshold, category_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, b.getId());
+            pstmt.setDouble(2, b.getLimit());
+            pstmt.setDouble(3, b.getSpent());
+            pstmt.setDate(4, java.sql.Date.valueOf(b.getStartDate()));
+            pstmt.setDate(5, java.sql.Date.valueOf(b.getEndDate()));
+            pstmt.setInt(6, b.getThreshold());
+
+            if (b.getCategory() != null && b.getCategory().getId() != null) {
+                pstmt.setString(7, b.getCategory().getId());
+            } else {
+                pstmt.setNull(7, java.sql.Types.VARCHAR);
+            }
+            pstmt.setString(8, b.getUserId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void updateBudget(Budget b) {
+        String query = "UPDATE budgets SET budget_limit = ?, spent = ? WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setDouble(1, b.getLimit());
+            pstmt.setDouble(2, b.getSpent());
+            pstmt.setString(3, b.getId());
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void deleteBudget(String id) {
+        String query = "DELETE FROM budgets WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, id);
+            pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -292,7 +342,7 @@ public class DatabaseUtil {
             throw new RuntimeException("Lỗi khi thực hiện cập nhật thông tin hồ sơ User", e);
         }
     }
-    //Update phương thức câph nhật mật khẩu mật khẩu
+
     public static void updateUserPassword(String userId, String newPasswordHash) {
         String sql = "UPDATE users SET password_hash=? WHERE id=?";
         try (Connection conn = getConnection();
@@ -363,7 +413,6 @@ public class DatabaseUtil {
         return null;
     }
 
-    // Cập nhật mật khẩu theo email
     public static boolean updatePasswordByEmail(String email, String newPasswordHash) {
         String sql = "UPDATE users SET password_hash = ? WHERE email = ?";
         try (Connection conn = getConnection();

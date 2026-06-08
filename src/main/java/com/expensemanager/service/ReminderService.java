@@ -1,5 +1,6 @@
 package com.expensemanager.service;
 
+import com.expensemanager.entity.Budget;
 import com.expensemanager.entity.Reminder;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.util.ReminderStore;
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 public class ReminderService {
     private FinanceService financeService;
+    private BudgetManager budgetManager;
     private Timer timer;
     private String userId;
 
@@ -20,6 +22,10 @@ public class ReminderService {
         this.financeService = financeService;
         this.userId = SessionManager.getCurrentUserId();
         startBackgroundChecker();
+    }
+
+    public void setBudgetManager(BudgetManager budgetManager) {
+        this.budgetManager = budgetManager;
     }
 
     public void reloadUserId() {
@@ -126,24 +132,29 @@ public class ReminderService {
 
     private boolean checkBudgetAlert(Reminder r) {
         LocalDate now = LocalDate.now();
-        double totalExpense = financeService.getAllTransactions().stream()
-                .filter(t -> t.getType() == TransactionType.EXPENSE)
-                .filter(t -> t.getDateTime().getYear() == now.getYear()
-                        && t.getDateTime().getMonthValue() == now.getMonthValue())
-                .mapToDouble(t -> t.getAmount())
-                .sum();
+        if (budgetManager == null) return false;
 
-        String userId = SessionManager.getCurrentUserId();
-        var budget = com.expensemanager.database.DatabaseUtil.getBudget(now.getMonthValue(), now.getYear(), userId);
-        if (budget == null || budget.getLimit() <= 0) return false;
+        List<Budget> activeBudgets = budgetManager.getAllBudgets();
+        for (Budget budget : activeBudgets) {
+            if (now.isBefore(budget.getStartDate()) || now.isAfter(budget.getEndDate())) continue;
 
-        int percent = (int) ((totalExpense / budget.getLimit()) * 100);
-        Integer threshold = r.getThresholdPercent();
-        if (threshold != null && percent >= threshold) {
-            LocalDate last = r.getLastTriggered();
-            if (last == null || last.getMonth() != now.getMonth() || last.getYear() != now.getYear()) {
-                r.setDescription(String.format("Đã chi %d%% ngân sách tháng (%.0f/%.0f VND)", percent, totalExpense, budget.getLimit()));
-                return true;
+            double totalExpense = financeService.getAllTransactions().stream()
+                    .filter(t -> t.getType() == TransactionType.EXPENSE)
+                    .filter(t -> !t.getDateTime().toLocalDate().isBefore(budget.getStartDate())
+                            && !t.getDateTime().toLocalDate().isAfter(budget.getEndDate()))
+                    .filter(t -> budget.getCategory() == null ||
+                            (t.getCategory() != null && t.getCategory().getName().equals(budget.getCategory().getName())))
+                    .mapToDouble(t -> t.getAmount())
+                    .sum();
+
+            int percent = (int) ((totalExpense / budget.getLimit()) * 100);
+            Integer threshold = r.getThresholdPercent();
+            if (threshold != null && percent >= threshold) {
+                LocalDate last = r.getLastTriggered();
+                if (last == null || last.getMonth() != now.getMonth() || last.getYear() != now.getYear()) {
+                    r.setDescription(String.format("Đã chi %d%% ngân sách (%.0f/%.0f VND)", percent, totalExpense, budget.getLimit()));
+                    return true;
+                }
             }
         }
         return false;
@@ -172,35 +183,39 @@ public class ReminderService {
     }
 
     public void autoCreateBudgetAlerts() {
-        if (userId == null) return;
+        if (userId == null || budgetManager == null) return;
         LocalDate now = LocalDate.now();
-        double totalExpense = financeService.getAllTransactions().stream()
-                .filter(t -> t.getType() == TransactionType.EXPENSE)
-                .filter(t -> t.getDateTime().getYear() == now.getYear()
-                        && t.getDateTime().getMonthValue() == now.getMonthValue())
-                .mapToDouble(t -> t.getAmount())
-                .sum();
+        List<Budget> activeBudgets = budgetManager.getAllBudgets();
+        for (Budget budget : activeBudgets) {
+            if (now.isBefore(budget.getStartDate()) || now.isAfter(budget.getEndDate())) continue;
 
-        var budget = com.expensemanager.database.DatabaseUtil.getBudget(now.getMonthValue(), now.getYear(), userId);
-        if (budget == null || budget.getLimit() <= 0) return;
+            double totalExpense = financeService.getAllTransactions().stream()
+                    .filter(t -> t.getType() == TransactionType.EXPENSE)
+                    .filter(t -> !t.getDateTime().toLocalDate().isBefore(budget.getStartDate())
+                            && !t.getDateTime().toLocalDate().isAfter(budget.getEndDate()))
+                    .filter(t -> budget.getCategory() == null ||
+                            (t.getCategory() != null && t.getCategory().getName().equals(budget.getCategory().getName())))
+                    .mapToDouble(t -> t.getAmount())
+                    .sum();
 
-        int percent = (int) ((totalExpense / budget.getLimit()) * 100);
-        int[] thresholds = {50, 80, 100};
-        List<Reminder> existing = getReminders();
-        for (int th : thresholds) {
-            if (percent >= th) {
-                boolean alreadyExists = existing.stream()
-                        .anyMatch(r -> r.getType() == Reminder.ReminderType.BUDGET
-                                && r.getThresholdPercent() != null && r.getThresholdPercent() == th
-                                && r.getLastTriggered() != null
-                                && r.getLastTriggered().getMonth() == now.getMonth()
-                                && r.getLastTriggered().getYear() == now.getYear());
-                if (!alreadyExists) {
-                    Reminder r = new Reminder(null, userId, Reminder.ReminderType.BUDGET,
-                            "Cảnh báo ngân sách",
-                            String.format("Đã chi %d%% ngân sách tháng (%.0f/%.0f VND)", percent, totalExpense, budget.getLimit()),
-                            null, null, Reminder.RecurringType.NONE, th, true, null);
-                    addReminder(r);
+            int percent = (int) ((totalExpense / budget.getLimit()) * 100);
+            int[] thresholds = {50, 80, 100};
+            List<Reminder> existing = getReminders();
+            for (int th : thresholds) {
+                if (percent >= th) {
+                    boolean alreadyExists = existing.stream()
+                            .anyMatch(r -> r.getType() == Reminder.ReminderType.BUDGET
+                                    && r.getThresholdPercent() != null && r.getThresholdPercent() == th
+                                    && r.getLastTriggered() != null
+                                    && r.getLastTriggered().getMonth() == now.getMonth()
+                                    && r.getLastTriggered().getYear() == now.getYear());
+                    if (!alreadyExists) {
+                        Reminder r = new Reminder(null, userId, Reminder.ReminderType.BUDGET,
+                                "Cảnh báo ngân sách",
+                                String.format("Đã chi %d%% ngân sách (%.0f/%.0f VND)", percent, totalExpense, budget.getLimit()),
+                                null, null, Reminder.RecurringType.NONE, th, true, null);
+                        addReminder(r);
+                    }
                 }
             }
         }

@@ -7,9 +7,6 @@ import java.awt.*;
 
 public class SystemConfigPanel extends JPanel {
 
-    // =====================================================================
-    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
-    // =====================================================================
     private MainFrame mainFrame;
     private boolean isVietnamese;
 
@@ -20,14 +17,6 @@ public class SystemConfigPanel extends JPanel {
     private JButton btnSaveLanguage, btnSaveSize;
     private JSeparator separator;
 
-    private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color INPUT_BG = new Color(40, 40, 40);
-    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
-    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
-
-    // =====================================================================
-    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC FORM CẤU HÌNH
-    // =====================================================================
     public SystemConfigPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
         this.isVietnamese = mainFrame != null && mainFrame.isVietnamese();
@@ -38,14 +27,13 @@ public class SystemConfigPanel extends JPanel {
         initComponents();
         syncComboWithCurrentSize();
         updateResponsiveLayout(isVietnamese, 560);
-        syncComboWithCurrentSize();
+        applyTheme();
     }
 
     private void initComponents() {
         configCard = new JPanel(new GridBagLayout());
-        configCard.setBackground(SURFACE_COLOR);
         configCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(45, 45, 45), 1, true),
+                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
                 BorderFactory.createEmptyBorder(22, 26, 22, 26)
         ));
         configCard.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -55,26 +43,21 @@ public class SystemConfigPanel extends JPanel {
         gbc.weightx = 1.0;
         gbc.insets = new Insets(6, 0, 6, 0);
 
-        // --- PHÂN VÙNG 1: NGÔN NGỮ HIỂN THỊ ---
         lblLanguageTitle = new JLabel();
         lblLanguageTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblLanguageTitle.setForeground(ACCENT_YELLOW);
         gbc.gridx = 0; gbc.gridy = 0;
         configCard.add(lblLanguageTitle, gbc);
 
         lblLangHint = new JLabel();
         lblLangHint.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblLangHint.setForeground(TEXT_PRIMARY);
         gbc.gridy = 1; configCard.add(lblLangHint, gbc);
 
         JPanel rbPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         rbPanel.setOpaque(false);
         rbVietnamese = new JRadioButton("", isVietnamese);
         rbEnglish = new JRadioButton("", !isVietnamese);
-
-        rbVietnamese.setOpaque(false); rbVietnamese.setFont(new Font("Segoe UI", Font.PLAIN, 15)); rbVietnamese.setForeground(TEXT_PRIMARY); rbVietnamese.setFocusPainted(false);
-        rbEnglish.setOpaque(false); rbEnglish.setFont(new Font("Segoe UI", Font.PLAIN, 15)); rbEnglish.setForeground(TEXT_PRIMARY); rbEnglish.setFocusPainted(false);
-
+        rbVietnamese.setOpaque(false); rbVietnamese.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        rbEnglish.setOpaque(false); rbEnglish.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         ButtonGroup group = new ButtonGroup();
         group.add(rbVietnamese); group.add(rbEnglish);
         rbPanel.add(rbVietnamese); rbPanel.add(Box.createHorizontalStrut(25)); rbPanel.add(rbEnglish);
@@ -86,42 +69,21 @@ public class SystemConfigPanel extends JPanel {
         gbc.gridy = 3; gbc.fill = GridBagConstraints.NONE; gbc.anchor = GridBagConstraints.WEST;
         configCard.add(btnSaveLanguage, gbc);
 
-        // Vạch phân tách phẳng chia đôi không gian
         separator = new JSeparator();
-        separator.setForeground(new Color(55, 55, 55));
         gbc.gridy = 4; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.insets = new Insets(18, 0, 18, 0);
         configCard.add(separator, gbc);
         gbc.insets = new Insets(6, 0, 6, 0);
 
-        // --- PHÂN VÙNG 2: ĐỘ PHÂN GIẢI MÀN HÌNH ---
         lblSizeTitle = new JLabel();
         lblSizeTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblSizeTitle.setForeground(ACCENT_YELLOW);
         gbc.gridy = 5; configCard.add(lblSizeTitle, gbc);
 
         lblSizeHint = new JLabel();
         lblSizeHint.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblSizeHint.setForeground(TEXT_PRIMARY);
         gbc.gridy = 6; configCard.add(lblSizeHint, gbc);
 
-//        comboWindowSize = new JComboBox<>();
-//        comboWindowSize.setBackground(INPUT_BG); comboWindowSize.setForeground(TEXT_PRIMARY); comboWindowSize.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-//        gbc.gridy = 7; configCard.add(comboWindowSize, gbc);
-        //Cập nhật đổi màu
         comboWindowSize = new JComboBox<>();
-        comboWindowSize.setBackground(INPUT_BG);
-        comboWindowSize.setForeground(TEXT_PRIMARY);
         comboWindowSize.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        comboWindowSize.setUI(new javax.swing.plaf.basic.BasicComboBoxUI() {
-            @Override
-            protected JButton createArrowButton() {
-                JButton btn = super.createArrowButton();
-                btn.setBackground(new Color(100, 100, 100));  // màu nền sáng
-                btn.setForeground(Color.WHITE);
-                btn.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
-                return btn;
-            }
-        });
         gbc.gridy = 7; configCard.add(comboWindowSize, gbc);
 
         btnSaveSize = new JButton();
@@ -133,9 +95,36 @@ public class SystemConfigPanel extends JPanel {
         add(configCard);
     }
 
-    // =====================================================================
-    // 3. XỬ LÝ LOGIC NGHIỆP VỤ LƯU CẤU HÌNH
-    // =====================================================================
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+        if (configCard != null) {
+            configCard.setBackground(ThemeManager.getColor("surface"));
+            configCard.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
+                    ((javax.swing.border.CompoundBorder)configCard.getBorder()).getInsideBorder()
+            ));
+        }
+        if (lblLanguageTitle != null) lblLanguageTitle.setForeground(ThemeManager.getColor("accent"));
+        if (lblLangHint != null) lblLangHint.setForeground(ThemeManager.getColor("textPrimary"));
+        if (rbVietnamese != null) rbVietnamese.setForeground(ThemeManager.getColor("textPrimary"));
+        if (rbEnglish != null) rbEnglish.setForeground(ThemeManager.getColor("textPrimary"));
+        if (btnSaveLanguage != null) {
+            btnSaveLanguage.setBackground(ThemeManager.getColor("accent"));
+            btnSaveLanguage.setForeground(ThemeManager.getColor("bg"));
+        }
+        if (lblSizeTitle != null) lblSizeTitle.setForeground(ThemeManager.getColor("accent"));
+        if (lblSizeHint != null) lblSizeHint.setForeground(ThemeManager.getColor("textPrimary"));
+        if (comboWindowSize != null) {
+            comboWindowSize.setBackground(ThemeManager.getColor("input"));
+            comboWindowSize.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnSaveSize != null) {
+            btnSaveSize.setBackground(ThemeManager.getColor("accent"));
+            btnSaveSize.setForeground(ThemeManager.getColor("bg"));
+        }
+        if (separator != null) separator.setForeground(ThemeManager.getColor("border"));
+    }
+
     private void saveLanguageConfig() {
         isVietnamese = rbVietnamese.isSelected();
         if (mainFrame != null) {
@@ -159,12 +148,10 @@ public class SystemConfigPanel extends JPanel {
                 isVietnamese ? "Thành công" : "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    // =====================================================================
-    // 4. TIỆN ÍCH GIAO DIỆN VÀ RESPONSIVE MÀN HÌNH
-    // =====================================================================
     private void stylePrimaryButton(JButton btn) {
-        btn.setBackground(ACCENT_YELLOW); btn.setForeground(SURFACE_COLOR); btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setFocusPainted(false); btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btn.setBorder(BorderFactory.createEmptyBorder(8, 22, 8, 22));
     }
 
@@ -209,45 +196,16 @@ public class SystemConfigPanel extends JPanel {
             comboWindowSize.setSelectedIndex(currentSizeIndex);
         }
     }
-    //Thêm phương thức cập nhật chỉ số cấu hình
+
     private void syncComboWithCurrentSize() {
         if (mainFrame == null) return;
         int currentWidth = mainFrame.getWidth();
         int currentHeight = mainFrame.getHeight();
-        int index = 0; // mặc định 1200x750
-        if (currentWidth == 1400 && currentHeight == 800) {
-            index = 1;
-        } else if (currentWidth == 1600 && currentHeight == 950) {
-            index = 2;
-        }
+        int index = 0;
+        if (currentWidth == 1400 && currentHeight == 800) index = 1;
+        else if (currentWidth == 1600 && currentHeight == 950) index = 2;
         if (comboWindowSize != null && comboWindowSize.getItemCount() > index) {
             comboWindowSize.setSelectedIndex(index);
-        }
-    }
-
-    public void applyTheme() {
-        setBackground(ThemeManager.getColor("bg"));
-        if (configCard != null) {
-            configCard.setBackground(ThemeManager.getColor("surface"));
-            configCard.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
-        }
-        if (lblLanguageTitle != null) lblLanguageTitle.setForeground(ThemeManager.getColor("accent"));
-        if (lblLangHint != null) lblLangHint.setForeground(ThemeManager.getColor("textPrimary"));
-        if (rbVietnamese != null) rbVietnamese.setForeground(ThemeManager.getColor("textPrimary"));
-        if (rbEnglish != null) rbEnglish.setForeground(ThemeManager.getColor("textPrimary"));
-        if (btnSaveLanguage != null) {
-            btnSaveLanguage.setBackground(ThemeManager.getColor("accent"));
-            btnSaveLanguage.setForeground(ThemeManager.getColor("bg"));
-        }
-        if (lblSizeTitle != null) lblSizeTitle.setForeground(ThemeManager.getColor("accent"));
-        if (lblSizeHint != null) lblSizeHint.setForeground(ThemeManager.getColor("textPrimary"));
-        if (comboWindowSize != null) {
-            comboWindowSize.setBackground(ThemeManager.getColor("input"));
-            comboWindowSize.setForeground(ThemeManager.getColor("textPrimary"));
-        }
-        if (btnSaveSize != null) {
-            btnSaveSize.setBackground(ThemeManager.getColor("accent"));
-            btnSaveSize.setForeground(ThemeManager.getColor("bg"));
         }
     }
 }

@@ -6,7 +6,6 @@ import java.awt.*;
 
 public class ValidationUI {
     private static Border defaultBorder;
-    private static final Color ERROR_COLOR = Color.RED;
     private static final int ERROR_THICKNESS = 2;
 
     // Khởi tạo border mặc định từ một JTextField đã được style
@@ -16,27 +15,28 @@ public class ValidationUI {
         }
     }
 
-    // Lấy border mặc định (nếu chưa có thì tạo một border giả định)
+    // Lấy border mặc định đồng bộ theo ThemeManager
     private static Border getDefaultBorder() {
         if (defaultBorder != null) return defaultBorder;
         return BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(60, 60, 60)),
+                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
                 BorderFactory.createEmptyBorder(10, 15, 10, 15)
         );
     }
 
-    // Tạo border lỗi (giữ nguyên phần inside border của mặc định)
+    // Tạo border lỗi đồng bộ theo màu "danger" của ThemeManager
     private static Border createErrorBorder() {
-        Border base = getDefaultBorder();
-        if (base instanceof javax.swing.border.CompoundBorder) {
-            javax.swing.border.CompoundBorder cb = (javax.swing.border.CompoundBorder) base;
+        Color errorColor = ThemeManager.getColor("danger");
+
+        if (defaultBorder != null && defaultBorder instanceof javax.swing.border.CompoundBorder) {
+            javax.swing.border.CompoundBorder cb = (javax.swing.border.CompoundBorder) defaultBorder;
             return BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(ERROR_COLOR, ERROR_THICKNESS),
+                    BorderFactory.createLineBorder(errorColor, ERROR_THICKNESS),
                     cb.getInsideBorder()
             );
         }
         return BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ERROR_COLOR, ERROR_THICKNESS),
+                BorderFactory.createLineBorder(errorColor, ERROR_THICKNESS),
                 BorderFactory.createEmptyBorder(9, 14, 9, 14)
         );
     }
@@ -50,8 +50,8 @@ public class ValidationUI {
 
     // Reset border về mặc định
     public static void resetBorder(JTextField field) {
-        if (field != null && defaultBorder != null) {
-            field.setBorder(defaultBorder);
+        if (field != null) {
+            field.setBorder(getDefaultBorder());
         }
     }
 

@@ -44,31 +44,17 @@ public class StatisticsPanel extends JPanel implements Observer {
 
     private boolean isVietnamese = true;
 
-    private final Color BG_COLOR = new Color(18, 18, 18);
-    private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color INPUT_BG = new Color(40, 40, 40);
-    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
-    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
-    private final Color TEXT_MUTED = new Color(150, 150, 150);
-    private final Color DANGER_RED = new Color(244, 67, 54);
-
-    private static final Color[] CHART_COLORS = {
-            new Color(46, 204, 113), new Color(52, 152, 219), new Color(155, 89, 182),
-            new Color(230, 126, 34), new Color(241, 196, 15), new Color(231, 76, 60),
-            new Color(26, 188, 156), new Color(149, 165, 166), new Color(243, 156, 18)
-    };
-
     public StatisticsPanel(StatisticsService statsService, BudgetManager budgetManager) {
         this.statsService = statsService;
         this.budgetManager = budgetManager;
         if (statsService != null) this.financeService = statsService.getFinanceService();
 
         setLayout(new BorderLayout(0, 15));
-        setBackground(BG_COLOR);
         setBorder(new EmptyBorder(15, 20, 15, 20));
 
         initComponents();
         refreshData();
+        applyTheme();
     }
 
     private void initComponents() {
@@ -78,7 +64,6 @@ public class StatisticsPanel extends JPanel implements Observer {
 
         lblMainTitle = new JLabel("Phân tích thống kê chi tiêu");
         lblMainTitle.setFont(new Font("Segoe UI", Font.BOLD, 22));
-        lblMainTitle.setForeground(TEXT_PRIMARY);
         topHeaderPanel.add(lblMainTitle, BorderLayout.WEST);
 
         JPanel chartToggleWrapper = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
@@ -103,8 +88,7 @@ public class StatisticsPanel extends JPanel implements Observer {
 
         // Left: Chart
         JPanel leftChartCard = new JPanel(new BorderLayout(0, 10));
-        leftChartCard.setBackground(SURFACE_COLOR);
-        leftChartCard.setBorder(BorderFactory.createLineBorder(new Color(45, 45, 45), 1, true));
+        leftChartCard.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         leftChartCard.setPreferredSize(new Dimension(0, 0));
 
         JPanel timeNavPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
@@ -113,7 +97,6 @@ public class StatisticsPanel extends JPanel implements Observer {
         btnNextTime = createInnerArrowButton(">");
         lblTimeRange = new JLabel("---");
         lblTimeRange.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblTimeRange.setForeground(ACCENT_YELLOW);
 
         btnPrevTime.addActionListener(e -> { currentOffset--; refreshData(); });
         btnNextTime.addActionListener(e -> { currentOffset++; refreshData(); });
@@ -130,18 +113,17 @@ public class StatisticsPanel extends JPanel implements Observer {
                 paintCustomChart(g);
             }
         };
-        chartDrawPanel.setBackground(SURFACE_COLOR);
+        chartDrawPanel.setOpaque(true);
         leftChartCard.add(chartDrawPanel, BorderLayout.CENTER);
 
         mainGbc.gridx = 0;
         mainGbc.weightx = 0.6;
         mainGrid.add(leftChartCard, mainGbc);
 
-        // Right: Category Ranking Table
+        // Right: Ranking Table
         JPanel rightCard = new JPanel(new BorderLayout(0, 10));
-        rightCard.setBackground(SURFACE_COLOR);
         rightCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(45, 45, 45), 1, true),
+                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
         rightCard.setPreferredSize(new Dimension(0, 0));
@@ -167,21 +149,16 @@ public class StatisticsPanel extends JPanel implements Observer {
             public boolean isCellEditable(int row, int column) { return false; }
         };
         rankingTable = new JTable(rankingModel);
-        rankingTable.setBackground(SURFACE_COLOR);
-        rankingTable.setForeground(TEXT_PRIMARY);
         rankingTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        rankingTable.getTableHeader().setBackground(INPUT_BG);
-        rankingTable.getTableHeader().setForeground(TEXT_PRIMARY);
         rankingTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
         rankingTable.setRowHeight(28);
         rankingTable.setShowGrid(true);
-        rankingTable.setGridColor(new Color(60,60,60));
 
         JScrollPane rankingScroll = new JScrollPane(rankingTable);
         rankingScroll.setBorder(BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(ACCENT_YELLOW),
+                BorderFactory.createLineBorder(ThemeManager.getColor("accent")),
                 isVietnamese ? "Xếp hạng danh mục chi tiêu" : "Category Ranking",
-                TitledBorder.LEFT, TitledBorder.TOP, new Font("Segoe UI", Font.BOLD, 14), ACCENT_YELLOW
+                TitledBorder.LEFT, TitledBorder.TOP, new Font("Segoe UI", Font.BOLD, 14), ThemeManager.getColor("accent")
         ));
         rightCard.add(rankingScroll, BorderLayout.CENTER);
 
@@ -215,7 +192,6 @@ public class StatisticsPanel extends JPanel implements Observer {
             }
         }
 
-        // Cập nhật bảng xếp hạng
         rankingModel.setRowCount(0);
         List<Map.Entry<String, Double>> sorted = dataMap.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
@@ -230,11 +206,10 @@ public class StatisticsPanel extends JPanel implements Observer {
             });
         }
 
-        // Vẽ lại biểu đồ
         chartDrawPanel.repaint();
     }
 
-    // Các phương thức vẽ biểu đồ (giữ nguyên như cũ)
+    // ========== CHART PAINTING ==========
     private void paintCustomChart(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -264,7 +239,8 @@ public class StatisticsPanel extends JPanel implements Observer {
             }
         }
         if (total == 0) {
-            g2.setColor(TEXT_MUTED); g2.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            g2.setColor(ThemeManager.getColor("textSecondary"));
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 14));
             g2.drawString(isVietnamese ? "Không có dữ liệu trong kỳ" : "No data available in this period", w / 2 - 80, h / 2);
             return;
         }
@@ -278,7 +254,7 @@ public class StatisticsPanel extends JPanel implements Observer {
                 .collect(Collectors.toList());
         for (Map.Entry<String, Double> entry : sortedPieEntries) {
             int arcAngle = (int) Math.round((entry.getValue() / total) * 360);
-            g2.setColor(CHART_COLORS[ci % CHART_COLORS.length]);
+            g2.setColor(getChartColor(ci));
             g2.fillArc(x, y, size, size, startAngle, arcAngle);
             startAngle += arcAngle;
             ci++;
@@ -286,13 +262,13 @@ public class StatisticsPanel extends JPanel implements Observer {
         int innerSize = (int) (size * 0.55);
         int innerX = x + (size - innerSize) / 2;
         int innerY = y + (size - innerSize) / 2;
-        g2.setColor(SURFACE_COLOR);
+        g2.setColor(ThemeManager.getColor("surface"));
         g2.fillOval(innerX, innerY, innerSize, innerSize);
-        g2.setColor(TEXT_MUTED);
+        g2.setColor(ThemeManager.getColor("textSecondary"));
         g2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         String centerTitle = isVietnamese ? "Tổng chi tiêu" : "Total Expenses";
         g2.drawString(centerTitle, w / 2 - g2.getFontMetrics().stringWidth(centerTitle) / 2, h / 2 - 12);
-        g2.setColor(DANGER_RED);
+        g2.setColor(ThemeManager.getColor("danger"));
         g2.setFont(new Font("Segoe UI", Font.BOLD, 17));
         String totalStr = isVietnamese ? String.format("-%,.0f đ", total) : String.format("-%,.0f VND", total);
         g2.drawString(totalStr, w / 2 - g2.getFontMetrics().stringWidth(totalStr) / 2, h / 2 + 15);
@@ -346,11 +322,11 @@ public class StatisticsPanel extends JPanel implements Observer {
         for (int i = 0; i <= 2; i++) {
             int yGrid = paddingTop + (i * chartH / 2);
             g2.setStroke(new BasicStroke(1f));
-            g2.setColor(new Color(255, 255, 255, 35));
+            g2.setColor(new Color(255, 255, 255, 35)); // đường lưới mờ giữ nguyên
             g2.drawLine(paddingLeft, yGrid, w - paddingRight, yGrid);
             double currentTickValue = ceilMaxValue - (i * step);
             String tickLabel = isVietnamese ? String.format("%,.0f đ", currentTickValue) : String.format("%,.0f", currentTickValue);
-            g2.setColor(TEXT_MUTED);
+            g2.setColor(ThemeManager.getColor("textSecondary"));
             int labelW = g2.getFontMetrics().stringWidth(tickLabel);
             g2.drawString(tickLabel, paddingLeft - labelW - 8, yGrid + 4);
         }
@@ -363,17 +339,17 @@ public class StatisticsPanel extends JPanel implements Observer {
         for (int i = 0; i < numPoints - 1; i++) {
             int[] polyX = {pointsX[i], pointsX[i + 1], pointsX[i + 1], pointsX[i]};
             int[] polyY = {pointsY[i], pointsY[i + 1], h - paddingBottom, h - paddingBottom};
-            g2.setColor(new Color(255, 193, 7, 25));
+            g2.setColor(new Color(255, 193, 7, 25)); // giữ màu vàng nhạt
             g2.fillPolygon(polyX, polyY, 4);
         }
-        g2.setColor(ACCENT_YELLOW);
+        g2.setColor(ThemeManager.getColor("accent"));
         g2.setStroke(new BasicStroke(3.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         for (int i = 0; i < numPoints - 1; i++) g2.drawLine(pointsX[i], pointsY[i], pointsX[i + 1], pointsY[i + 1]);
         for (int i = 0; i < numPoints; i++) {
-            g2.setColor(ACCENT_YELLOW); g2.fillOval(pointsX[i] - 5, pointsY[i] - 5, 10, 10);
-            g2.setColor(SURFACE_COLOR); g2.fillOval(pointsX[i] - 2, pointsY[i] - 2, 4, 4);
+            g2.setColor(ThemeManager.getColor("accent")); g2.fillOval(pointsX[i] - 5, pointsY[i] - 5, 10, 10);
+            g2.setColor(ThemeManager.getColor("surface")); g2.fillOval(pointsX[i] - 2, pointsY[i] - 2, 4, 4);
         }
-        g2.setFont(new Font("Segoe UI", Font.PLAIN, 12)); g2.setColor(TEXT_MUTED);
+        g2.setFont(new Font("Segoe UI", Font.PLAIN, 12)); g2.setColor(ThemeManager.getColor("textSecondary"));
         for (int i = 0; i < numPoints; i++) {
             if ("month".equals(currentMode) && numPoints > 15 && i % 5 != 0 && i != numPoints - 1) continue;
             String label = xLabels[i];
@@ -382,6 +358,11 @@ public class StatisticsPanel extends JPanel implements Observer {
         }
     }
 
+    private Color getChartColor(int index) {
+        return ThemeManager.getColor("chart" + (index % 9));
+    }
+
+    // ========== NAVIGATION & TIME ==========
     private LocalDate calculateTargetDate() {
         LocalDate targetDate = LocalDate.now();
         if ("week".equals(currentMode)) {
@@ -425,53 +406,61 @@ public class StatisticsPanel extends JPanel implements Observer {
         }
     }
 
+    // ========== UI COMPONENT CREATION ==========
     private JButton createStyleNavButton(String text, boolean active) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setFocusPainted(false);
-        btn.setBackground(active ? INPUT_BG : SURFACE_COLOR);
-        btn.setForeground(active ? ACCENT_YELLOW : TEXT_PRIMARY);
-        btn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 1), BorderFactory.createEmptyBorder(6, 14, 6, 14)));
+        btn.setBackground(active ? ThemeManager.getColor("input") : ThemeManager.getColor("surface"));
+        btn.setForeground(active ? ThemeManager.getColor("accent") : ThemeManager.getColor("textPrimary"));
+        btn.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1),
+                BorderFactory.createEmptyBorder(6, 14, 6, 14)));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
     private void toggleChartTypeButtons(boolean isPieActive) {
-        btnPieChartToggle.setBackground(isPieActive ? INPUT_BG : SURFACE_COLOR);
-        btnPieChartToggle.setForeground(isPieActive ? ACCENT_YELLOW : TEXT_PRIMARY);
-        btnLineChartToggle.setBackground(!isPieActive ? INPUT_BG : SURFACE_COLOR);
-        btnLineChartToggle.setForeground(!isPieActive ? ACCENT_YELLOW : TEXT_PRIMARY);
+        btnPieChartToggle.setBackground(isPieActive ? ThemeManager.getColor("input") : ThemeManager.getColor("surface"));
+        btnPieChartToggle.setForeground(isPieActive ? ThemeManager.getColor("accent") : ThemeManager.getColor("textPrimary"));
+        btnLineChartToggle.setBackground(!isPieActive ? ThemeManager.getColor("input") : ThemeManager.getColor("surface"));
+        btnLineChartToggle.setForeground(!isPieActive ? ThemeManager.getColor("accent") : ThemeManager.getColor("textPrimary"));
     }
 
     private JButton createIntervalTabButton(String text, boolean active) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setFocusPainted(false);
-        btn.setBackground(active ? ACCENT_YELLOW : INPUT_BG);
-        btn.setForeground(active ? BG_COLOR : TEXT_PRIMARY);
+        btn.setBackground(active ? ThemeManager.getColor("accent") : ThemeManager.getColor("input"));
+        btn.setForeground(active ? ThemeManager.getColor("bg") : ThemeManager.getColor("textPrimary"));
         btn.setBorder(BorderFactory.createEmptyBorder(6, 16, 6, 16));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
     private void selectIntervalTab(JButton target) {
-        btnWeekTab.setBackground(INPUT_BG); btnWeekTab.setForeground(TEXT_PRIMARY);
-        btnMonthTab.setBackground(INPUT_BG); btnMonthTab.setForeground(TEXT_PRIMARY);
-        btnYearTab.setBackground(INPUT_BG); btnYearTab.setForeground(TEXT_PRIMARY);
-        target.setBackground(ACCENT_YELLOW); target.setForeground(BG_COLOR);
+        btnWeekTab.setBackground(ThemeManager.getColor("input"));
+        btnWeekTab.setForeground(ThemeManager.getColor("textPrimary"));
+        btnMonthTab.setBackground(ThemeManager.getColor("input"));
+        btnMonthTab.setForeground(ThemeManager.getColor("textPrimary"));
+        btnYearTab.setBackground(ThemeManager.getColor("input"));
+        btnYearTab.setForeground(ThemeManager.getColor("textPrimary"));
+        target.setBackground(ThemeManager.getColor("accent"));
+        target.setForeground(ThemeManager.getColor("bg"));
     }
 
     private JButton createInnerArrowButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        btn.setForeground(TEXT_PRIMARY);
-        btn.setBackground(INPUT_BG);
-        btn.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 1));
+        btn.setForeground(ThemeManager.getColor("textPrimary"));
+        btn.setBackground(ThemeManager.getColor("input"));
+        btn.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         btn.setPreferredSize(new Dimension(32, 26));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
+    // ========== LANGUAGE & THEME ==========
     public void updateLanguageText(boolean isVN) {
         this.isVietnamese = isVN;
         if (lblMainTitle != null) lblMainTitle.setText(isVN ? "Phân tích thống kê chi tiêu" : "Expense Statistical Analysis");
@@ -480,8 +469,6 @@ public class StatisticsPanel extends JPanel implements Observer {
         if (btnWeekTab != null) btnWeekTab.setText(isVN ? "Tuần" : "Week");
         if (btnMonthTab != null) btnMonthTab.setText(isVN ? "Tháng" : "Month");
         if (btnYearTab != null) btnYearTab.setText(isVN ? "Năm" : "Year");
-
-        // Cập nhật tiêu đề bảng
         if (rankingTable != null) {
             String[] columns = isVN ? new String[]{"Danh mục", "Số tiền (VND)", "Tỷ lệ"} : new String[]{"Category", "Amount (VND)", "Percent"};
             rankingModel.setColumnIdentifiers(columns);
@@ -499,23 +486,25 @@ public class StatisticsPanel extends JPanel implements Observer {
 
     public void applyTheme() {
         setBackground(ThemeManager.getColor("bg"));
-        if (chartDrawPanel != null) chartDrawPanel.setBackground(ThemeManager.getColor("surface"));
+        if (chartDrawPanel != null) {
+            chartDrawPanel.setBackground(ThemeManager.getColor("surface"));
+            chartDrawPanel.repaint();
+        }
         if (rankingTable != null) {
             rankingTable.setBackground(ThemeManager.getColor("surface"));
             rankingTable.setForeground(ThemeManager.getColor("textPrimary"));
             rankingTable.getTableHeader().setBackground(ThemeManager.getColor("input"));
             rankingTable.getTableHeader().setForeground(ThemeManager.getColor("textPrimary"));
+            rankingTable.setGridColor(ThemeManager.getColor("border"));
         }
         if (lblMainTitle != null) lblMainTitle.setForeground(ThemeManager.getColor("textPrimary"));
         if (lblTimeRange != null) lblTimeRange.setForeground(ThemeManager.getColor("accent"));
-        // Cập nhật các button
-        JButton[] btns = {btnPieChartToggle, btnLineChartToggle, btnWeekTab, btnMonthTab, btnYearTab};
-        for (JButton btn : btns) {
-            if (btn != null) {
-                btn.setBackground(ThemeManager.getColor("input"));
-                btn.setForeground(ThemeManager.getColor("textPrimary"));
-            }
-        }
+
+        toggleChartTypeButtons("pie".equals(currentChartType));
+        if ("week".equals(currentMode)) selectIntervalTab(btnWeekTab);
+        else if ("month".equals(currentMode)) selectIntervalTab(btnMonthTab);
+        else selectIntervalTab(btnYearTab);
+
         refreshData();
     }
 }

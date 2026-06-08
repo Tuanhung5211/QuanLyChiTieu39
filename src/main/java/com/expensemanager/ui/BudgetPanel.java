@@ -1,8 +1,7 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Budget;
-import com.expensemanager.entity.Transaction;
+import com.expensemanager.entity.Category;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.exception.InvalidAmountException;
 import com.expensemanager.observer.EventType;
@@ -14,243 +13,394 @@ import com.expensemanager.util.InputValidator;
 import com.expensemanager.util.ThemeManager;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.time.LocalDate;
-import java.util.Locale;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class BudgetPanel extends JPanel implements Observer {
 
     private MainFrame mainFrame;
     private BudgetManager budgetManager;
     private FinanceService financeService;
-
-    private JLabel lblTitle;
-    private JLabel lblMonthYear, lblBudgetLimit, lblSpent, lblRemaining, lblStatus;
-    private JProgressBar progressBar;
-    private JButton btnSetBudget;
     private boolean isVietnamese = true;
 
-    private final Color BG_COLOR = new Color(18, 18, 18);
-    private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color INPUT_BG = new Color(45, 45, 45);
-    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
-    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
-    private final Color TEXT_SECONDARY = new Color(160, 160, 160);
+    private JComboBox<String> cmbScope;
+    private JComboBox<Category> cmbCategory;
+    private JComboBox<String> cmbPeriod;          // <-- NOW DECLARED
+    private JTextField txtAmount;
+    private JSpinner spinReminderThreshold;
+    private JButton btnSaveBudget;
+    private JLabel lblFormTitle, lblListTitle;
+    private JPanel budgetListContainer;
+    private JScrollPane scrollPane;
 
     public BudgetPanel(MainFrame mainFrame, BudgetManager budgetManager) {
         this.mainFrame = mainFrame;
         this.budgetManager = budgetManager;
-
         if (mainFrame != null) {
             this.financeService = mainFrame.getFinanceService();
             this.isVietnamese = mainFrame.isVietnamese();
         }
 
         setLayout(new BorderLayout());
-        setBackground(BG_COLOR);
-        setBorder(BorderFactory.createEmptyBorder(30, 45, 30, 45));
+        applyTheme();
+        setBorder(new EmptyBorder(25, 30, 25, 30));
 
         initComponents();
-        updateLanguageText(this.isVietnamese);
+        refreshData();
     }
 
     private void initComponents() {
-        lblTitle = new JLabel("", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 26));
-        lblTitle.setForeground(ACCENT_YELLOW);
-        lblTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 25, 0));
-        add(lblTitle, BorderLayout.NORTH);
+        JPanel splitContainer = new JPanel(new BorderLayout(30, 0));
+        splitContainer.setOpaque(false);
 
-        JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-        centerPanel.setBackground(SURFACE_COLOR);
-        centerPanel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(50, 50, 50), 1, true),
-                BorderFactory.createEmptyBorder(25, 30, 30, 30)
+        // --- Left column ---
+        JPanel leftColumn = new JPanel(new BorderLayout(0, 15));
+        leftColumn.setOpaque(false);
+        leftColumn.setPreferredSize(new Dimension(360, 0));
+
+        lblFormTitle = new JLabel(isVietnamese ? "THIẾT LẬP HẠN MỨC" : "BUDGET CONFIG");
+        lblFormTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        leftColumn.add(lblFormTitle, BorderLayout.NORTH);
+
+        JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
+                BorderFactory.createEmptyBorder(20, 20, 25, 20)
         ));
-        centerPanel.setMaximumSize(new Dimension(800, 450));
 
-        lblMonthYear = new JLabel("", SwingConstants.CENTER);
-        lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblMonthYear.setForeground(TEXT_PRIMARY);
-        lblMonthYear.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centerPanel.add(lblMonthYear);
-        centerPanel.add(Box.createVerticalStrut(25));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(8, 0, 8, 0);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weightx = 1.0;
+        gbc.gridx = 0;
 
-        lblBudgetLimit = new JLabel("", SwingConstants.CENTER);
-        lblBudgetLimit.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        lblBudgetLimit.setForeground(TEXT_PRIMARY);
-        lblBudgetLimit.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centerPanel.add(lblBudgetLimit);
-        centerPanel.add(Box.createVerticalStrut(12));
+        addFormFields(formPanel, gbc);
+        leftColumn.add(formPanel, BorderLayout.CENTER);
+        splitContainer.add(leftColumn, BorderLayout.WEST);
 
-        lblSpent = new JLabel("", SwingConstants.CENTER);
-        lblSpent.setFont(new Font("Segoe UI", Font.PLAIN, 18));
-        lblSpent.setForeground(TEXT_SECONDARY);
-        lblSpent.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centerPanel.add(lblSpent);
-        centerPanel.add(Box.createVerticalStrut(12));
+        // --- Right column ---
+        JPanel rightColumn = new JPanel(new BorderLayout(0, 15));
+        rightColumn.setOpaque(false);
 
-        lblRemaining = new JLabel("", SwingConstants.CENTER);
-        lblRemaining.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblRemaining.setForeground(new Color(76, 175, 80));
-        lblRemaining.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centerPanel.add(lblRemaining);
-        centerPanel.add(Box.createVerticalStrut(25));
+        lblListTitle = new JLabel(isVietnamese ? "TIẾN TRÌNH HẠN MỨC HIỆN TẠI" : "CURRENT BUDGET PROGRESS");
+        lblListTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        rightColumn.add(lblListTitle, BorderLayout.NORTH);
 
-        progressBar = new JProgressBar(0, 100);
-        progressBar.setPreferredSize(new Dimension(450, 30));
-        progressBar.setMaximumSize(new Dimension(450, 30));
-        progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
-        progressBar.setStringPainted(true);
-        progressBar.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        progressBar.setBackground(INPUT_BG);
-        progressBar.setForeground(new Color(76, 175, 80));
-        progressBar.setBorder(BorderFactory.createLineBorder(new Color(65, 65, 65), 1));
-        centerPanel.add(progressBar);
-        centerPanel.add(Box.createVerticalStrut(20));
+        budgetListContainer = new JPanel();
+        budgetListContainer.setLayout(new BoxLayout(budgetListContainer, BoxLayout.Y_AXIS));
+        budgetListContainer.setOpaque(false);
 
-        lblStatus = new JLabel("", SwingConstants.CENTER);
-        lblStatus.setFont(new Font("Segoe UI", Font.ITALIC, 16));
-        lblStatus.setAlignmentX(Component.CENTER_ALIGNMENT);
-        centerPanel.add(lblStatus);
-        centerPanel.add(Box.createVerticalStrut(30));
+        scrollPane = new JScrollPane(budgetListContainer);
+        scrollPane.setBorder(null);
+        scrollPane.setOpaque(false);
+        rightColumn.add(scrollPane, BorderLayout.CENTER);
 
-        btnSetBudget = new JButton();
-        btnSetBudget.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btnSetBudget.setBackground(ACCENT_YELLOW);
-        btnSetBudget.setForeground(BG_COLOR);
-        btnSetBudget.setFocusPainted(false);
-        btnSetBudget.setAlignmentX(Component.CENTER_ALIGNMENT);
-        btnSetBudget.setBorder(BorderFactory.createEmptyBorder(12, 35, 12, 35));
-        btnSetBudget.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnSetBudget.addActionListener(e -> openSetBudgetDialog());
-
-        btnSetBudget.addMouseListener(new MouseAdapter() {
-            @Override public void mouseEntered(MouseEvent e) { btnSetBudget.setBackground(new Color(255, 205, 50)); }
-            @Override public void mouseExited(MouseEvent e) { btnSetBudget.setBackground(ACCENT_YELLOW); }
-        });
-        centerPanel.add(btnSetBudget);
-
-        JPanel wrapperPanel = new JPanel(new GridBagLayout());
-        wrapperPanel.setOpaque(false);
-        wrapperPanel.add(centerPanel);
-        add(wrapperPanel, BorderLayout.CENTER);
+        splitContainer.add(rightColumn, BorderLayout.CENTER);
+        add(splitContainer, BorderLayout.CENTER);
     }
 
-    private void openSetBudgetDialog() {
-        JTextField txtLimit = new JTextField();
-        txtLimit.setBackground(INPUT_BG);
-        txtLimit.setForeground(TEXT_PRIMARY);
-        txtLimit.setCaretColor(ACCENT_YELLOW);
-        txtLimit.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        txtLimit.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(70, 70, 70)),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
+    private void addFormFields(JPanel panel, GridBagConstraints gbc) {
+        // Scope
+        panel.add(new JLabel(isVietnamese ? "Phạm vi áp dụng:" : "Scope:"), gbc);
+        cmbScope = new JComboBox<>(isVietnamese ?
+                new String[]{"Tổng thể", "Theo danh mục"} :
+                new String[]{"Overall", "By Category"});
+        styleComboBox(cmbScope);
+        panel.add(cmbScope, gbc);
 
-        JPanel panel = new JPanel(new GridLayout(2, 1, 5, 8));
-        panel.setOpaque(false);
+        // Category (only enabled when scope is "By Category")
+        panel.add(new JLabel(isVietnamese ? "Danh mục:" : "Category:"), gbc);
+        cmbCategory = new JComboBox<>();
+        if (financeService != null) {
+            financeService.getAllCategories().stream()
+                    .filter(c -> c.getType() == TransactionType.EXPENSE)
+                    .forEach(cmbCategory::addItem);
+        }
+        cmbCategory.setEnabled(false);
+        styleComboBox(cmbCategory);
+        panel.add(cmbCategory, gbc);
+        cmbScope.addActionListener(e ->
+                cmbCategory.setEnabled(cmbScope.getSelectedIndex() == 1));
 
-        JLabel lblHint = new JLabel(isVietnamese ? "Nhập hạn mức chi tiêu mới (VND):" : "Enter new monthly budget limit (VND):");
-        lblHint.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblHint.setForeground(TEXT_PRIMARY);
-        panel.add(lblHint);
-        panel.add(txtLimit);
+        // Period (Daily/Monthly/Yearly)
+        panel.add(new JLabel(isVietnamese ? "Kỳ hạn:" : "Period:"), gbc);
+        cmbPeriod = new JComboBox<>(isVietnamese ?
+                new String[]{"Theo Ngày", "Theo Tháng", "Theo Năm"} :
+                new String[]{"Daily", "Monthly", "Yearly"});
+        styleComboBox(cmbPeriod);
+        panel.add(cmbPeriod, gbc);
 
-        UIManager.put("OptionPane.background", SURFACE_COLOR);
-        UIManager.put("Panel.background", SURFACE_COLOR);
-        UIManager.put("OptionPane.messageForeground", TEXT_PRIMARY);
+        // Amount
+        panel.add(new JLabel(isVietnamese ? "Số tiền (VND):" : "Amount (VND):"), gbc);
+        txtAmount = new JTextField();
+        styleTextField(txtAmount);
+        panel.add(txtAmount, gbc);
 
-        int result = JOptionPane.showConfirmDialog(this, panel,
-                isVietnamese ? "Thiết lập ngân sách" : "Setup Expense Budget",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        // Reminder threshold
+        panel.add(new JLabel(isVietnamese ? "Ngưỡng nhắc nhở (%):" : "Reminder Threshold (%):"), gbc);
+        spinReminderThreshold = new JSpinner(new SpinnerNumberModel(80, 10, 100, 5));
+        panel.add(spinReminderThreshold, gbc);
 
-        if (result == JOptionPane.OK_OPTION) {
-            try {
-                double limit = InputValidator.validateAmount(txtLimit.getText(), isVietnamese);
-                int month = LocalDate.now().getMonthValue();
-                int year = LocalDate.now().getYear();
+        // Save button
+        btnSaveBudget = new JButton(isVietnamese ? "Kích hoạt Ngân sách" : "Activate Budget");
+        btnSaveBudget.addActionListener(e -> saveBudgetAction());
+        panel.add(btnSaveBudget, gbc);
+    }
 
-                budgetManager.setBudget(month, year, limit);
+    private void saveBudgetAction() {
+        try {
+            double amount = InputValidator.validateAmount(txtAmount.getText(), isVietnamese);
+            Category selectedCat = (cmbScope.getSelectedIndex() == 1) ?
+                    (Category) cmbCategory.getSelectedItem() : null;
+            String period = (String) cmbPeriod.getSelectedItem();
+            int threshold = (int) spinReminderThreshold.getValue();
 
+            LocalDate now = LocalDate.now();
+            LocalDate start, end;
+
+            if (period.contains("Ngày") || period.contains("Daily")) {
+                start = now; end = now;
+            } else if (period.contains("Tháng") || period.contains("Monthly")) {
+                start = now.withDayOfMonth(1);
+                end = now.withDayOfMonth(now.lengthOfMonth());
+            } else {
+                start = now.withDayOfYear(1);
+                end = now.withDayOfYear(now.lengthOfYear());
+            }
+
+            Budget budget = new Budget();
+            budget.setId("B_" + System.currentTimeMillis());
+            budget.setLimit(amount);
+            budget.setCategory(selectedCat);
+            budget.setStartDate(start);
+            budget.setEndDate(end);
+            budget.setThreshold(threshold);
+            budget.setUserId(SessionManager.getCurrentUserId());
+
+            if (budgetManager != null) {
+                budgetManager.addBudget(budget);
+                JOptionPane.showMessageDialog(this,
+                        isVietnamese ? "Đã lưu và triển khai mục tiêu hạn mức!" : "Budget deployed successfully!");
+                txtAmount.setText("");
                 refreshData();
                 if (mainFrame != null) mainFrame.refreshAllPanels();
-
-            } catch (IllegalArgumentException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(),
-                        isVietnamese ? "Lỗi nhập liệu" : "Input Validation Error", JOptionPane.WARNING_MESSAGE);
-            } catch (InvalidAmountException ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(),
-                        isVietnamese ? "Lỗi nghiệp vụ" : "Business Rule Violation", JOptionPane.WARNING_MESSAGE);
             }
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    isVietnamese ? "Lỗi nhập liệu" : "Input Error", JOptionPane.WARNING_MESSAGE);
+        } catch (InvalidAmountException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(),
+                    isVietnamese ? "Lỗi số tiền" : "Amount Error", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
     public void refreshData() {
-        if (budgetManager == null || financeService == null) return;
+        if (budgetListContainer == null || budgetManager == null) return;
+        budgetListContainer.removeAll();
 
-        String status = budgetManager.checkBudget();
-        lblStatus.setText(status);
-        if (status != null && (status.contains("⚠️") || status.contains("Vượt") || status.contains("Exceeded"))) {
-            lblStatus.setForeground(new Color(244, 67, 54));
-        } else if (status != null && (status.contains("✅") || status.contains("Còn") || status.contains("Within"))) {
-            lblStatus.setForeground(new Color(76, 175, 80));
+        List<Budget> activeBudgets = budgetManager.getAllBudgets();
+        if (activeBudgets == null || activeBudgets.isEmpty()) {
+            JPanel emptyPanel = new JPanel(new GridBagLayout());
+            emptyPanel.setOpaque(false);
+            JLabel lblEmpty = new JLabel(isVietnamese ?
+                    "Chưa có hạn mức chi tiêu nào được thiết lập." :
+                    "No budget limits configured yet.");
+            lblEmpty.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+            lblEmpty.setForeground(ThemeManager.getColor("textSecondary"));
+            emptyPanel.add(lblEmpty);
+            budgetListContainer.add(emptyPanel);
         } else {
-            lblStatus.setForeground(TEXT_SECONDARY);
+            for (Budget b : activeBudgets) {
+                budgetListContainer.add(createBudgetCard(b));
+                budgetListContainer.add(Box.createVerticalStrut(14));
+            }
+        }
+        budgetListContainer.revalidate();
+        budgetListContainer.repaint();
+    }
+
+    private JPanel createBudgetCard(Budget b) {
+        // Resolve colors from ThemeManager for dynamic theming
+        Color surfaceColor = ThemeManager.getColor("surface");
+        Color textPrimary = ThemeManager.getColor("textPrimary");
+        Color textSecondary = ThemeManager.getColor("textSecondary");
+        Color dangerColor = ThemeManager.getColor("danger");
+        Color successColor = ThemeManager.getColor("success");
+        Color borderColor = ThemeManager.getColor("border");
+
+        JPanel card = new JPanel(new BorderLayout(18, 0));
+        card.setBackground(surfaceColor);
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, 1, true),
+                BorderFactory.createEmptyBorder(14, 18, 14, 18)
+        ));
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 115));
+
+        BudgetProgressCircle progressCircle = new BudgetProgressCircle(b.getLimit(), b.getSpent());
+        card.add(progressCircle, BorderLayout.WEST);
+
+        JPanel infoPanel = new JPanel(new GridLayout(3, 1, 0, 4));
+        infoPanel.setOpaque(false);
+
+        String title = b.getCategory() == null ?
+                (isVietnamese ? "🎯 Ngân sách Tổng Thể Hệ Thống" : "🎯 Overall System Budget") :
+                ("📌 Hạn mức mục: " + b.getCategory().getName());
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblTitle.setForeground(textPrimary);
+
+        DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String duration = String.format("(%s ➔ %s)",
+                b.getStartDate().format(df), b.getEndDate().format(df));
+        JLabel lblDuration = new JLabel(duration);
+        lblDuration.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblDuration.setForeground(textSecondary);
+
+        String details = String.format(
+                isVietnamese ? "Đã tiêu dùng: %,.0f đ / Giới hạn: %,.0f đ" : "Spent: %,.0f / Limit: %,.0f VND",
+                b.getSpent(), b.getLimit());
+        JLabel lblDetails = new JLabel(details);
+        lblDetails.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblDetails.setForeground(b.getSpent() > b.getLimit() ? dangerColor : successColor);
+
+        infoPanel.add(lblTitle);
+        infoPanel.add(lblDuration);
+        infoPanel.add(lblDetails);
+        card.add(infoPanel, BorderLayout.CENTER);
+
+        JButton btnDelete = new JButton("❌");
+        btnDelete.setFocusPainted(false);
+        btnDelete.setContentAreaFilled(false);
+        btnDelete.setBorderPainted(false);
+        btnDelete.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnDelete.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnDelete.addActionListener(e -> {
+            int option = JOptionPane.showConfirmDialog(this,
+                    isVietnamese ? "Bạn có chắc muốn gỡ bỏ hạn mức này không?" :
+                            "Are you sure you want to remove this budget limit?",
+                    isVietnamese ? "Xác nhận xóa" : "Confirm Delete",
+                    JOptionPane.YES_NO_OPTION);
+            if (option == JOptionPane.YES_OPTION) {
+                budgetManager.deleteBudget(b.getId());
+                refreshData();
+                if (mainFrame != null) mainFrame.refreshAllPanels();
+            }
+        });
+        card.add(btnDelete, BorderLayout.EAST);
+
+        return card;
+    }
+
+    private class BudgetProgressCircle extends JComponent {
+        private final double limit;
+        private final double spent;
+
+        public BudgetProgressCircle(double limit, double spent) {
+            this.limit = limit;
+            this.spent = spent;
+            setPreferredSize(new Dimension(85, 85));
         }
 
-        int month = LocalDate.now().getMonthValue();
-        int year = LocalDate.now().getYear();
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        if (isVietnamese) {
-            lblMonthYear.setText("Tháng " + month + " Năm " + year);
-        } else {
-            String monthName = java.time.Month.of(month).getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH);
-            lblMonthYear.setText(monthName + " " + year);
+            int size = Math.min(getWidth(), getHeight()) - 12;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
+
+            // Track
+            g2.setStroke(new BasicStroke(7, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.setColor(ThemeManager.getColor("progressTrack"));
+            g2.drawOval(x, y, size, size);
+
+            double pct = limit > 0 ? (spent / limit) : 0;
+            int angle = (int) (pct * 360);
+            if (angle > 360) angle = 360;
+
+            if (spent > limit) {
+                g2.setColor(ThemeManager.getColor("danger"));
+            } else if (pct >= 0.8) {
+                g2.setColor(ThemeManager.getColor("warning"));
+            } else {
+                g2.setColor(ThemeManager.getColor("success"));
+            }
+
+            g2.drawArc(x, y, size, size, 90, -angle);
+
+            String txt = String.format("%.0f%%", pct * 100);
+            g2.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            g2.setColor(spent > limit ? ThemeManager.getColor("danger") : ThemeManager.getColor("textPrimary"));
+            FontMetrics fm = g2.getFontMetrics();
+            int tx = (getWidth() - fm.stringWidth(txt)) / 2;
+            int ty = (getHeight() + fm.getAscent() - fm.getDescent()) / 2;
+            g2.drawString(txt, tx, ty);
+
+            g2.dispose();
         }
+    }
 
-        String userId = SessionManager.getCurrentUserId();
-        if (userId != null) {
-            double spent = financeService.getAllTransactions().stream()
-                    .filter(t -> t != null && t.getType() == TransactionType.EXPENSE)
-                    .filter(t -> t.getDateTime().getMonthValue() == month)
-                    .filter(t -> t.getDateTime().getYear() == year)
-                    .mapToDouble(Transaction::getAmount)
-                    .sum();
+    private void styleFormLabel(JLabel label) {
+        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        label.setForeground(ThemeManager.getColor("textSecondary"));
+    }
 
-            double limit = 0;
-            Budget budget = DatabaseUtil.getBudget(month, year, userId);
-            if (budget != null) {
-                limit = budget.getLimit();
-            }
+    private void styleTextField(JTextField tf) {
+        tf.setBackground(ThemeManager.getColor("inputBg"));
+        tf.setForeground(ThemeManager.getColor("textPrimary"));
+        tf.setCaretColor(ThemeManager.getColor("accent"));
+        tf.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+                BorderFactory.createEmptyBorder(6, 10, 6, 10)
+        ));
+    }
 
-            if (limit > 0) {
-                lblBudgetLimit.setText(isVietnamese ? String.format("Hạn mức tháng này: %,.0f đ", limit) : String.format("Monthly Limit: %,.0f VND", limit));
-            } else {
-                lblBudgetLimit.setText(isVietnamese ? "Hạn mức tháng này: Chưa thiết lập" : "Monthly Limit: Not Set Yet");
-            }
+    private void styleComboBox(JComboBox<?> cb) {
+        cb.setBackground(ThemeManager.getColor("inputBg"));
+        cb.setForeground(ThemeManager.getColor("textPrimary"));
+        cb.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+    }
 
-            lblSpent.setText(isVietnamese ? String.format("Số tiền đã chi tiêu: %,.0f đ", spent) : String.format("Total Amount Spent: %,.0f VND", spent));
+    public void updateLanguageText(boolean isVN) {
+        this.isVietnamese = isVN;
+        if (lblFormTitle != null) lblFormTitle.setText(isVN ? "THIẾT LẬP HẠN MỨC" : "BUDGET CONFIG");
+        if (lblListTitle != null) lblListTitle.setText(isVN ? "TIẾN TRÌNH HẠN MỨC HIỆN TẠI" : "CURRENT BUDGET PROGRESS");
+        if (btnSaveBudget != null) btnSaveBudget.setText(isVN ? "Kích hoạt Ngân sách" : "Activate Budget");
 
-            if (limit > 0) {
-                double remaining = limit - spent;
-                lblRemaining.setText(isVietnamese ? String.format("Số dư còn lại: %,.0f đ", remaining) : String.format("Remaining Balance: %,.0f VND", remaining));
+        if (cmbScope != null) {
+            int idx = cmbScope.getSelectedIndex();
+            cmbScope.setModel(new DefaultComboBoxModel<>(isVN ?
+                    new String[]{"Tổng thể", "Theo danh mục"} :
+                    new String[]{"Overall", "By Category"}));
+            cmbScope.setSelectedIndex(idx);
+        }
+        if (cmbPeriod != null) {
+            int idx = cmbPeriod.getSelectedIndex();
+            cmbPeriod.setModel(new DefaultComboBoxModel<>(isVN ?
+                    new String[]{"Theo Ngày", "Theo Tháng", "Theo Năm"} :
+                    new String[]{"Daily", "Monthly", "Yearly"}));
+            cmbPeriod.setSelectedIndex(idx);
+        }
+        refreshData();
+    }
 
-                if (remaining < 0) lblRemaining.setForeground(new Color(244, 67, 54));
-                else lblRemaining.setForeground(new Color(76, 175, 80));
-
-                int percent = (int) Math.round((spent / limit) * 100);
-                progressBar.setValue(Math.min(percent, 100));
-                progressBar.setString(percent + "%");
-                progressBar.setForeground(percent > 100 ? new Color(244, 67, 54) : new Color(76, 175, 80));
-            } else {
-                lblRemaining.setText(isVietnamese ? "Số dư còn lại: 0 đ" : "Remaining Balance: 0 VND");
-                progressBar.setValue(0);
-                progressBar.setString("0%");
-            }
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+        if (scrollPane != null) scrollPane.getViewport().setBackground(ThemeManager.getColor("bg"));
+        if (budgetListContainer != null) budgetListContainer.setBackground(ThemeManager.getColor("bg"));
+        if (lblFormTitle != null) lblFormTitle.setForeground(ThemeManager.getColor("accent"));
+        if (lblListTitle != null) lblListTitle.setForeground(ThemeManager.getColor("textPrimary"));
+        if (btnSaveBudget != null) {
+            btnSaveBudget.setBackground(ThemeManager.getColor("accent"));
+            btnSaveBudget.setForeground(ThemeManager.getColor("bg"));
         }
     }
 
@@ -263,30 +413,5 @@ public class BudgetPanel extends JPanel implements Observer {
                 eventType == EventType.DATA_LOADED) {
             SwingUtilities.invokeLater(this::refreshData);
         }
-    }
-
-    public void updateLanguageText(boolean isVN) {
-        this.isVietnamese = isVN;
-        if (lblTitle != null) lblTitle.setText(isVN ? "NGÂN SÁCH CHI TIÊU THÁNG" : "MONTHLY EXPENSE BUDGET");
-        if (btnSetBudget != null) btnSetBudget.setText(isVN ? "Thay đổi hạn mức ngân sách" : "Adjust Budget Limit");
-        refreshData();
-    }
-
-    public void applyTheme() {
-        setBackground(ThemeManager.getColor("bg"));
-        if (lblTitle != null) lblTitle.setForeground(ThemeManager.getColor("accent"));
-        if (lblMonthYear != null) lblMonthYear.setForeground(ThemeManager.getColor("textPrimary"));
-        if (lblBudgetLimit != null) lblBudgetLimit.setForeground(ThemeManager.getColor("textPrimary"));
-        if (lblSpent != null) lblSpent.setForeground(ThemeManager.getColor("textSecondary"));
-        if (lblRemaining != null) lblRemaining.setForeground(ThemeManager.getColor("success"));
-        if (progressBar != null) {
-            progressBar.setBackground(ThemeManager.getColor("input"));
-            progressBar.setForeground(ThemeManager.getColor("success"));
-        }
-        if (btnSetBudget != null) {
-            btnSetBudget.setBackground(ThemeManager.getColor("accent"));
-            btnSetBudget.setForeground(ThemeManager.getColor("bg"));
-        }
-        refreshData();
     }
 }

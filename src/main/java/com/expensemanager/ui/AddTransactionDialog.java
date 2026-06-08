@@ -6,8 +6,11 @@ import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.service.SessionManager;
 import com.expensemanager.util.InputValidator;
+import com.expensemanager.util.ThemeManager;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.*;
@@ -16,9 +19,6 @@ import java.util.UUID;
 
 public class AddTransactionDialog extends JDialog {
 
-    // =====================================================================
-    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
-    // =====================================================================
     private MainFrame mainFrame;
     private TransactionType selectedType = TransactionType.EXPENSE;
     private Category selectedCategory;
@@ -36,7 +36,6 @@ public class AddTransactionDialog extends JDialog {
 
     public static Map<String, String> customEmojiMap = new HashMap<>();
     private static final Map<String, String> CATEGORY_EMOJI = new LinkedHashMap<>();
-
     static {
         CATEGORY_EMOJI.put("Ăn uống", "\uD83C\uDF54");
         CATEGORY_EMOJI.put("Đi chợ", "\uD83D\uDED2");
@@ -73,14 +72,6 @@ public class AddTransactionDialog extends JDialog {
         CATEGORY_EMOJI.put("Thu khác", "\uD83E\uDE99");
     }
 
-    private final Color BG_COLOR = new Color(18, 18, 18);
-    private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color ACCENT_YELLOW = new Color(255, 193, 7);
-    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
-
-    // =====================================================================
-    // 2. CONSTRUCTOR VÀ KHỞI TẠO BỐ CỤC UI
-    // =====================================================================
     public AddTransactionDialog(MainFrame parent) {
         super(parent, parent != null && parent.isVietnamese() ? "Thêm giao dịch mới" : "Add New Transaction", true);
         this.mainFrame = parent;
@@ -90,17 +81,18 @@ public class AddTransactionDialog extends JDialog {
 
         setSize(460, 580);
         setLocationRelativeTo(parent);
-        getContentPane().setBackground(BG_COLOR);
         setLayout(new BorderLayout());
 
         initComponents();
         refreshCategories();
+        applyTheme();
     }
 
     private void initComponents() {
+        // Header
         JPanel header = new JPanel(new GridLayout(1, 2, 10, 0));
-        header.setBackground(BG_COLOR);
         header.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
+        header.setOpaque(false);
 
         btnExpense = createTypeButton(isVietnamese ? "CHI TIÊU" : "EXPENSE", true);
         btnIncome = createTypeButton(isVietnamese ? "THU NHẬP" : "INCOME", false);
@@ -112,15 +104,17 @@ public class AddTransactionDialog extends JDialog {
         header.add(btnIncome);
         add(header, BorderLayout.NORTH);
 
+        // Center
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-        centerPanel.setBackground(BG_COLOR);
         centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 5, 20));
+        centerPanel.setOpaque(false);
 
         centerPanel.add(createLabel(isVietnamese ? "Số tiền (VND)" : "Amount (VND)"));
         txtAmount = new JTextField();
         styleTextField(txtAmount, "0");
         txtAmount.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        txtAmount.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(txtAmount);
 
         centerPanel.add(Box.createVerticalStrut(12));
@@ -128,16 +122,14 @@ public class AddTransactionDialog extends JDialog {
         centerPanel.add(Box.createVerticalStrut(4));
 
         categoryPanel = new JPanel(new GridLayout(0, 4, 12, 12));
-        categoryPanel.setBackground(BG_COLOR);
-
         categoryScrollPane = new JScrollPane(categoryPanel);
         categoryScrollPane.setBorder(null);
-        categoryScrollPane.getViewport().setBackground(BG_COLOR);
         categoryScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         categoryScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
         categoryScrollPane.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(categoryScrollPane);
 
+        // Pagination
         JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 4));
         paginationPanel.setOpaque(false);
         paginationPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -146,7 +138,7 @@ public class AddTransactionDialog extends JDialog {
         btnNextPage = createArrowButton(">");
         lblPageIndicator = new JLabel(isVietnamese ? "Trang 1 / 1" : "Page 1 / 1");
         lblPageIndicator.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblPageIndicator.setForeground(TEXT_PRIMARY);
+        lblPageIndicator.setForeground(ThemeManager.getColor("textPrimary"));
 
         btnPrevPage.addActionListener(e -> { if (currentPage > 1) { currentPage--; refreshCategories(); } });
         btnNextPage.addActionListener(e -> { currentPage++; refreshCategories(); });
@@ -163,13 +155,9 @@ public class AddTransactionDialog extends JDialog {
         txtNote = new JTextArea(2, 20);
         txtNote.setLineWrap(true);
         txtNote.setWrapStyleWord(true);
-        txtNote.setBackground(SURFACE_COLOR);
-        txtNote.setForeground(TEXT_PRIMARY);
-        txtNote.setCaretColor(ACCENT_YELLOW);
         txtNote.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         txtNote.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
-
-        txtNote.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+        txtNote.getDocument().addDocumentListener(new DocumentListener() {
             private void check() {
                 if (txtNote.getText().length() > 200) {
                     SwingUtilities.invokeLater(() -> {
@@ -180,38 +168,33 @@ public class AddTransactionDialog extends JDialog {
                     });
                 }
             }
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { check(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { check(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { check(); }
+            public void insertUpdate(DocumentEvent e) { check(); }
+            public void removeUpdate(DocumentEvent e) { check(); }
+            public void changedUpdate(DocumentEvent e) { check(); }
         });
 
         JScrollPane scrollNote = new JScrollPane(txtNote);
-        scrollNote.setBorder(BorderFactory.createLineBorder(new Color(50, 50, 50), 1));
+        scrollNote.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         scrollNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
-        scrollNote.setMinimumSize(new Dimension(10, 58));
-        scrollNote.setPreferredSize(new Dimension(10, 58));
         scrollNote.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(scrollNote);
 
         centerPanel.add(Box.createVerticalGlue());
         add(centerPanel, BorderLayout.CENTER);
 
+        // Footer
         JPanel footer = new JPanel(new GridLayout(1, 2, 10, 0));
-        footer.setBackground(BG_COLOR);
         footer.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
+        footer.setOpaque(false);
 
         JButton btnCancel = new JButton(isVietnamese ? "HỦY BỎ" : "CANCEL");
         btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btnCancel.setBackground(SURFACE_COLOR);
-        btnCancel.setForeground(TEXT_PRIMARY);
         btnCancel.setFocusPainted(false);
         btnCancel.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
         btnCancel.addActionListener(e -> dispose());
 
         JButton btnSave = new JButton(isVietnamese ? "LƯU GIAO DỊCH" : "SAVE TRANSACTION");
         btnSave.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        btnSave.setBackground(ACCENT_YELLOW);
-        btnSave.setForeground(BG_COLOR);
         btnSave.setFocusPainted(false);
         btnSave.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
         btnSave.addActionListener(e -> saveTransaction());
@@ -221,18 +204,109 @@ public class AddTransactionDialog extends JDialog {
         add(footer, BorderLayout.SOUTH);
     }
 
-    // =====================================================================
-    // 3. QUẢN LÝ LỌC & PHÂN TRANG DANH MỤC
-    // =====================================================================
+    public void applyTheme() {
+        getContentPane().setBackground(ThemeManager.getColor("bg"));
+        // Cập nhật header buttons
+        if (btnExpense != null) {
+            btnExpense.setBackground(selectedType == TransactionType.EXPENSE ? ThemeManager.getColor("danger") : ThemeManager.getColor("surface"));
+            btnExpense.setForeground(Color.WHITE);
+        }
+        if (btnIncome != null) {
+            btnIncome.setBackground(selectedType == TransactionType.INCOME ? ThemeManager.getColor("success") : ThemeManager.getColor("surface"));
+            btnIncome.setForeground(Color.WHITE);
+        }
+        // Text fields
+        if (txtAmount != null) {
+            txtAmount.setBackground(ThemeManager.getColor("input"));
+            txtAmount.setForeground(ThemeManager.getColor("textPrimary"));
+            txtAmount.setCaretColor(ThemeManager.getColor("accent"));
+        }
+        if (txtNote != null) {
+            txtNote.setBackground(ThemeManager.getColor("input"));
+            txtNote.setForeground(ThemeManager.getColor("textPrimary"));
+            txtNote.setCaretColor(ThemeManager.getColor("accent"));
+        }
+        // Category panel và scroll
+        if (categoryPanel != null) categoryPanel.setBackground(ThemeManager.getColor("bg"));
+        if (categoryScrollPane != null) categoryScrollPane.getViewport().setBackground(ThemeManager.getColor("bg"));
+        // Pagination
+        if (btnPrevPage != null) {
+            btnPrevPage.setBackground(ThemeManager.getColor("surface"));
+            btnPrevPage.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnNextPage != null) {
+            btnNextPage.setBackground(ThemeManager.getColor("surface"));
+            btnNextPage.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (lblPageIndicator != null) lblPageIndicator.setForeground(ThemeManager.getColor("textPrimary"));
+        // Footer buttons
+        for (Component comp : getContentPane().getComponents()) {
+            if (comp instanceof JPanel) {
+                JPanel panel = (JPanel) comp;
+                if (panel.getComponentCount() == 2 && panel.getComponent(0) instanceof JButton && panel.getComponent(1) instanceof JButton) {
+                    for (Component btnComp : panel.getComponents()) {
+                        if (btnComp instanceof JButton) {
+                            JButton btn = (JButton) btnComp;
+                            if (btn.getText().contains("HỦY") || btn.getText().contains("CANCEL")) {
+                                btn.setBackground(ThemeManager.getColor("surface"));
+                                btn.setForeground(ThemeManager.getColor("textPrimary"));
+                            } else {
+                                btn.setBackground(ThemeManager.getColor("accent"));
+                                btn.setForeground(ThemeManager.getColor("bg"));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        refreshCategories(); // Cập nhật màu category cells
+    }
+
     private void switchType(TransactionType type) {
         this.selectedType = type;
         this.currentPage = 1;
         this.selectedCategory = null;
-        btnExpense.setBackground(type == TransactionType.EXPENSE ? new Color(244, 67, 54) : SURFACE_COLOR);
-        btnIncome.setBackground(type == TransactionType.INCOME ? new Color(76, 175, 80) : SURFACE_COLOR);
-        btnExpense.setForeground(Color.WHITE);
-        btnIncome.setForeground(Color.WHITE);
+        applyTheme();
         refreshCategories();
+    }
+
+    private void refreshCategories() {
+        categoryPanel.removeAll();
+        List<Category> allList = new ArrayList<>();
+        try { allList = DatabaseUtil.getAllCategories(); } catch (Exception e) { e.printStackTrace(); }
+
+        checkAndSeedCategories(allList);
+        List<Category> filteredList = new ArrayList<>();
+        for (Category c : allList) { if (c.getType() == selectedType) filteredList.add(c); }
+
+        int totalItems = filteredList.size();
+        int totalPages = (int) Math.ceil((double) totalItems / ITEMS_PER_PAGE);
+        if (totalPages == 0) totalPages = 1;
+
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        lblPageIndicator.setText((isVietnamese ? "Trang " : "Page ") + currentPage + " / " + totalPages);
+        btnPrevPage.setEnabled(currentPage > 1);
+        btnNextPage.setEnabled(currentPage < totalPages);
+
+        int startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+
+        for (int i = startIndex; i < endIndex; i++) {
+            categoryPanel.add(createCategoryItem(filteredList.get(i)));
+        }
+        int displayedCount = endIndex - startIndex;
+        for (int i = displayedCount; i < ITEMS_PER_PAGE; i++) {
+            JPanel placeholder = new JPanel(); placeholder.setOpaque(false); categoryPanel.add(placeholder);
+        }
+
+        int rows = displayedCount <= 4 ? 1 : 2;
+        int calculatedHeight = rows * 78 + (rows - 1) * 12 + 6;
+        categoryScrollPane.setPreferredSize(new Dimension(400, calculatedHeight));
+        categoryScrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, calculatedHeight));
+
+        categoryPanel.revalidate(); categoryPanel.repaint();
     }
 
     private void checkAndSeedCategories(List<Category> currentList) {
@@ -261,57 +335,10 @@ public class AddTransactionDialog extends JDialog {
         }
     }
 
-    private void refreshCategories() {
-        categoryPanel.removeAll();
-        List<Category> allList = new ArrayList<>();
-        try { allList = DatabaseUtil.getAllCategories(); } catch (Exception e) { e.printStackTrace(); }
-
-        checkAndSeedCategories(allList);
-        List<Category> filteredList = new ArrayList<>();
-        for (Category c : allList) { if (c.getType() == selectedType) filteredList.add(c); }
-
-        int totalItems = filteredList.size();
-        int totalPages = (int) Math.ceil((double) totalItems / ITEMS_PER_PAGE);
-        if (totalPages == 0) totalPages = 1;
-
-        if (currentPage > totalPages) currentPage = totalPages;
-        if (currentPage < 1) currentPage = 1;
-
-        lblPageIndicator.setText((isVietnamese ? "Trang " : "Page ") + currentPage + " / " + totalPages);
-        btnPrevPage.setEnabled(currentPage > 1);
-        btnNextPage.setEnabled(currentPage < totalPages);
-
-        int startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
-
-        int displayedCount = 0;
-        for (int i = startIndex; i < endIndex; i++) {
-            categoryPanel.add(createCategoryItem(filteredList.get(i)));
-            displayedCount++;
-        }
-
-        int itemsOnPage = endIndex - startIndex;
-        int targetCount = (itemsOnPage <= 4) ? 4 : 8;
-        int rows = (int) Math.ceil((double) targetCount / 4);
-
-        for (int i = displayedCount; i < targetCount; i++) {
-            JPanel placeholder = new JPanel(); placeholder.setOpaque(false); categoryPanel.add(placeholder);
-        }
-
-        int calculatedHeight = rows * 78 + (rows - 1) * 12 + 6;
-        categoryScrollPane.setPreferredSize(new Dimension(400, calculatedHeight));
-        categoryScrollPane.setMaximumSize(new Dimension(Integer.MAX_VALUE, calculatedHeight));
-        categoryScrollPane.setMinimumSize(new Dimension(10, calculatedHeight));
-
-        categoryPanel.revalidate(); categoryPanel.repaint();
-    }
-
     private JPanel createCategoryItem(Category c) {
         JPanel item = new JPanel(new BorderLayout(0, 4));
-        item.setBackground(BG_COLOR);
+        item.setOpaque(false);
         item.setPreferredSize(new Dimension(85, 78));
-        item.setMinimumSize(new Dimension(85, 78));
-        item.setMaximumSize(new Dimension(85, 78));
         item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         String emoji = customEmojiMap.containsKey(c.getName()) ? customEmojiMap.get(c.getName()) : CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
@@ -319,21 +346,20 @@ public class AddTransactionDialog extends JDialog {
         JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
         lblIcon.setOpaque(true);
+        lblIcon.setPreferredSize(new Dimension(48, 48));
+        lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
 
         if (selectedCategory != null && selectedCategory.getId().equals(c.getId())) {
-            lblIcon.setBackground(ACCENT_YELLOW);
-            lblIcon.setForeground(BG_COLOR);
+            lblIcon.setBackground(ThemeManager.getColor("accent"));
+            lblIcon.setForeground(ThemeManager.getColor("bg"));
         } else {
-            lblIcon.setBackground(SURFACE_COLOR);
+            lblIcon.setBackground(ThemeManager.getColor("input"));
             lblIcon.setForeground(Color.WHITE);
         }
 
-        lblIcon.setPreferredSize(new Dimension(48, 48));
-        lblIcon.setBorder(BorderFactory.createLineBorder(new Color(50, 50, 50), 1, true));
-
         JLabel lblName = new JLabel(c.getName(), SwingConstants.CENTER);
         lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblName.setForeground(TEXT_PRIMARY);
+        lblName.setForeground(ThemeManager.getColor("textPrimary"));
 
         item.add(lblIcon, BorderLayout.CENTER);
         item.add(lblName, BorderLayout.SOUTH);
@@ -341,26 +367,12 @@ public class AddTransactionDialog extends JDialog {
         item.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 selectedCategory = c;
-                for (Component comp : categoryPanel.getComponents()) {
-                    if (comp instanceof JPanel && comp.getMinimumSize().width == 85) {
-                        JPanel p = (JPanel) comp;
-                        if (p.getComponentCount() > 0 && p.getComponent(0) instanceof JLabel) {
-                            JLabel icon = (JLabel) p.getComponent(0);
-                            icon.setBackground(SURFACE_COLOR);
-                            icon.setForeground(Color.WHITE);
-                        }
-                    }
-                }
-                lblIcon.setBackground(ACCENT_YELLOW);
-                lblIcon.setForeground(BG_COLOR);
+                refreshCategories();
             }
         });
         return item;
     }
 
-    // =====================================================================
-    // 4. LƯU GIAO DỊCH
-    // =====================================================================
     private void saveTransaction() {
         try {
             String userId = SessionManager.getCurrentUserId();
@@ -395,9 +407,6 @@ public class AddTransactionDialog extends JDialog {
         }
     }
 
-    // =====================================================================
-    // 5. TIỆN ÍCH GIAO DIỆN (UI STYLES)
-    // =====================================================================
     public static void addCustomEmoji(String categoryName, String emoji) {
         customEmojiMap.put(categoryName, emoji);
     }
@@ -406,7 +415,6 @@ public class AddTransactionDialog extends JDialog {
         JButton b = new JButton(text);
         b.setFont(new Font("Segoe UI", Font.BOLD, 14));
         b.setFocusPainted(false);
-        b.setBackground(active ? (text.contains("CHI") || text.contains("EXP") ? new Color(244, 67, 54) : new Color(76, 175, 80)) : SURFACE_COLOR);
         b.setForeground(Color.WHITE);
         b.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         return b;
@@ -414,7 +422,7 @@ public class AddTransactionDialog extends JDialog {
 
     private JLabel createLabel(String text) {
         JLabel l = new JLabel(text, SwingConstants.CENTER);
-        l.setForeground(new Color(150, 150, 150));
+        l.setForeground(ThemeManager.getColor("textSecondary"));
         l.setFont(new Font("Segoe UI", Font.BOLD, 13));
         l.setAlignmentX(Component.CENTER_ALIGNMENT);
         return l;
@@ -423,9 +431,7 @@ public class AddTransactionDialog extends JDialog {
     private JButton createArrowButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setForeground(TEXT_PRIMARY);
-        btn.setBackground(SURFACE_COLOR);
-        btn.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55), 1));
+        btn.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         btn.setFocusPainted(false);
         btn.setPreferredSize(new Dimension(36, 28));
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -433,11 +439,14 @@ public class AddTransactionDialog extends JDialog {
     }
 
     private void styleTextField(JTextField tf, String placeholder) {
-        tf.setBackground(SURFACE_COLOR);
-        tf.setForeground(TEXT_PRIMARY);
-        tf.setCaretColor(ACCENT_YELLOW);
+        tf.setBackground(ThemeManager.getColor("input"));
+        tf.setForeground(ThemeManager.getColor("textPrimary"));
+        tf.setCaretColor(ThemeManager.getColor("accent"));
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
-        tf.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(50, 50, 50)), BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)
+        ));
         tf.setHorizontalAlignment(JTextField.CENTER);
         tf.setAlignmentX(Component.CENTER_ALIGNMENT);
     }
