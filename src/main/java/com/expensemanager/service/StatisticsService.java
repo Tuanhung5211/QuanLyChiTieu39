@@ -6,6 +6,7 @@ import com.expensemanager.entity.Category;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class StatisticsService {
@@ -93,5 +94,44 @@ public class StatisticsService {
 
     public FinanceService getFinanceService() {
         return financeService;
+    }
+
+    // ========== HỖ TRỢ KHOẢNG THỜI GIAN (startDate -> endDate) ==========
+    public double calculateTotal(LocalDate startDate, LocalDate endDate, TransactionType type) {
+        if (SessionManager.getCurrentUserId() == null) return 0;
+        return financeService.getAllTransactions().stream()
+                .filter(t -> !t.getDateTime().toLocalDate().isBefore(startDate))
+                .filter(t -> !t.getDateTime().toLocalDate().isAfter(endDate))
+                .filter(t -> t.getType() == type)
+                .mapToDouble(Transaction::getAmount)
+                .sum();
+    }
+
+    public double calculateTotal(LocalDate startDate, LocalDate endDate) {
+        if (SessionManager.getCurrentUserId() == null) return 0;
+        return financeService.getAllTransactions().stream()
+                .filter(t -> !t.getDateTime().toLocalDate().isBefore(startDate))
+                .filter(t -> !t.getDateTime().toLocalDate().isAfter(endDate))
+                .mapToDouble(Transaction::getAmount)
+                .sum();
+    }
+
+    public double calculateByCategory(Category category, LocalDate startDate, LocalDate endDate) {
+        if (SessionManager.getCurrentUserId() == null) return 0;
+        return financeService.getAllTransactions().stream()
+                .filter(t -> t.getCategory().getId().equals(category.getId()))
+                .filter(t -> !t.getDateTime().toLocalDate().isBefore(startDate))
+                .filter(t -> !t.getDateTime().toLocalDate().isAfter(endDate))
+                .mapToDouble(Transaction::getAmount)
+                .sum();
+    }
+
+    public Map<Category, Double> getExpenseByCategory(LocalDate startDate, LocalDate endDate) {
+        return financeService.getAllTransactions().stream()
+                .filter(t -> t.getType() == TransactionType.EXPENSE)
+                .filter(t -> !t.getDateTime().toLocalDate().isBefore(startDate))
+                .filter(t -> !t.getDateTime().toLocalDate().isAfter(endDate))
+                .collect(Collectors.groupingBy(Transaction::getCategory,
+                        Collectors.summingDouble(Transaction::getAmount)));
     }
 }

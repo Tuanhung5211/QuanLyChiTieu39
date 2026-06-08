@@ -1,5 +1,29 @@
 [
   {
+    "id": "436c4f2a",
+    "amount": 500000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "07900eb5",
+      "name": "Đi chợ",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-05-24T18:31:46",
+    "note": ""
+  },
+  {
+    "id": "6082f65c",
+    "amount": 4000000.0,
+    "type": "INCOME",
+    "category": {
+      "id": "af72ba91",
+      "name": "Thu khác",
+      "type": "INCOME"
+    },
+    "dateTime": "2026-05-24T18:31:12",
+    "note": "mẹ"
+  },
+  {
     "id": "647325e1",
     "amount": 1000000.0,
     "type": "INCOME",
@@ -21,6 +45,18 @@
       "type": "EXPENSE"
     },
     "dateTime": "2026-05-18T20:54",
+    "note": ""
+  },
+  {
+    "id": "24405948",
+    "amount": 30000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "93af4c74",
+      "name": "Trái cây",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-06-08T11:52:08.642938627",
     "note": ""
   }
 ]
