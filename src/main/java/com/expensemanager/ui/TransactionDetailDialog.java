@@ -1,154 +1,195 @@
 package com.expensemanager.ui;
 
 import com.expensemanager.database.DatabaseUtil;
+import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
+import com.expensemanager.util.EmojiUtil;
 
 import javax.swing.*;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 
 public class TransactionDetailDialog extends JDialog {
+
+    // =====================================================================
+    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
+    // =====================================================================
     private MainFrame mainFrame;
     private Transaction transaction;
 
     private final Color BG_COLOR = new Color(18, 18, 18);
     private final Color SURFACE_COLOR = new Color(30, 30, 30);
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
+    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
+    private final Color TEXT_MUTED = new Color(150, 150, 150);
 
-    public TransactionDetailDialog(MainFrame parent, Transaction t) {
-        super(parent, "Chi tiết giao dịch", true);
-        this.mainFrame = parent;
-        this.transaction = t;
+    // =====================================================================
+    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC UI
+    // =====================================================================
+    public TransactionDetailDialog(MainFrame mainFrame, Transaction transaction) {
+        super(mainFrame, "Chi tiết giao dịch", true);
+        this.mainFrame = mainFrame;
+        this.transaction = transaction;
 
-        setSize(400, 480);
-        setLocationRelativeTo(parent);
+        setSize(420, 420);
+        setLocationRelativeTo(mainFrame);
         getContentPane().setBackground(BG_COLOR);
         setLayout(new BorderLayout());
 
-        JPanel content = new JPanel();
-        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBackground(BG_COLOR);
-        content.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+        initComponents();
+    }
 
-        // Lấy Emoji (Có kiểm tra CustomEmojiMap từ AddTransactionDialog)
-        String categoryName = t.getCategory().getName();
-        String defaultEmoji = DashboardPanel.CATEGORY_EMOJI.getOrDefault(categoryName, "📌");
-        String emoji = AddTransactionDialog.customEmojiMap.getOrDefault(categoryName, defaultEmoji);
+    private void initComponents() {
+        // --- HEADER PANEL ---
+        JPanel headerPanel = new JPanel(new BorderLayout(15, 0));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 15, 25));
+        headerPanel.setBackground(BG_COLOR);
 
-        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 55));
-        lblIcon.setAlignmentX(Component.CENTER_ALIGNMENT);
+        Category cat = transaction.getCategory();
+        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "\uD83D\uDCCD") : "\uD83D\uDCCD";
 
-        // Số tiền
-        JLabel lblAmount = new JLabel(String.format("%,.0f ₫", t.getAmount()));
-        lblAmount.setFont(new Font("Segoe UI", Font.BOLD, 36));
-        lblAmount.setForeground(t.getType() == TransactionType.INCOME ? new Color(76, 175, 80) : new Color(244, 67, 54));
-        lblAmount.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel lblIcon = new JLabel(emoji);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 44));
+        lblIcon.setForeground(Color.WHITE);
+        headerPanel.add(lblIcon, BorderLayout.WEST);
 
-        content.add(lblIcon);
-        content.add(Box.createVerticalStrut(15));
-        content.add(lblAmount);
-        content.add(Box.createVerticalStrut(35));
+        JPanel textPanel = new JPanel(new GridLayout(2, 1, 0, 4));
+        textPanel.setOpaque(false);
+        String note = transaction.getNote();
+        JLabel lblNote = new JLabel(note != null && !note.isEmpty() ? note : "Không có ghi chú");
+        lblNote.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblNote.setForeground(TEXT_PRIMARY);
 
-        // Thông tin chi tiết
-        content.add(createDetailRow("Danh mục", categoryName));
-        content.add(createDetailRow("Thời gian", t.getDateTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))));
-        content.add(createDetailRow("Ghi chú", t.getNote().isEmpty() ? "---" : t.getNote()));
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        JLabel lblDate = new JLabel(transaction.getDateTime().format(dtf));
+        lblDate.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblDate.setForeground(TEXT_MUTED);
 
-        add(content, BorderLayout.CENTER);
+        textPanel.add(lblNote);
+        textPanel.add(lblDate);
+        headerPanel.add(textPanel, BorderLayout.CENTER);
+        add(headerPanel, BorderLayout.NORTH);
 
-        // --- FOOTER: KHÔI PHỤC NÚT SỬA VÀ XÓA ---
-        JPanel footer = new JPanel(new GridLayout(1, 2, 10, 0));
-        footer.setBackground(BG_COLOR);
-        footer.setBorder(BorderFactory.createEmptyBorder(10, 40, 30, 40));
+        // --- DETAILS PANEL ---
+        JPanel detailPanel = new JPanel(new GridBagLayout());
+        detailPanel.setBorder(BorderFactory.createEmptyBorder(10, 25, 10, 25));
+        detailPanel.setBackground(BG_COLOR);
 
-        JButton btnEdit = new JButton("SỬA");
-        btnEdit.setBackground(SURFACE_COLOR);
-        btnEdit.setForeground(Color.WHITE);
-        btnEdit.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnEdit.setFocusPainted(false);
-        btnEdit.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(8, 5, 8, 5);
+        gbc.weightx = 1.0;
+
+        addDetailRow(detailPanel, gbc, "Danh mục:", cat != null ? cat.getName() : "Không có", 0);
+
+        String amountStr = String.format("%,.0f VND", transaction.getAmount());
+        addDetailRow(detailPanel, gbc, "Số tiền:", amountStr, 1);
+        JLabel amountLabelValue = (JLabel) detailPanel.getComponent(3);
+        amountLabelValue.setForeground(transaction.getType() == TransactionType.INCOME ? new Color(76, 175, 80) : new Color(244, 67, 54));
+        amountLabelValue.setFont(new Font("Segoe UI", Font.BOLD, 15));
+
+        addDetailRow(detailPanel, gbc, "Loại hành động:", transaction.getType().name(), 2);
+        addDetailRow(detailPanel, gbc, "Thời gian lưu:", transaction.getDateTime().format(dtf), 3);
+        add(detailPanel, BorderLayout.CENTER);
+
+        // --- FOOTER PANEL BUTTONS ---
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 12, 0));
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 25, 25));
+        buttonPanel.setBackground(BG_COLOR);
+
+        JButton btnEdit = createFlatButton("Sửa", new Color(0, 153, 76), Color.WHITE);
         btnEdit.addActionListener(e -> editTransaction());
 
-        JButton btnDelete = new JButton("XÓA");
-        btnDelete.setBackground(new Color(244, 67, 54));
-        btnDelete.setForeground(Color.WHITE);
-        btnDelete.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btnDelete.setFocusPainted(false);
-        btnDelete.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        JButton btnDelete = createFlatButton("Xóa", new Color(244, 67, 54), Color.WHITE);
         btnDelete.addActionListener(e -> deleteTransaction());
 
-        footer.add(btnEdit);
-        footer.add(btnDelete);
+        JButton btnClose = createFlatButton("Đóng", SURFACE_COLOR, TEXT_PRIMARY);
+        btnClose.addActionListener(e -> dispose());
 
-        add(footer, BorderLayout.SOUTH);
+        buttonPanel.add(btnEdit);
+        buttonPanel.add(btnDelete);
+        buttonPanel.add(btnClose);
+        add(buttonPanel, BorderLayout.SOUTH);
     }
 
-    private JPanel createDetailRow(String label, String value) {
-        JPanel p = new JPanel(new BorderLayout());
-        p.setBackground(BG_COLOR);
-        p.setMaximumSize(new Dimension(400, 40));
-        p.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(40, 40, 40)));
-
-        JLabel l = new JLabel(label);
-        l.setForeground(new Color(150, 150, 150));
-        l.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-
-        JLabel v = new JLabel(value);
-        v.setForeground(Color.WHITE);
-        v.setFont(new Font("Segoe UI", Font.BOLD, 14));
-
-        p.add(l, BorderLayout.WEST);
-        p.add(v, BorderLayout.EAST);
-        return p;
-    }
-
-    // --- KHÔI PHỤC LOGIC EDIT ---
+    // =====================================================================
+    // 3. XỬ LÝ LOGIC NGHIỆP VỤ (SỬA / XÓA)
+    // =====================================================================
     private void editTransaction() {
-        JPanel panel = new JPanel(new GridLayout(4, 1, 5, 5));
-
         JTextField txtAmount = new JTextField(String.valueOf(transaction.getAmount()));
         JTextField txtNote = new JTextField(transaction.getNote());
 
+        JPanel panel = new JPanel(new GridLayout(4, 1, 5, 5));
         panel.add(new JLabel("Số tiền mới:"));
         panel.add(txtAmount);
         panel.add(new JLabel("Ghi chú mới:"));
         panel.add(txtNote);
 
         int result = JOptionPane.showConfirmDialog(this, panel, "Sửa giao dịch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-
         if (result == JOptionPane.OK_OPTION) {
             try {
                 double newAmount = Double.parseDouble(txtAmount.getText().trim());
                 if (newAmount <= 0) {
-                    JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!");
                     return;
                 }
                 transaction.setAmount(newAmount);
                 transaction.setNote(txtNote.getText().trim());
-                DatabaseUtil.updateTransaction(transaction); // Cập nhật vào DB
 
+                if (mainFrame != null && mainFrame.getFinanceService() != null) {
+                    mainFrame.getFinanceService().updateTransaction(transaction);
+                } else {
+                    DatabaseUtil.updateTransaction(transaction);
+                }
                 JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
                 dispose();
-                mainFrame.refreshAllPanels();
             } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!");
             }
         }
     }
 
-    // --- KHÔI PHỤC LOGIC DELETE ---
     private void deleteTransaction() {
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc muốn xóa giao dịch này?",
-                "Xác nhận xóa", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-
+                "Bạn có chắc muốn xóa giao dịch này?", "Xác nhận xóa",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
-            DatabaseUtil.deleteTransaction(transaction.getId()); // Xóa khỏi DB
+            if (mainFrame != null && mainFrame.getFinanceService() != null) {
+                mainFrame.getFinanceService().deleteTransaction(transaction.getId());
+            } else {
+                DatabaseUtil.deleteTransaction(transaction.getId());
+            }
             JOptionPane.showMessageDialog(this, "Đã xóa giao dịch!");
             dispose();
-            mainFrame.refreshAllPanels();
         }
+    }
+
+    // =====================================================================
+    // 4. TIỆN ÍCH GIAO DIỆN CON (UI HELPERS)
+    // =====================================================================
+    private void addDetailRow(JPanel panel, GridBagConstraints gbc, String label, String value, int row) {
+        gbc.gridx = 0; gbc.gridy = row; gbc.weightx = 0.3;
+        JLabel lblLabel = new JLabel(label);
+        lblLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblLabel.setForeground(TEXT_MUTED);
+        panel.add(lblLabel, gbc);
+
+        gbc.gridx = 1; gbc.weightx = 0.7;
+        JLabel lblValue = new JLabel(value);
+        lblValue.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblValue.setForeground(TEXT_PRIMARY);
+        panel.add(lblValue, gbc);
+    }
+
+    private JButton createFlatButton(String text, Color bg, Color fg) {
+        JButton btn = new JButton(text);
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setFocusPainted(false);
+        btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 }

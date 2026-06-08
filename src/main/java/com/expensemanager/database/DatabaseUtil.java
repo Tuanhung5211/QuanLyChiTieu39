@@ -8,6 +8,7 @@ import java.util.List;
 
 public class DatabaseUtil {
 
+    // Lấy kết nối trực tiếp thuần DriverManager theo yêu cầu
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(
                 DatabaseConfig.DB_URL,
@@ -26,7 +27,8 @@ public class DatabaseUtil {
             stmt.setString(3, category.getType().name());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            // 🌟 KHẮC PHỤC: Sử dụng RuntimeException để chặn lỗi compile do checked exception gây ra
+            throw new RuntimeException("Lỗi khi thêm danh mục: " + category.getName(), e);
         }
     }
 
@@ -43,12 +45,23 @@ public class DatabaseUtil {
                 list.add(new Category(id, name, type));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi nạp danh sách danh mục từ Database", e);
         }
         return list;
     }
 
-    // ========== TRANSACTIONS (có user_id) ==========
+    public static void deleteCategory(String id) {
+        String sql = "DELETE FROM categories WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi xóa danh mục ID: " + id, e);
+        }
+    }
+
+    // ========== TRANSACTIONS ==========
     public static void insertTransaction(Transaction transaction, String userId) {
         String sql = "INSERT INTO transactions (id, amount, type, category_id, date_time, note, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
@@ -62,38 +75,84 @@ public class DatabaseUtil {
             stmt.setString(7, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi tạo mới bản ghi giao dịch", e);
         }
     }
 
-    public static List<Transaction> getAllTransactions(String userId) {
+    // Hàm phụ trợ ánh xạ dữ liệu ResultSet sang thực thể lớp con đa hình (Thu hoặc Chi)
+    private static List<Transaction> mapTransactions(ResultSet rs) throws SQLException {
         List<Transaction> list = new ArrayList<>();
+        while (rs.next()) {
+            String id = rs.getString("id");
+            double amount = rs.getDouble("amount");
+            TransactionType type = TransactionType.valueOf(rs.getString("type"));
+            String categoryId = rs.getString("category_id");
+            String categoryName = rs.getString("category_name");
+            TransactionType categoryType = TransactionType.valueOf(rs.getString("category_type"));
+            Category category = new Category(categoryId, categoryName, categoryType);
+            LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
+            String note = rs.getString("note");
+
+            // 🌟 SỬA LỖI ĐA HÌNH: Trả về đúng IncomeTransaction hoặc ExpenseTransaction lớp con
+            Transaction transaction = (type == TransactionType.INCOME)
+                    ? new IncomeTransaction(id, amount, category, note)
+                    : new ExpenseTransaction(id, amount, category, note);
+            transaction.setDateTime(dateTime);
+            list.add(transaction);
+        }
+        return list;
+    }
+
+    public static List<Transaction> getAllTransactions(String userId) {
         String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
                 "FROM transactions t JOIN categories c ON t.category_id = c.id " +
                 "WHERE t.user_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
-            ResultSet rs = stmt.executeQuery();
-            while (rs.next()) {
-                String id = rs.getString("id");
-                double amount = rs.getDouble("amount");
-                TransactionType type = TransactionType.valueOf(rs.getString("type"));
-                String categoryId = rs.getString("category_id");
-                String categoryName = rs.getString("category_name");
-                TransactionType categoryType = TransactionType.valueOf(rs.getString("category_type"));
-                Category category = new Category(categoryId, categoryName, categoryType);
-                LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
-                String note = rs.getString("note");
-
-                // Sử dụng constructor có dateTime để giữ nguyên thời gian gốc
-                Transaction transaction = new Transaction(id, amount, type, category, note, dateTime);
-                list.add(transaction);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return mapTransactions(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi tải lịch sử giao dịch toàn bộ của User: " + userId, e);
         }
-        return list;
+    }
+
+    // 🌟 KHÔI PHỤC: Hàm phân trang giao dịch bằng Connection thuần để tránh lỗi biên dịch hệ thống
+    public static List<Transaction> getTransactionsWithPagination(String userId, int offset, int limit) {
+        String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
+                "FROM transactions t JOIN categories c ON t.category_id = c.id " +
+                "WHERE t.user_id = ? " +
+                "ORDER BY t.date_time DESC " +
+                "LIMIT ? OFFSET ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            stmt.setInt(2, limit);
+            stmt.setInt(3, offset);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return mapTransactions(rs);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi phân trang lịch sử giao dịch của User: " + userId, e);
+        }
+    }
+
+    // 🌟 KHÔI PHỤC: Hàm đếm tổng số bản ghi giao dịch phục vụ phân trang hiển thị trên UI
+    public static int getTransactionCount(String userId) {
+        String sql = "SELECT COUNT(*) FROM transactions WHERE user_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi đếm tổng số bản ghi giao dịch", e);
+        }
+        return 0;
     }
 
     public static void updateTransaction(Transaction transaction) {
@@ -107,7 +166,7 @@ public class DatabaseUtil {
             stmt.setString(5, transaction.getId());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi cập nhật giao dịch ID: " + transaction.getId(), e);
         }
     }
 
@@ -118,11 +177,11 @@ public class DatabaseUtil {
             stmt.setString(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi xóa giao dịch ID: " + id, e);
         }
     }
 
-    // ========== BUDGETS (có user_id) ==========
+    // ========== BUDGETS ==========
     public static void insertBudget(Budget budget, String userId) {
         String sql = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
@@ -139,20 +198,8 @@ public class DatabaseUtil {
         }
     }
 
-    public static void updateBudget(Budget budget) {
-        String sql = "UPDATE budgets SET spent=? WHERE id=?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setDouble(1, budget.getSpent());
-            stmt.setString(2, budget.getId());
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
     public static Budget getBudget(int month, int year, String userId) {
-        String sql = "SELECT * FROM budgets WHERE month=? AND year=? AND user_id=?";
+        String sql = "SELECT * FROM budgets WHERE month = ? AND year = ? AND user_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, month);
@@ -160,17 +207,32 @@ public class DatabaseUtil {
             stmt.setString(3, userId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
-                String id = rs.getString("id");
-                double limit = rs.getDouble("budget_limit");
-                double spent = rs.getDouble("spent");
-                Budget budget = new Budget(id, month, year, limit);
-                budget.setSpent(spent);
-                return budget;
+                Budget b = new Budget(
+                        rs.getString("id"),
+                        rs.getInt("month"),
+                        rs.getInt("year"),
+                        rs.getDouble("budget_limit")
+                );
+                b.setSpent(rs.getDouble("spent"));
+                return b;
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public static void updateBudget(Budget budget) {
+        String sql = "UPDATE budgets SET budget_limit = ?, spent = ? WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, budget.getLimit());
+            stmt.setDouble(2, budget.getSpent());
+            stmt.setString(3, budget.getId());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     // ========== USERS ==========
@@ -187,7 +249,7 @@ public class DatabaseUtil {
             stmt.setString(7, user.getGender());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi lưu thông tin tài khoản đăng ký mới", e);
         }
     }
 
@@ -196,22 +258,22 @@ public class DatabaseUtil {
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username);
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                String id = rs.getString("id");
-                String passwordHash = rs.getString("password_hash");
-                String nickname = rs.getString("nickname");
-                String avatar = rs.getString("avatar");
-                String email = rs.getString("email");
-                String gender = rs.getString("gender");
-                User user = new User(id, username, passwordHash, nickname);
-                user.setAvatar(avatar);
-                user.setEmail(email);
-                user.setGender(gender);
-                return user;
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = rs.getString("id");
+                    String passwordHash = rs.getString("password_hash");
+                    String nickname = rs.getString("nickname");
+                    String avatar = rs.getString("avatar");
+                    String email = rs.getString("email");
+                    String gender = rs.getString("gender");
+
+                    User user = new User(id, username, passwordHash, nickname, email, gender);
+                    user.setAvatar(avatar);
+                    return user;
+                }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi tìm kiếm hồ sơ tài khoản: " + username, e);
         }
         return null;
     }
@@ -227,11 +289,11 @@ public class DatabaseUtil {
             stmt.setString(5, user.getId());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi thực hiện cập nhật thông tin hồ sơ User", e);
         }
     }
 
-    // ========== XÓA DỮ LIỆU THEO USER (cho Delete Account) ==========
+    // ========== XÓA DỮ LIỆU THEO USER ==========
     public static void deleteTransactionsByUser(String userId) {
         String sql = "DELETE FROM transactions WHERE user_id = ?";
         try (Connection conn = getConnection();
@@ -239,7 +301,7 @@ public class DatabaseUtil {
             stmt.setString(1, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi xóa sạch lịch sử giao dịch của hội viên: " + userId, e);
         }
     }
 
@@ -250,7 +312,7 @@ public class DatabaseUtil {
             stmt.setString(1, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi xóa lịch sử ngân sách chi tiêu của hội viên: " + userId, e);
         }
     }
 
@@ -261,17 +323,7 @@ public class DatabaseUtil {
             stmt.setString(1, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    public static void deleteCategory(String id) {
-        String sql = "DELETE FROM categories WHERE id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, id);
-            stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi xóa vĩnh viễn tài khoản người dùng khỏi hệ thống", e);
         }
     }
 }

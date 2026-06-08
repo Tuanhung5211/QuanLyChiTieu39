@@ -3,391 +3,397 @@ package com.expensemanager.ui;
 import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
+import com.expensemanager.observer.EventType;
+import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
+import com.expensemanager.util.EmojiUtil;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
-public class DashboardPanel extends JPanel {
+public class DashboardPanel extends JPanel implements Observer {
+
+    // =====================================================================
+    // 1. KHAI BÁO BIẾN GIAO DIỆN VÀ LOGIC
+    // =====================================================================
     private MainFrame mainFrame;
     private FinanceService financeService;
     private BudgetManager budgetManager;
 
-    private JLabel lblMonthYear;
-    private JLabel lblIncome;
-    private JLabel lblExpense;
-    private JLabel lblBalance;
+    private int currentMonthOffset = 0;
+    private boolean isVietnamese = true;
+
+    private JLabel lblMonthYear, lblIncome, lblExpense, lblBalance;
+    private JLabel lblIncomeTitle, lblExpenseTitle, lblBalanceTitle;
     private JPanel transactionListPanel;
     private JScrollPane scrollPane;
-
-    // Component tìm kiếm & Lọc mới gộp vào
     private JTextField txtSearch;
     private JComboBox<String> cmbFilter;
+    private JButton btnAdd, btnPrevMonth, btnNextMonth;
 
-    private final Color BG_COLOR = new Color(18, 18, 18);
-    private final Color SURFACE_COLOR = new Color(30, 30, 30);
-    private final Color SURFACE_HOVER = new Color(45, 45, 45);
-    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
-    private final Color TEXT_SECONDARY = new Color(150, 150, 150);
+    private final Color BG_COLOR = new Color(30, 30, 30);
+    private final Color SURFACE_COLOR = new Color(40, 40, 40);
+    private final Color INPUT_BG = new Color(45, 45, 45);
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
-    private final Color ACCENT_GREEN = new Color(76, 175, 80);
-    private final Color ACCENT_RED = new Color(244, 67, 54);
+    private final Color TEXT_PRIMARY = new Color(240, 240, 240);
+    private final Color TEXT_SECONDARY = new Color(180, 180, 180);
+    private final Color ADD_BTN_BG = new Color(76, 175, 80);
+    private final Color ADD_BTN_HOVER = new Color(56, 142, 60);
+    private final Color ADD_BTN_FG = Color.WHITE;
 
-    public static final Map<String, String> CATEGORY_EMOJI = new HashMap<>();
-    static {
-        CATEGORY_EMOJI.put("Mua sắm", "🛍️"); CATEGORY_EMOJI.put("Ăn uống", "🍔");
-        CATEGORY_EMOJI.put("Điện thoại", "📱"); CATEGORY_EMOJI.put("Giải trí", "🎮");
-        CATEGORY_EMOJI.put("Giáo dục", "📚"); CATEGORY_EMOJI.put("Làm đẹp", "💄");
-        CATEGORY_EMOJI.put("Thể thao", "⚽"); CATEGORY_EMOJI.put("Xã hội", "👥");
-        CATEGORY_EMOJI.put("Di chuyển", "🚗"); CATEGORY_EMOJI.put("Quần áo", "👗");
-        CATEGORY_EMOJI.put("Xe cộ", "🏍️"); CATEGORY_EMOJI.put("Điện tử", "💻");
-        CATEGORY_EMOJI.put("Du lịch", "✈️"); CATEGORY_EMOJI.put("Sức khỏe", "🏥");
-        CATEGORY_EMOJI.put("Sửa chữa", "🔧"); CATEGORY_EMOJI.put("Nhà cửa", "🏠");
-        CATEGORY_EMOJI.put("Quà tặng", "🎁"); CATEGORY_EMOJI.put("Từ thiện", "💖");
-        CATEGORY_EMOJI.put("Ăn vặt", "🍿"); CATEGORY_EMOJI.put("Trái cây", "🍎");
-        CATEGORY_EMOJI.put("Lương", "💰"); CATEGORY_EMOJI.put("Học bổng", "🎓");
-        CATEGORY_EMOJI.put("Tiền được cho", "💵");
-    }
-
+    // =====================================================================
+    // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC
+    // =====================================================================
     public DashboardPanel(MainFrame mainFrame, FinanceService financeService, BudgetManager budgetManager) {
         this.mainFrame = mainFrame;
         this.financeService = financeService;
         this.budgetManager = budgetManager;
+        if (mainFrame != null) this.isVietnamese = mainFrame.isVietnamese();
 
         setLayout(new BorderLayout());
         setBackground(BG_COLOR);
 
-        // Khởi tạo Panel trước
-        JPanel topContainer = new JPanel();
-        // Sau đó mới set Layout cho nó
-        topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
-        topContainer.setBackground(BG_COLOR);
-        topContainer.add(createHeader());
-        topContainer.add(createSearchAndFilterBar()); // Thêm thanh tìm kiếm vào đây
+        initComponents();
+        refreshData();
+    }
 
+    private void initComponents() {
+        JPanel topContainer = new JPanel();
+        topContainer.setLayout(new BoxLayout(topContainer, BoxLayout.Y_AXIS));
+        topContainer.setOpaque(false);
+        topContainer.add(createHeader());
+        topContainer.add(createFilterBar());
         add(topContainer, BorderLayout.NORTH);
 
         transactionListPanel = new JPanel();
         transactionListPanel.setLayout(new BoxLayout(transactionListPanel, BoxLayout.Y_AXIS));
         transactionListPanel.setBackground(BG_COLOR);
-        transactionListPanel.setBorder(BorderFactory.createEmptyBorder(10, 30, 20, 30));
+        transactionListPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
 
         scrollPane = new JScrollPane(transactionListPanel);
         scrollPane.setBorder(null);
+        scrollPane.setOpaque(false);
         scrollPane.getViewport().setBackground(BG_COLOR);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(20);
-        applyModernScrollBar(scrollPane);
+        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
+        scrollPane.getVerticalScrollBar().setUnitIncrement(32);
         add(scrollPane, BorderLayout.CENTER);
 
-        JButton btnAdd = new JButton("+ Thêm giao dịch mới");
-        btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btnAdd.setForeground(BG_COLOR);
-        btnAdd.setBackground(ACCENT_YELLOW);
-        btnAdd.setFocusPainted(false);
-        btnAdd.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
-        btnAdd.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        btnAdd.setUI(new javax.swing.plaf.basic.BasicButtonUI());
-        btnAdd.addActionListener(e -> {
-            new AddTransactionDialog(mainFrame).setVisible(true);
-            refreshData();
+        btnAdd = new JButton(isVietnamese ? "+ Thêm giao dịch mới" : "+ Add Transaction");
+        styleButton(btnAdd, ADD_BTN_BG, ADD_BTN_FG, 16, true);
+        btnAdd.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) { btnAdd.setBackground(ADD_BTN_HOVER); }
+            public void mouseExited(MouseEvent e) { btnAdd.setBackground(ADD_BTN_BG); }
         });
+        btnAdd.addActionListener(e -> new AddTransactionDialog(mainFrame).setVisible(true));
 
-        JPanel bottomPanel = new JPanel(new BorderLayout());
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         bottomPanel.setBackground(BG_COLOR);
-        bottomPanel.setBorder(BorderFactory.createEmptyBorder(15, 50, 25, 50));
-        bottomPanel.add(btnAdd, BorderLayout.CENTER);
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 15, 0));
+        bottomPanel.add(btnAdd);
         add(bottomPanel, BorderLayout.SOUTH);
-
-        refreshData();
     }
 
+    // =====================================================================
+    // 3. XÂY DỰNG GIAO DIỆN THÀNH PHẦN (UI COMPONENTS)
+    // =====================================================================
     private JPanel createHeader() {
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setBackground(BG_COLOR);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(30, 30, 20, 30));
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(SURFACE_COLOR);
+        header.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
 
-        lblMonthYear = new JLabel("Tháng " + java.time.LocalDate.now().getMonthValue() + " năm " + java.time.LocalDate.now().getYear());
-        lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 28));
-        lblMonthYear.setForeground(TEXT_PRIMARY);
-        headerPanel.add(lblMonthYear, BorderLayout.NORTH);
+        JPanel timeNavWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        timeNavWrapper.setOpaque(false);
 
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 3, 20, 0));
-        cardsPanel.setBackground(BG_COLOR);
-        cardsPanel.setBorder(BorderFactory.createEmptyBorder(25, 0, 0, 0));
+        btnPrevMonth = createInnerArrowButton("<");
+        btnNextMonth = createInnerArrowButton(">");
 
-        lblIncome = createStatCard("Tổng thu nhập", "0", ACCENT_GREEN, cardsPanel);
-        lblExpense = createStatCard("Tổng chi tiêu", "0", ACCENT_RED, cardsPanel);
-        lblBalance = createStatCard("Số dư hiện tại", "0", TEXT_PRIMARY, cardsPanel);
+        lblMonthYear = new JLabel(getCurrentMonthYear());
+        lblMonthYear.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        lblMonthYear.setForeground(Color.WHITE);
 
-        headerPanel.add(cardsPanel, BorderLayout.CENTER);
-        return headerPanel;
+        btnPrevMonth.addActionListener(e -> { currentMonthOffset--; refreshData(); });
+        btnNextMonth.addActionListener(e -> { currentMonthOffset++; refreshData(); });
+
+        timeNavWrapper.add(btnPrevMonth);
+        timeNavWrapper.add(lblMonthYear);
+        timeNavWrapper.add(btnNextMonth);
+        header.add(timeNavWrapper, BorderLayout.WEST);
+
+        JPanel summaryPanel = new JPanel(new GridLayout(1, 3, 25, 0));
+        summaryPanel.setBackground(SURFACE_COLOR);
+
+        lblIncomeTitle = new JLabel(); lblExpenseTitle = new JLabel(); lblBalanceTitle = new JLabel();
+
+        lblIncome = createSummaryLabel(summaryPanel, lblIncomeTitle, isVietnamese ? "Tổng thu nhập" : "Total Income", "0 đ", new Color(76, 175, 80));
+        lblExpense = createSummaryLabel(summaryPanel, lblExpenseTitle, isVietnamese ? "Tổng chi tiêu" : "Total Expense", "0 đ", new Color(244, 67, 54));
+        lblBalance = createSummaryLabel(summaryPanel, lblBalanceTitle, isVietnamese ? "Số dư hiện tại" : "Balance", "0 đ", Color.WHITE);
+
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setBackground(SURFACE_COLOR);
+        rightPanel.add(summaryPanel, BorderLayout.EAST);
+        header.add(rightPanel, BorderLayout.CENTER);
+        return header;
     }
 
-    // THANH TÌM KIẾM TÍCH HỢP
-    private JPanel createSearchAndFilterBar() {
-        JPanel barPanel = new JPanel(new BorderLayout(15, 0));
-        barPanel.setBackground(BG_COLOR);
-        barPanel.setBorder(BorderFactory.createEmptyBorder(0, 30, 10, 30));
-
-        // Khung search bo góc tàng hình
-        RoundedPanel searchBox = new RoundedPanel(20, SURFACE_COLOR);
-        searchBox.setLayout(new BorderLayout(10, 0));
-        searchBox.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
+    private JPanel createFilterBar() {
+        JPanel filterBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        filterBar.setBackground(BG_COLOR);
+        filterBar.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
 
         JLabel lblSearchIcon = new JLabel("🔍");
-        lblSearchIcon.setForeground(TEXT_SECONDARY);
         lblSearchIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
+        filterBar.add(lblSearchIcon);
 
-        txtSearch = new JTextField();
-        txtSearch.setOpaque(false);
-        txtSearch.setBorder(null);
+        txtSearch = new JTextField(20);
+        txtSearch.setBackground(INPUT_BG);
         txtSearch.setForeground(TEXT_PRIMARY);
         txtSearch.setCaretColor(ACCENT_YELLOW);
-        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-
-        // Auto filter khi gõ chữ
+        txtSearch.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtSearch.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)), BorderFactory.createEmptyBorder(6, 10, 6, 10)));
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) { refreshData(); }
             public void removeUpdate(DocumentEvent e) { refreshData(); }
             public void changedUpdate(DocumentEvent e) { refreshData(); }
         });
+        filterBar.add(txtSearch);
 
-        searchBox.add(lblSearchIcon, BorderLayout.WEST);
-        searchBox.add(txtSearch, BorderLayout.CENTER);
-
-        // Combo box lọc Thu / Chi
-        cmbFilter = new JComboBox<>(new String[]{"Tất cả", "Chỉ Thu Nhập", "Chỉ Chi Tiêu"});
-        cmbFilter.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        cmbFilter.setBackground(SURFACE_COLOR);
+        cmbFilter = new JComboBox<>(isVietnamese ? new String[]{"Tất cả", "Thu nhập", "Chi tiêu"} : new String[]{"All", "Income", "Expense"});
+        cmbFilter.setBackground(INPUT_BG);
         cmbFilter.setForeground(TEXT_PRIMARY);
-        cmbFilter.setFocusable(false);
-        cmbFilter.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cmbFilter.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        cmbFilter.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)));
         cmbFilter.addActionListener(e -> refreshData());
+        filterBar.add(cmbFilter);
 
-        barPanel.add(searchBox, BorderLayout.CENTER);
-        barPanel.add(cmbFilter, BorderLayout.EAST);
-
-        return barPanel;
+        return filterBar;
     }
 
-    private JLabel createStatCard(String title, String value, Color valueColor, JPanel parent) {
-        RoundedPanel card = new RoundedPanel(20, SURFACE_COLOR);
-        card.setLayout(new BorderLayout());
-        card.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+    private JPanel createTransactionRow(Transaction t, DateTimeFormatter dateTimeFormatter) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setBackground(BG_COLOR);
+        row.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 48));
+        row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        JLabel lblTitle = new JLabel(title);
-        lblTitle.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        lblTitle.setForeground(TEXT_SECONDARY);
+        Category cat = t.getCategory();
+        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
 
-        JLabel lblValue = new JLabel(value);
-        lblValue.setFont(new Font("Segoe UI", Font.BOLD, 26));
-        lblValue.setForeground(valueColor);
+        JLabel lblIcon = new JLabel(emoji);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
+        lblIcon.setForeground(Color.WHITE);
+        lblIcon.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 15));
 
-        card.add(lblTitle, BorderLayout.NORTH);
-        card.add(lblValue, BorderLayout.SOUTH);
-        parent.add(card);
+        String description = (t.getNote() != null && !t.getNote().trim().isEmpty()) ? t.getNote().trim() : t.getDateTime().format(dateTimeFormatter);
+        JLabel lblDescription = new JLabel(description);
+        lblDescription.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        lblDescription.setForeground(Color.WHITE);
 
-        return lblValue;
+        String amountStr = String.format("%s%,.0f VND", t.getType() == TransactionType.INCOME ? "+" : "-", t.getAmount());
+        JLabel lblAmount = new JLabel(amountStr);
+        lblAmount.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        lblAmount.setForeground(t.getType() == TransactionType.INCOME ? new Color(76, 175, 80) : new Color(244, 67, 54));
+
+        row.add(lblIcon, BorderLayout.WEST);
+        row.add(lblDescription, BorderLayout.CENTER);
+        row.add(lblAmount, BorderLayout.EAST);
+        row.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) { new TransactionDetailDialog(mainFrame, t).setVisible(true); }
+        });
+        return row;
     }
 
+    // =====================================================================
+    // 4. XỬ LÝ DỮ LIỆU & LOGIC TÍNH TOÁN
+    // =====================================================================
     public void refreshData() {
         if (financeService == null) return;
-        financeService.syncFromDatabase();
 
-        List<Transaction> allTransactions = financeService.getAllTransactions();
+        LocalDate targetDate = LocalDate.now().plusMonths(currentMonthOffset);
+        int targetMonth = targetDate.getMonthValue();
+        int targetYear = targetDate.getYear();
 
-        // Cập nhật thẻ Header dựa trên TẤT CẢ giao dịch
-        double totalIncome = allTransactions.stream().filter(t -> t.getType() == TransactionType.INCOME).mapToDouble(Transaction::getAmount).sum();
-        double totalExpense = allTransactions.stream().filter(t -> t.getType() == TransactionType.EXPENSE).mapToDouble(Transaction::getAmount).sum();
-        double balance = totalIncome - totalExpense;
+        updateNavigationButtonsStatus(targetDate);
 
-        lblIncome.setText(String.format("%,.0f ₫", totalIncome));
-        lblExpense.setText(String.format("%,.0f ₫", totalExpense));
-        lblBalance.setText(String.format("%,.0f ₫", balance));
-
-        // Xử lý Lọc & Tìm kiếm cho List bên dưới
-        String keyword = txtSearch != null ? txtSearch.getText().toLowerCase().trim() : "";
+        String searchText = txtSearch != null ? txtSearch.getText().trim().toLowerCase() : "";
         String filterType = cmbFilter != null ? (String) cmbFilter.getSelectedItem() : "Tất cả";
+        final String currentFilter = (filterType.contains("All") || filterType.contains("Tất cả")) ? "Tất cả" :
+                (filterType.contains("Income") || filterType.contains("Thu nhập")) ? "Thu nhập" : "Chi tiêu";
 
-        List<Transaction> filteredList = allTransactions.stream()
+        List<Transaction> transactions = financeService.getAllTransactions().stream()
                 .filter(t -> {
-                    // Lọc theo ComboBox
-                    if (filterType.equals("Chỉ Thu Nhập") && t.getType() != TransactionType.INCOME) return false;
-                    if (filterType.equals("Chỉ Chi Tiêu") && t.getType() != TransactionType.EXPENSE) return false;
-
-                    // Lọc theo Keyword
-                    if (!keyword.isEmpty()) {
+                    if (t == null) return false;
+                    if (t.getDateTime().getMonthValue() != targetMonth || t.getDateTime().getYear() != targetYear) return false;
+                    if ("Thu nhập".equals(currentFilter) && t.getType() != TransactionType.INCOME) return false;
+                    if ("Chi tiêu".equals(currentFilter) && t.getType() != TransactionType.EXPENSE) return false;
+                    if (!searchText.isEmpty()) {
                         String note = t.getNote() != null ? t.getNote().toLowerCase() : "";
                         String catName = t.getCategory() != null ? t.getCategory().getName().toLowerCase() : "";
-                        return note.contains(keyword) || catName.contains(keyword);
+                        return note.contains(searchText) || catName.contains(searchText);
                     }
                     return true;
                 })
-                .sorted((a, b) -> b.getDateTime().compareTo(a.getDateTime())) // Sort mới nhất lên đầu
+                .sorted((a, b) -> b.getDateTime().compareTo(a.getDateTime()))
                 .collect(Collectors.toList());
 
-        // Render List
-        transactionListPanel.removeAll();
-        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM");
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+        updateSummaryMetrics(targetMonth, targetYear);
+        renderTransactionList(transactions);
+    }
 
-        if (filteredList.isEmpty()) {
-            JLabel emptyLbl = new JLabel("Không tìm thấy giao dịch nào.");
-            emptyLbl.setForeground(TEXT_SECONDARY);
-            emptyLbl.setFont(new Font("Segoe UI", Font.ITALIC, 14));
-            emptyLbl.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
-            transactionListPanel.add(emptyLbl);
+    private void updateNavigationButtonsStatus(LocalDate targetDate) {
+        LocalDate earliestTxDate = financeService.getEarliestTransactionDate();
+        LocalDate latestTxDate = financeService.getLatestTransactionDate();
+        LocalDate realTimeNow = LocalDate.now();
+
+        if (earliestTxDate == null || latestTxDate == null) {
+            if (btnPrevMonth != null) btnPrevMonth.setEnabled(false);
+            if (btnNextMonth != null) btnNextMonth.setEnabled(false);
         } else {
-            String currentDate = "";
-            for (Transaction t : filteredList) {
-                String transactionDate = t.getDateTime().format(dateFormatter);
+            LocalDate previousMonth = targetDate.minusMonths(1);
+            boolean canGoBack = !previousMonth.isBefore(earliestTxDate.withDayOfMonth(1));
+            if (btnPrevMonth != null) btnPrevMonth.setEnabled(canGoBack);
 
-                if (!transactionDate.equals(currentDate)) {
-                    currentDate = transactionDate;
-                    JLabel lblDate = new JLabel(transactionDate.toUpperCase());
-                    lblDate.setFont(new Font("Segoe UI", Font.BOLD, 13));
-                    lblDate.setForeground(TEXT_SECONDARY);
-                    lblDate.setBorder(BorderFactory.createEmptyBorder(20, 5, 10, 0));
-                    lblDate.setAlignmentX(Component.LEFT_ALIGNMENT);
-                    transactionListPanel.add(lblDate);
-                }
-
-                JPanel row = createTransactionRow(t, dateTimeFormatter);
-                row.setAlignmentX(Component.LEFT_ALIGNMENT);
-                transactionListPanel.add(row);
-                transactionListPanel.add(Box.createRigidArea(new Dimension(0, 8)));
-            }
+            LocalDate nextMonth = targetDate.plusMonths(1);
+            boolean isNextInFuture = nextMonth.isAfter(realTimeNow.withDayOfMonth(realTimeNow.lengthOfMonth()));
+            boolean isNextPastDataBounds = nextMonth.isAfter(latestTxDate.withDayOfMonth(latestTxDate.lengthOfMonth()));
+            if (btnNextMonth != null) btnNextMonth.setEnabled(!isNextInFuture && !isNextPastDataBounds);
         }
+    }
 
+    private void updateSummaryMetrics(int targetMonth, int targetYear) {
+        double totalIncome = financeService.getAllTransactions().stream()
+                .filter(t -> t != null && t.getType() == TransactionType.INCOME && t.getDateTime().getMonthValue() == targetMonth && t.getDateTime().getYear() == targetYear)
+                .mapToDouble(Transaction::getAmount).sum();
+
+        double totalExpense = financeService.getAllTransactions().stream()
+                .filter(t -> t != null && t.getType() == TransactionType.EXPENSE && t.getDateTime().getMonthValue() == targetMonth && t.getDateTime().getYear() == targetYear)
+                .mapToDouble(Transaction::getAmount).sum();
+
+        lblIncome.setText(String.format("%,.0f đ", totalIncome));
+        lblExpense.setText(String.format("%,.0f đ", totalExpense));
+        lblBalance.setText(String.format("%,.0f đ", totalIncome - totalExpense));
+        lblMonthYear.setText(getCurrentMonthYear());
+    }
+
+    private void renderTransactionList(List<Transaction> transactions) {
+        transactionListPanel.removeAll();
+        Locale currentLocale = isVietnamese ? new Locale("vi", "VN") : Locale.ENGLISH;
+        DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("EEEE, dd/MM/yyyy", currentLocale);
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", currentLocale);
+        String currentDate = "";
+        JPanel dateGroup = null;
+
+        for (Transaction t : transactions) {
+            String transactionDate = t.getDateTime().format(dateFormatter);
+            if (!transactionDate.equals(currentDate)) {
+                currentDate = transactionDate;
+                dateGroup = new JPanel();
+                dateGroup.setLayout(new BoxLayout(dateGroup, BoxLayout.Y_AXIS));
+                dateGroup.setBackground(BG_COLOR);
+                dateGroup.setBorder(BorderFactory.createEmptyBorder(12, 0, 5, 0));
+
+                JLabel lblDate = new JLabel(transactionDate);
+                lblDate.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                lblDate.setForeground(TEXT_SECONDARY);
+                lblDate.setBorder(BorderFactory.createEmptyBorder(0, 5, 5, 0));
+                lblDate.setAlignmentX(Component.LEFT_ALIGNMENT);
+                dateGroup.add(lblDate);
+
+                JSeparator sep = new JSeparator();
+                sep.setForeground(new Color(255, 255, 255, 160));
+                sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+                sep.setAlignmentX(Component.LEFT_ALIGNMENT);
+                dateGroup.add(sep);
+
+                transactionListPanel.add(dateGroup);
+            }
+            JPanel row = createTransactionRow(t, dateTimeFormatter);
+            row.setAlignmentX(Component.LEFT_ALIGNMENT);
+            dateGroup.add(row);
+        }
         transactionListPanel.revalidate();
         transactionListPanel.repaint();
     }
 
-    private JPanel createTransactionRow(Transaction t, DateTimeFormatter dateTimeFormatter) {
-        RoundedPanel row = new RoundedPanel(15, SURFACE_COLOR);
-        row.setLayout(new BorderLayout(20, 0));
-        row.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 75));
-        row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        Category cat = t.getCategory();
-        String emoji = (cat != null) ? CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
-
-        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
-        lblIcon.setOpaque(true);
-        lblIcon.setBackground(new Color(50, 55, 65));
-        lblIcon.setPreferredSize(new Dimension(45, 45));
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
-        lblIcon.setBorder(BorderFactory.createLineBorder(SURFACE_COLOR, 2, true));
-
-        JPanel centerInfo = new JPanel(new GridLayout(2, 1, 0, 3));
-        centerInfo.setOpaque(false);
-
-        String description = (t.getNote() != null && !t.getNote().trim().isEmpty()) ? t.getNote().trim() : (cat != null ? cat.getName() : "Khác");
-        JLabel lblDescription = new JLabel(description);
-        lblDescription.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        lblDescription.setForeground(TEXT_PRIMARY);
-
-        JLabel lblTime = new JLabel(t.getDateTime().format(dateTimeFormatter) + " • " + (cat != null ? cat.getName() : ""));
-        lblTime.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblTime.setForeground(TEXT_SECONDARY);
-
-        centerInfo.add(lblDescription);
-        centerInfo.add(lblTime);
-
-        String amountStr = String.format("%s%,.0f ₫", t.getType() == TransactionType.INCOME ? "+" : "-", t.getAmount());
-        JLabel lblAmount = new JLabel(amountStr);
-        lblAmount.setFont(new Font("Segoe UI", Font.BOLD, 18));
-        lblAmount.setForeground(t.getType() == TransactionType.INCOME ? ACCENT_GREEN : ACCENT_RED);
-
-        row.add(lblIcon, BorderLayout.WEST);
-        row.add(centerInfo, BorderLayout.CENTER);
-        row.add(lblAmount, BorderLayout.EAST);
-
-        row.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                new TransactionDetailDialog(mainFrame, t).setVisible(true);
-            }
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                row.setBackgroundColor(SURFACE_HOVER);
-                row.repaint();
-            }
-            @Override
-            public void mouseExited(MouseEvent e) {
-                row.setBackgroundColor(SURFACE_COLOR);
-                row.repaint();
-            }
-        });
-
-        return row;
+    // =====================================================================
+    // 5. CÁC HÀM TIỆN ÍCH VÀ OBSERVER PATTERN
+    // =====================================================================
+    private void styleButton(JButton btn, Color bg, Color fg, int fontSize, boolean bold) {
+        btn.setFont(new Font("Segoe UI", bold ? Font.BOLD : Font.PLAIN, fontSize));
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setOpaque(true);
+        btn.setContentAreaFilled(true);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
 
-    private void applyModernScrollBar(JScrollPane scrollPane) {
-        scrollPane.getVerticalScrollBar().setUI(new BasicScrollBarUI() {
-            @Override
-            protected void configureScrollBarColors() {
-                this.thumbColor = new Color(70, 70, 70);
-                this.trackColor = BG_COLOR;
-            }
-            @Override
-            protected JButton createDecreaseButton(int orientation) { return createZeroButton(); }
-            @Override
-            protected JButton createIncreaseButton(int orientation) { return createZeroButton(); }
-
-            private JButton createZeroButton() {
-                JButton button = new JButton();
-                button.setPreferredSize(new Dimension(0, 0));
-                button.setMinimumSize(new Dimension(0, 0));
-                button.setMaximumSize(new Dimension(0, 0));
-                return button;
-            }
-        });
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(8, 0));
+    private JButton createInnerArrowButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setForeground(TEXT_PRIMARY);
+        btn.setBackground(INPUT_BG);
+        btn.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 1));
+        btn.setPreferredSize(new Dimension(32, 28));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setFocusPainted(false);
+        return btn;
     }
 
-    class RoundedPanel extends JPanel {
-        private int cornerRadius;
-        private Color bgColor;
+    private JLabel createSummaryLabel(JPanel parent, JLabel lblTitle, String title, String value, Color valueColor) {
+        JPanel panel = new JPanel(new GridLayout(2, 1, 0, 2));
+        panel.setOpaque(false);
+        lblTitle.setText(title);
+        lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblTitle.setForeground(TEXT_SECONDARY);
 
-        public RoundedPanel(int radius, Color bgColor) {
-            super();
-            this.cornerRadius = radius;
-            this.bgColor = bgColor;
-            setOpaque(false);
+        JLabel lblValue = new JLabel(value, SwingConstants.CENTER);
+        lblValue.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        lblValue.setForeground(valueColor);
+
+        panel.add(lblTitle);
+        panel.add(lblValue);
+        parent.add(panel);
+        return lblValue;
+    }
+
+    private String getCurrentMonthYear() {
+        java.time.LocalDate date = java.time.LocalDate.now().plusMonths(currentMonthOffset);
+        if (isVietnamese) return "Tháng " + date.getMonthValue() + "/" + date.getYear();
+        else return date.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH));
+    }
+
+    public void updateLanguageText(boolean isVN) {
+        this.isVietnamese = isVN;
+        if (btnAdd != null) btnAdd.setText(isVN ? "+ Thêm giao dịch mới" : "+ Add Transaction");
+        if (cmbFilter != null) {
+            int idx = cmbFilter.getSelectedIndex();
+            cmbFilter.setModel(new DefaultComboBoxModel<>(isVN ? new String[]{"Tất cả", "Thu nhập", "Chi tiêu"} : new String[]{"All", "Income", "Expense"}));
+            if (idx >= 0) cmbFilter.setSelectedIndex(idx);
         }
+        if (lblIncomeTitle != null) lblIncomeTitle.setText(isVN ? "Tổng thu nhập" : "Total Income");
+        if (lblExpenseTitle != null) lblExpenseTitle.setText(isVN ? "Tổng chi tiêu" : "Total Expense");
+        if (lblBalanceTitle != null) lblBalanceTitle.setText(isVN ? "Số dư hiện tại" : "Balance");
+        if (lblMonthYear != null) lblMonthYear.setText(getCurrentMonthYear());
+        refreshData();
+    }
 
-        public void setBackgroundColor(Color color) {
-            this.bgColor = color;
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            super.paintComponent(g);
-            Dimension arcs = new Dimension(cornerRadius, cornerRadius);
-            int width = getWidth();
-            int height = getHeight();
-            Graphics2D graphics = (Graphics2D) g;
-            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            if (bgColor != null) {
-                graphics.setColor(bgColor);
-            } else {
-                graphics.setColor(getBackground());
-            }
-            graphics.fillRoundRect(0, 0, width - 1, height - 1, arcs.width, arcs.height);
+    @Override
+    public void update(EventType eventType, Object data) {
+        if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.TRANSACTION_UPDATED ||
+                eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) {
+            SwingUtilities.invokeLater(this::refreshData);
         }
     }
 }

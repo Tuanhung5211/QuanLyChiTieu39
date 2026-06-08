@@ -14,3 +14,4 @@ public class DataLoadException extends Exception {
         super(message, cause);
     }
 }
+//nếu transaction.json bị lỗi sẽ ném DataLoadException thay vì IOException

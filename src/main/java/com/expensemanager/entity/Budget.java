@@ -21,7 +21,7 @@ public class Budget {
     public double getLimit() { return limit; }
     public double getSpent() { return spent; }
 
-    public void setLimit(double limit) { this.limit = limit; }
+    public void setLimit(double limit) { this.limit = limit; } // hạn mức ngân sách
     public void setSpent(double spent) { this.spent = spent; }
 
     public void addSpent(double amount) { this.spent += amount; }
