@@ -60,6 +60,11 @@ public class CategoryManagerPanel extends JPanel {
     private final Color TEXT_SECONDARY = new Color(150, 150, 150);
     private final Color ACCENT_YELLOW = new Color(255, 193, 7);
     private final Color DANGER_RED = new Color(244, 67, 54);
+    
+    // Preferred emoji fonts to try (platform dependent)
+    private static final String[] EMOJI_FALLBACK_FONTS = new String[]{
+            "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", "EmojiOne Color", "Segoe UI Symbol", "Symbola"
+    };
 
     // =====================================================================
     // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC CHÍNH
@@ -294,24 +299,35 @@ public class CategoryManagerPanel extends JPanel {
 
     private JPanel createCategoryListCellComponent(Category c) {
         JPanel cell = new JPanel(new BorderLayout(0, 4));
+        cell.setOpaque(false);
         cell.setPreferredSize(new Dimension(getEmojiCellWidth(), getEmojiCellHeight()));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        cell.setOpaque(false);
 
         String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
 
-        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
-        lblIcon.setOpaque(true);
+        // Try to load a PNG icon resource for this category first (resources/icons/categories/<key>.png)
+        int iconSize = 36;
+        ImageIcon fileIcon = loadCategoryIcon(c.getName(), iconSize);
+        JLabel lblIcon = new JLabel((fileIcon != null) ? fileIcon : null, SwingConstants.CENTER);
+        if (fileIcon != null) {
+            lblIcon.setOpaque(true);
+        } else {
+            // Fallback: emoji glyph or first letter
+            Font ef = emojiFont(20);
+            String iconText = canDisplayText(emoji, ef) ? emoji : ((c.getName() != null && c.getName().length() > 0) ? c.getName().substring(0,1).toUpperCase() : "?");
+            lblIcon.setText(iconText);
+            lblIcon.setFont(ef);
+            lblIcon.setOpaque(true);
+        }
 
         if (selectedCategoryForDelete != null && selectedCategoryForDelete.getId().equals(c.getId())) {
-            lblIcon.setBackground(ACCENT_YELLOW);
-            lblIcon.setBorder(BorderFactory.createLineBorder(ACCENT_YELLOW, 1, true));
-            lblIcon.setForeground(SURFACE_COLOR);
+            lblIcon.setBackground(ThemeManager.getColor("accent"));
+            lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("accent"), 1, true));
+            lblIcon.setForeground(ThemeManager.getColor("bg"));
         } else {
-            lblIcon.setBackground(INPUT_BG);
-            lblIcon.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55), 1, true));
-            lblIcon.setForeground(Color.WHITE);
+            lblIcon.setBackground(ThemeManager.getColor("input"));
+            lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+            lblIcon.setForeground(ThemeManager.getColor("textPrimary"));
         }
 
         String displayName = c.getName();
@@ -321,7 +337,7 @@ public class CategoryManagerPanel extends JPanel {
 
         JLabel lblName = new JLabel(displayName, SwingConstants.CENTER);
         lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lblName.setForeground(TEXT_PRIMARY);
+        lblName.setForeground(ThemeManager.getColor("textPrimary"));
 
         cell.add(lblIcon, BorderLayout.CENTER);
         cell.add(lblName, BorderLayout.SOUTH);
@@ -334,6 +350,31 @@ public class CategoryManagerPanel extends JPanel {
             }
         });
         return cell;
+    }
+
+    private ImageIcon loadCategoryIcon(String categoryName, int size) {
+        if (categoryName == null) return null;
+        try {
+            String key = sanitizeKey(categoryName);
+            String path = "/icons/categories/" + key + ".png";
+            java.net.URL res = getClass().getResource(path);
+            if (res == null) return null;
+            ImageIcon ico = new ImageIcon(res);
+            Image img = ico.getImage().getScaledInstance(size, size, Image.SCALE_SMOOTH);
+            return new ImageIcon(img);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    private String sanitizeKey(String name) {
+        if (name == null) return "";
+        String s = name.trim().toLowerCase();
+        s = s.replaceAll("[^a-z0-9]+", "_");
+        if (s.startsWith("_")) s = s.substring(1);
+        if (s.endsWith("_")) s = s.substring(0, s.length()-1);
+        if (s.isEmpty()) s = "unknown";
+        return s;
     }
 
     private void deleteCategory() {
@@ -375,24 +416,64 @@ public class CategoryManagerPanel extends JPanel {
 
     private JPanel createEmojiCellComponent(String emoji) {
         JPanel cell = new JPanel(new BorderLayout());
+        cell.setOpaque(true);
         cell.setPreferredSize(new Dimension(getEmojiCellWidth(), getEmojiCellHeight()));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        JLabel lbl = new JLabel(emoji, SwingConstants.CENTER);
-        lbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
+        // Fallback to simple marker if emoji cannot be rendered on this system
+        String display = canDisplayText(emoji, emojiFont(20)) ? emoji : "?";
+        JLabel lbl = new JLabel(display, SwingConstants.CENTER);
+        lbl.setFont(emojiFont(20));
+        lbl.setOpaque(false);
         cell.add(lbl, BorderLayout.CENTER);
 
         if (emoji.equals(selectedEmoji)) {
-            cell.setBackground(ACCENT_YELLOW);
-            cell.setBorder(BorderFactory.createLineBorder(ACCENT_YELLOW, 1, true));
-            lbl.setForeground(SURFACE_COLOR);
+            cell.setBackground(ThemeManager.getColor("accent"));
+            cell.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("accent"), 1, true));
+            lbl.setForeground(ThemeManager.getColor("bg"));
         } else {
-            cell.setBackground(INPUT_BG);
-            cell.setBorder(BorderFactory.createLineBorder(new Color(55, 55, 55), 1, true));
-            lbl.setForeground(Color.WHITE);
+            cell.setBackground(ThemeManager.getColor("input"));
+            cell.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+            lbl.setForeground(ThemeManager.getColor("textPrimary"));
         }
-        cell.addMouseListener(new MouseAdapter() { @Override public void mouseClicked(MouseEvent e) { selectedEmoji = emoji; refreshEmojiGrid(); } });
+        cell.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                selectedEmoji = emoji;
+                refreshEmojiGrid();
+            }
+        });
         return cell;
+    }
+
+    private Font emojiFont(int size) {
+        try {
+            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+            String[] available = ge.getAvailableFontFamilyNames();
+            for (String candidate : EMOJI_FALLBACK_FONTS) {
+                for (String fam : available) {
+                    if (fam.equalsIgnoreCase(candidate)) {
+                        return new Font(fam, Font.PLAIN, size);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        // fallback to default font
+        return new Font(Font.SANS_SERIF, Font.PLAIN, size);
+    }
+
+    private boolean canDisplayText(String text, Font font) {
+        if (text == null || text.isEmpty()) return false;
+        try {
+            for (int i = 0; i < text.length(); ) {
+                int cp = text.codePointAt(i);
+                if (!font.canDisplay(cp)) return false;
+                i += Character.charCount(cp);
+            }
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
     }
 
     private void executeAddCategory() {
@@ -506,10 +587,10 @@ public class CategoryManagerPanel extends JPanel {
         }
 
         if (btnListExpense != null && btnListIncome != null) {
-            btnListExpense.setBackground(currentListType == TransactionType.EXPENSE ? ACCENT_YELLOW : INPUT_BG);
-            btnListExpense.setForeground(currentListType == TransactionType.EXPENSE ? SURFACE_COLOR : TEXT_PRIMARY);
-            btnListIncome.setBackground(currentListType == TransactionType.INCOME ? ACCENT_YELLOW : INPUT_BG);
-            btnListIncome.setForeground(currentListType == TransactionType.INCOME ? SURFACE_COLOR : TEXT_PRIMARY);
+            btnListExpense.setBackground(currentListType == TransactionType.EXPENSE ? ThemeManager.getColor("accent") : ThemeManager.getColor("input"));
+            btnListExpense.setForeground(currentListType == TransactionType.EXPENSE ? ThemeManager.getColor("bg") : ThemeManager.getColor("textPrimary"));
+            btnListIncome.setBackground(currentListType == TransactionType.INCOME ? ThemeManager.getColor("accent") : ThemeManager.getColor("input"));
+            btnListIncome.setForeground(currentListType == TransactionType.INCOME ? ThemeManager.getColor("bg") : ThemeManager.getColor("textPrimary"));
         }
 
         if (currentTypeIndex >= 0 && currentTypeIndex < comboCategoryType.getItemCount()) comboCategoryType.setSelectedIndex(currentTypeIndex);
@@ -519,15 +600,22 @@ public class CategoryManagerPanel extends JPanel {
     }
 
     private void selectListTypeTab(JButton target) {
-        btnListExpense.setBackground(INPUT_BG); btnListExpense.setForeground(TEXT_PRIMARY);
-        btnListIncome.setBackground(INPUT_BG); btnListIncome.setForeground(TEXT_PRIMARY);
-        target.setBackground(ACCENT_YELLOW); target.setForeground(SURFACE_COLOR);
+        btnListExpense.setBackground(ThemeManager.getColor("input"));
+        btnListExpense.setForeground(ThemeManager.getColor("textPrimary"));
+        btnListIncome.setBackground(ThemeManager.getColor("input"));
+        btnListIncome.setForeground(ThemeManager.getColor("textPrimary"));
+        target.setBackground(ThemeManager.getColor("accent"));
+        target.setForeground(ThemeManager.getColor("bg"));
     }
 
     private JButton createListTypeTabButton(String text, boolean active) {
-        JButton btn = new JButton(text); btn.setFont(new Font("Segoe UI", Font.BOLD, 13)); btn.setFocusPainted(false);
-        btn.setBackground(active ? ACCENT_YELLOW : INPUT_BG); btn.setForeground(active ? SURFACE_COLOR : TEXT_PRIMARY);
-        btn.setBorder(BorderFactory.createEmptyBorder(5, 14, 5, 14)); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btn.setFocusPainted(false);
+        btn.setBackground(active ? ThemeManager.getColor("accent") : ThemeManager.getColor("input"));
+        btn.setForeground(active ? ThemeManager.getColor("bg") : ThemeManager.getColor("textPrimary"));
+        btn.setBorder(BorderFactory.createEmptyBorder(5, 14, 5, 14));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
@@ -538,6 +626,15 @@ public class CategoryManagerPanel extends JPanel {
             listCard.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         }
         if (lblListTitle != null) lblListTitle.setForeground(ThemeManager.getColor("accent"));
+        if (listGridPanel != null) {
+            listGridPanel.setBackground(ThemeManager.getColor("surface"));
+        }
+        if (listGridWrapper != null) {
+            listGridWrapper.setBackground(ThemeManager.getColor("surface"));
+        }
+        if (listPaginationPanel != null) {
+            listPaginationPanel.setBackground(ThemeManager.getColor("surface"));
+        }
         if (addCard != null) {
             addCard.setBackground(ThemeManager.getColor("surface"));
             addCard.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
@@ -549,6 +646,15 @@ public class CategoryManagerPanel extends JPanel {
         if (txtCategoryName != null) {
             txtCategoryName.setBackground(ThemeManager.getColor("input"));
             txtCategoryName.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (emojiGridPanel != null) {
+            emojiGridPanel.setBackground(ThemeManager.getColor("surface"));
+        }
+        if (gridWrapper != null) {
+            gridWrapper.setBackground(ThemeManager.getColor("surface"));
+        }
+        if (emojiPagination != null) {
+            emojiPagination.setBackground(ThemeManager.getColor("surface"));
         }
         if (comboCategoryType != null) {
             comboCategoryType.setBackground(ThemeManager.getColor("input"));
@@ -563,9 +669,35 @@ public class CategoryManagerPanel extends JPanel {
             btnDeleteCategory.setForeground(ThemeManager.getColor("danger"));
         }
         refreshCategories();
+        refreshEmojiGrid();
     }
 
-    private JLabel createLabel() { JLabel lbl = new JLabel(); lbl.setFont(new Font("Segoe UI", Font.BOLD, 14)); lbl.setForeground(TEXT_SECONDARY); lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 6, 0)); lbl.setAlignmentX(Component.LEFT_ALIGNMENT); return lbl; }
-    private void styleTextField(JTextField tf) { tf.setBackground(INPUT_BG); tf.setForeground(TEXT_PRIMARY); tf.setCaretColor(ACCENT_YELLOW); tf.setFont(new Font("Segoe UI", Font.PLAIN, 15)); tf.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(60, 60, 60)), BorderFactory.createEmptyBorder(10, 15, 10, 15))); }
-    private JButton createPaginationButton(String text) { JButton btn = new JButton(text); btn.setFont(new Font("Segoe UI", Font.BOLD, 14)); btn.setForeground(TEXT_PRIMARY); btn.setBackground(INPUT_BG); btn.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60), 1)); btn.setPreferredSize(new Dimension(36, 28)); btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); return btn; }
+    private JLabel createLabel() {
+        JLabel lbl = new JLabel();
+        lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lbl.setForeground(ThemeManager.getColor("textSecondary"));
+        lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 6, 0));
+        lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return lbl;
+    }
+    private void styleTextField(JTextField tf) {
+        tf.setBackground(ThemeManager.getColor("input"));
+        tf.setForeground(ThemeManager.getColor("textPrimary"));
+        tf.setCaretColor(ThemeManager.getColor("accent"));
+        tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+            BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
+    }
+    private JButton createPaginationButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setForeground(ThemeManager.getColor("textPrimary"));
+        btn.setBackground(ThemeManager.getColor("input"));
+        btn.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
+        btn.setPreferredSize(new Dimension(36, 28));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
 }

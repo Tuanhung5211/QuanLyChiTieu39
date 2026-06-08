@@ -129,6 +129,7 @@ public class SettingsPanel extends JPanel implements Themable {
 
         JLabel lblThemeTitle = new JLabel(isVietnamese ? "Tùy chỉnh giao diện" : "Theme Customization");
         lblThemeTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        lblThemeTitle.setName("themeTitle");
         panel.add(lblThemeTitle, gbc);
 
         JPanel btnThemePreset = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
@@ -138,11 +139,9 @@ public class SettingsPanel extends JPanel implements Themable {
         JButton btnCustom = new JButton(isVietnamese ? "Tùy chỉnh màu" : "Custom Colors");
         btnDark.addActionListener(e -> {
             ThemeManager.setTheme(ThemeManager.ThemePreset.DARK);
-            refreshThemeUI(panel);
         });
         btnLight.addActionListener(e -> {
             ThemeManager.setTheme(ThemeManager.ThemePreset.LIGHT);
-            refreshThemeUI(panel);
         });
         btnCustom.addActionListener(e -> {
             if (!PremiumManager.isPremium(SessionManager.getCurrentUserId())) {
@@ -157,10 +156,12 @@ public class SettingsPanel extends JPanel implements Themable {
         panel.add(btnThemePreset, gbc);
 
         JLabel lblPreview = new JLabel(isVietnamese ? "Xem trước màu sắc:" : "Color preview:");
+        lblPreview.setName("previewLabel");
         panel.add(lblPreview, gbc);
 
         JPanel previewPanel = new JPanel(new GridLayout(2,3,10,10));
         previewPanel.setOpaque(false);
+        previewPanel.setName("previewPanel");
         previewPanel.add(createColorBox("bg", "Background"));
         previewPanel.add(createColorBox("surface", "Surface"));
         previewPanel.add(createColorBox("input", "Input"));
@@ -175,7 +176,8 @@ public class SettingsPanel extends JPanel implements Themable {
     private JPanel createColorBox(String key, String name) {
         JPanel box = new JPanel(new BorderLayout());
         box.setBackground(ThemeManager.getColor(key));
-        box.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        box.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border")));
+        box.setName("colorBox_" + key);
         JLabel lbl = new JLabel(name, SwingConstants.CENTER);
         lbl.setForeground(ThemeManager.getColor("textPrimary"));
         box.add(lbl, BorderLayout.CENTER);
@@ -184,11 +186,40 @@ public class SettingsPanel extends JPanel implements Themable {
 
     private void refreshThemeUI(JPanel panel) {
         panel.setBackground(ThemeManager.getColor("bg"));
+
         for (Component comp : panel.getComponents()) {
             if (comp instanceof JLabel) {
-                ((JLabel) comp).setForeground(ThemeManager.getColor("textPrimary"));
+                JLabel lbl = (JLabel) comp;
+                String name = lbl.getName();
+                if (name == null || !name.equals("themeTitle")) {
+                    lbl.setForeground(ThemeManager.getColor("textPrimary"));
+                }
             } else if (comp instanceof JPanel) {
-                comp.setBackground(ThemeManager.getColor("surface"));
+                JPanel subPanel = (JPanel) comp;
+                String name = subPanel.getName();
+                if (name != null && name.equals("previewPanel")) {
+                    // Update color boxes
+                    for (Component colorComp : subPanel.getComponents()) {
+                        if (colorComp instanceof JPanel) {
+                            JPanel colorBox = (JPanel) colorComp;
+                            String boxName = colorBox.getName();
+                            if (boxName != null && boxName.startsWith("colorBox_")) {
+                                String colorKey = boxName.substring("colorBox_".length());
+                                colorBox.setBackground(ThemeManager.getColor(colorKey));
+                                colorBox.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border")));
+
+                                // Update text color in the label
+                                for (Component boxChild : colorBox.getComponents()) {
+                                    if (boxChild instanceof JLabel) {
+                                        ((JLabel) boxChild).setForeground(ThemeManager.getColor("textPrimary"));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    subPanel.setBackground(ThemeManager.getColor("bg"));
+                }
             }
         }
         panel.revalidate();
