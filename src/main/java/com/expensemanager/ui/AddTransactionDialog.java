@@ -252,7 +252,8 @@ public class AddTransactionDialog extends JDialog {
                                 btn.setForeground(ThemeManager.getColor("textPrimary"));
                             } else {
                                 btn.setBackground(ThemeManager.getColor("accent"));
-                                btn.setForeground(ThemeManager.getColor("bg"));
+                                // Make non-cancel footer buttons use the light text color (like the Cancel button)
+                                btn.setForeground(ThemeManager.getColor("textPrimary"));
                             }
                         }
                     }

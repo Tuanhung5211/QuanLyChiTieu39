@@ -2,6 +2,7 @@ package com.expensemanager.database;
 
 import com.expensemanager.entity.*;
 import java.sql.*;
+import java.sql.SQLSyntaxErrorException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -430,6 +431,266 @@ public class DatabaseUtil {
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    // ========== RECURRING TRANSACTIONS ==========
+    public static void insertRecurringTransaction(RecurringTransaction rt) {
+        String sql = "INSERT INTO recurring_transactions " +
+                "(id, user_id, amount, type, category_id, note, recurrence_type, custom_interval_days, " +
+                "start_date, end_date, created_at, is_active, last_generated_date) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, rt.getId());
+            stmt.setString(2, rt.getUserId());
+            stmt.setDouble(3, rt.getAmount());
+            stmt.setString(4, rt.getType().name());
+            stmt.setString(5, rt.getCategory() != null ? rt.getCategory().getId() : null);
+            stmt.setString(6, rt.getNote());
+            stmt.setString(7, rt.getRecurrenceType().name());
+            stmt.setInt(8, rt.getCustomIntervalDays());
+            stmt.setDate(9, java.sql.Date.valueOf(rt.getStartDate()));
+            stmt.setDate(10, rt.getEndDate() != null ? java.sql.Date.valueOf(rt.getEndDate()) : null);
+            stmt.setTimestamp(11, java.sql.Timestamp.valueOf(rt.getCreatedAt()));
+            stmt.setBoolean(12, rt.isActive());
+            stmt.setDate(13, rt.getLastGeneratedDate() != null ? java.sql.Date.valueOf(rt.getLastGeneratedDate()) : null);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi thêm giao dịch lặp lại", e);
+        }
+    }
+
+    public static java.util.List<RecurringTransaction> getRecurringTransactions(String userId) {
+        java.util.List<RecurringTransaction> list = new java.util.ArrayList<>();
+        String sql = "SELECT rt.*, c.name as category_name, c.type as category_type " +
+                "FROM recurring_transactions rt " +
+                "LEFT JOIN categories c ON rt.category_id = c.id " +
+                "WHERE rt.user_id = ? ORDER BY rt.start_date DESC";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    RecurringTransaction rt = new RecurringTransaction();
+                    rt.setId(rs.getString("id"));
+                    rt.setUserId(rs.getString("user_id"));
+                    rt.setAmount(rs.getDouble("amount"));
+                    rt.setType(TransactionType.valueOf(rs.getString("type")));
+
+                    String catId = rs.getString("category_id");
+                    if (catId != null && rs.getString("category_name") != null) {
+                        Category cat = new Category(catId, rs.getString("category_name"),
+                                TransactionType.valueOf(rs.getString("category_type")));
+                        rt.setCategory(cat);
+                    }
+
+                    rt.setNote(rs.getString("note"));
+                    rt.setRecurrenceType(RecurringTransaction.RecurrenceType.valueOf(rs.getString("recurrence_type")));
+                    rt.setCustomIntervalDays(rs.getInt("custom_interval_days"));
+
+                    java.sql.Date startDateSql = rs.getDate("start_date");
+                    if (startDateSql != null) {
+                        rt.setStartDate(startDateSql.toLocalDate());
+                    }
+
+                    java.sql.Date endDateSql = rs.getDate("end_date");
+                    if (endDateSql != null) {
+                        rt.setEndDate(endDateSql.toLocalDate());
+                    }
+
+                    java.sql.Timestamp createdAtSql = rs.getTimestamp("created_at");
+                    if (createdAtSql != null) {
+                        rt.setCreatedAt(createdAtSql.toLocalDateTime());
+                    }
+
+                    rt.setActive(rs.getBoolean("is_active"));
+
+                    java.sql.Date lastGenSql = rs.getDate("last_generated_date");
+                    if (lastGenSql != null) {
+                        rt.setLastGeneratedDate(lastGenSql.toLocalDate());
+                    }
+
+                    list.add(rt);
+                }
+            }
+        } catch (SQLSyntaxErrorException syntaxEx) {
+            // Likely the recurring_transactions table does not exist. Try to create it and retry once.
+            try {
+                ensureRecurringTransactionsTableExists();
+                // retry the query once
+                try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setString(1, userId);
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        while (rs.next()) {
+                            RecurringTransaction rt = new RecurringTransaction();
+                            rt.setId(rs.getString("id"));
+                            rt.setUserId(rs.getString("user_id"));
+                            rt.setAmount(rs.getDouble("amount"));
+                            rt.setType(TransactionType.valueOf(rs.getString("type")));
+
+                            String catId = rs.getString("category_id");
+                            if (catId != null && rs.getString("category_name") != null) {
+                                Category cat = new Category(catId, rs.getString("category_name"),
+                                        TransactionType.valueOf(rs.getString("category_type")));
+                                rt.setCategory(cat);
+                            }
+
+                            rt.setNote(rs.getString("note"));
+                            rt.setRecurrenceType(RecurringTransaction.RecurrenceType.valueOf(rs.getString("recurrence_type")));
+                            rt.setCustomIntervalDays(rs.getInt("custom_interval_days"));
+
+                            java.sql.Date startDateSql = rs.getDate("start_date");
+                            if (startDateSql != null) {
+                                rt.setStartDate(startDateSql.toLocalDate());
+                            }
+
+                            java.sql.Date endDateSql = rs.getDate("end_date");
+                            if (endDateSql != null) {
+                                rt.setEndDate(endDateSql.toLocalDate());
+                            }
+
+                            java.sql.Timestamp createdAtSql = rs.getTimestamp("created_at");
+                            if (createdAtSql != null) {
+                                rt.setCreatedAt(createdAtSql.toLocalDateTime());
+                            }
+
+                            rt.setActive(rs.getBoolean("is_active"));
+
+                            java.sql.Date lastGenSql = rs.getDate("last_generated_date");
+                            if (lastGenSql != null) {
+                                rt.setLastGeneratedDate(lastGenSql.toLocalDate());
+                            }
+
+                            list.add(rt);
+                        }
+                    }
+                }
+            } catch (SQLException | RuntimeException retryEx) {
+                throw new RuntimeException("Lỗi khi tải giao dịch lặp lại của User: " + userId, retryEx);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi tải giao dịch lặp lại của User: " + userId, e);
+        }
+        return list;
+    }
+
+    /**
+     * Ensure the recurring_transactions table exists in the database. If not, create it.
+     */
+    private static void ensureRecurringTransactionsTableExists() {
+        // Create table without foreign key constraints to avoid charset/collation/engine incompatibilities
+        String createSql = "CREATE TABLE IF NOT EXISTS recurring_transactions (" +
+                "id VARCHAR(50) PRIMARY KEY, " +
+                "user_id VARCHAR(20) NOT NULL, " +
+                "amount DECIMAL(15,2) NOT NULL, " +
+                "type ENUM('INCOME','EXPENSE') NOT NULL, " +
+                "category_id VARCHAR(10), " +
+                "note TEXT, " +
+                "recurrence_type ENUM('DAILY','WEEKLY','MONTHLY','YEARLY','CUSTOM') NOT NULL, " +
+                "custom_interval_days INT DEFAULT 0, " +
+                "start_date DATE NOT NULL, " +
+                "end_date DATE, " +
+                "created_at DATETIME NOT NULL, " +
+                "is_active BOOLEAN DEFAULT TRUE, " +
+                "last_generated_date DATE, " +
+                "INDEX idx_user_id (user_id), " +
+                "INDEX idx_is_active (is_active), " +
+                "INDEX idx_recurrence_type (recurrence_type) " +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+
+        try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(createSql);
+        } catch (SQLException e) {
+            throw new RuntimeException("Không thể tạo bảng recurring_transactions tự động", e);
+        }
+    }
+
+    public static RecurringTransaction getRecurringTransactionById(String id) {
+        String sql = "SELECT rt.*, c.name as category_name, c.type as category_type " +
+                "FROM recurring_transactions rt " +
+                "LEFT JOIN categories c ON rt.category_id = c.id " +
+                "WHERE rt.id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    RecurringTransaction rt = new RecurringTransaction();
+                    rt.setId(rs.getString("id"));
+                    rt.setUserId(rs.getString("user_id"));
+                    rt.setAmount(rs.getDouble("amount"));
+                    rt.setType(TransactionType.valueOf(rs.getString("type")));
+
+                    String catId = rs.getString("category_id");
+                    if (catId != null && rs.getString("category_name") != null) {
+                        Category cat = new Category(catId, rs.getString("category_name"),
+                                TransactionType.valueOf(rs.getString("category_type")));
+                        rt.setCategory(cat);
+                    }
+
+                    rt.setNote(rs.getString("note"));
+                    rt.setRecurrenceType(RecurringTransaction.RecurrenceType.valueOf(rs.getString("recurrence_type")));
+                    rt.setCustomIntervalDays(rs.getInt("custom_interval_days"));
+
+                    java.sql.Date startDateSql = rs.getDate("start_date");
+                    if (startDateSql != null) {
+                        rt.setStartDate(startDateSql.toLocalDate());
+                    }
+
+                    java.sql.Date endDateSql = rs.getDate("end_date");
+                    if (endDateSql != null) {
+                        rt.setEndDate(endDateSql.toLocalDate());
+                    }
+
+                    java.sql.Timestamp createdAtSql = rs.getTimestamp("created_at");
+                    if (createdAtSql != null) {
+                        rt.setCreatedAt(createdAtSql.toLocalDateTime());
+                    }
+
+                    rt.setActive(rs.getBoolean("is_active"));
+
+                    java.sql.Date lastGenSql = rs.getDate("last_generated_date");
+                    if (lastGenSql != null) {
+                        rt.setLastGeneratedDate(lastGenSql.toLocalDate());
+                    }
+
+                    return rt;
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi tải giao dịch lặp lại ID: " + id, e);
+        }
+        return null;
+    }
+
+    public static void updateRecurringTransaction(RecurringTransaction rt) {
+        String sql = "UPDATE recurring_transactions SET amount=?, note=?, recurrence_type=?, " +
+                "custom_interval_days=?, end_date=?, is_active=?, last_generated_date=? WHERE id=?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDouble(1, rt.getAmount());
+            stmt.setString(2, rt.getNote());
+            stmt.setString(3, rt.getRecurrenceType().name());
+            stmt.setInt(4, rt.getCustomIntervalDays());
+            stmt.setDate(5, rt.getEndDate() != null ? java.sql.Date.valueOf(rt.getEndDate()) : null);
+            stmt.setBoolean(6, rt.isActive());
+            stmt.setDate(7, rt.getLastGeneratedDate() != null ? java.sql.Date.valueOf(rt.getLastGeneratedDate()) : null);
+            stmt.setString(8, rt.getId());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi cập nhật giao dịch lặp lại ID: " + rt.getId(), e);
+        }
+    }
+
+    public static void deleteRecurringTransaction(String id) {
+        String sql = "DELETE FROM recurring_transactions WHERE id=?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, id);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi xóa giao dịch lặp lại ID: " + id, e);
         }
     }
 }

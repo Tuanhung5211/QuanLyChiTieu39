@@ -23,10 +23,11 @@ public class MainFrame extends JFrame implements Observer {
     private DashboardPanel dashboardPanel;
     private StatisticsPanel statisticsPanel;
     private BudgetPanel budgetPanel;
+    private RecurringTransactionManagerPanel recurringPanel;
     private SettingsPanel settingsPanel;
 
     // Đã loại bỏ nút Nhắc nhở (btnReminder) trên thanh điều hướng Taskbar
-    private JButton btnDashboard, btnStatistics, btnBudget, btnSettings;
+    private JButton btnDashboard, btnStatistics, btnBudget, btnRecurring, btnSettings;
     private JButton activeBtn;
 
     private FinanceService financeService;
@@ -115,11 +116,19 @@ public class MainFrame extends JFrame implements Observer {
             statisticsPanel = new StatisticsPanel(statsService, budgetManager);
             budgetPanel = new BudgetPanel(this, budgetManager);
         }
+
+        // Khởi tạo Recurring Transaction Panel
+        if (financeService != null) {
+            recurringPanel = new RecurringTransactionManagerPanel(
+                    financeService.getRecurringTransactionService(), this);
+        }
+
         settingsPanel = new SettingsPanel(this);
 
         mainPanel.add(dashboardPanel, "dashboard");
         if (statisticsPanel != null) mainPanel.add(statisticsPanel, "statistics");
         if (budgetPanel != null) mainPanel.add(budgetPanel, "budget");
+        if (recurringPanel != null) mainPanel.add(recurringPanel, "recurring");
         mainPanel.add(settingsPanel, "settings");
 
         add(mainPanel, BorderLayout.CENTER);
@@ -247,6 +256,7 @@ public class MainFrame extends JFrame implements Observer {
         btnDashboard = createNavButton(isVietnamese ? "Tổng quan" : "Overview");
         btnStatistics = createNavButton(isVietnamese ? "Thống kê" : "Statistics");
         btnBudget = createNavButton(isVietnamese ? "Ngân sách" : "Budget");
+        btnRecurring = createNavButton(isVietnamese ? "Lặp lại" : "Recurring");
         btnSettings = createNavButton(isVietnamese ? "Cài đặt" : "Settings");
 
         btnDashboard.addActionListener(e -> {
@@ -265,6 +275,11 @@ public class MainFrame extends JFrame implements Observer {
                 budgetPanel.refreshData();
             }
         });
+        btnRecurring.addActionListener(e -> {
+            if (recurringPanel != null) {
+                selectTab(btnRecurring, "recurring");
+            }
+        });
         btnSettings.addActionListener(e -> {
             selectTab(btnSettings, "settings");
             settingsPanel.refreshData();
@@ -273,6 +288,7 @@ public class MainFrame extends JFrame implements Observer {
         navPanel.add(btnDashboard);
         navPanel.add(btnStatistics);
         navPanel.add(btnBudget);
+        navPanel.add(btnRecurring);
         navPanel.add(btnSettings);
 
         return navPanel;
@@ -336,7 +352,7 @@ public class MainFrame extends JFrame implements Observer {
         activeBtn = targetBtn;
         cardLayout.show(mainPanel, cardName);
 
-        JButton[] navButtons = {btnDashboard, btnStatistics, btnBudget, btnSettings};
+        JButton[] navButtons = {btnDashboard, btnStatistics, btnBudget, btnRecurring, btnSettings};
         for (JButton btn : navButtons) {
             if (btn != null) {
                 if (btn == activeBtn) {
@@ -358,6 +374,7 @@ public class MainFrame extends JFrame implements Observer {
         if (btnDashboard != null) btnDashboard.setText(isVN ? "Tổng quan" : "Overview");
         if (btnStatistics != null) btnStatistics.setText(isVN ? "Thống kê" : "Statistics");
         if (btnBudget != null) btnBudget.setText(isVN ? "Ngân sách" : "Budget");
+        if (btnRecurring != null) btnRecurring.setText(isVN ? "Lặp lại" : "Recurring");
         if (btnSettings != null) btnSettings.setText(isVN ? "Cài đặt" : "Settings");
 
         if (lblIdLabel != null) {
@@ -382,6 +399,9 @@ public class MainFrame extends JFrame implements Observer {
         if (budgetPanel != null) {
             budgetPanel.updateLanguageText(isVN);
             budgetPanel.refreshData();
+        }
+        if (recurringPanel != null) {
+            recurringPanel.updateLanguageText();
         }
 
         this.revalidate();
@@ -408,6 +428,7 @@ public class MainFrame extends JFrame implements Observer {
         if (dashboardPanel != null) dashboardPanel.refreshData();
         if (statisticsPanel != null) statisticsPanel.refreshData();
         if (budgetPanel != null) budgetPanel.refreshData();
+        if (recurringPanel != null) recurringPanel.updateLanguageText();
     }
 
     public void refreshAllPanelsThemes() {
@@ -466,6 +487,7 @@ public class MainFrame extends JFrame implements Observer {
         if (dashboardPanel != null) dashboardPanel.applyTheme();
         if (statisticsPanel != null) statisticsPanel.applyTheme();
         if (budgetPanel != null) budgetPanel.applyTheme();
+        if (recurringPanel != null) recurringPanel.updateLanguageText();
         if (settingsPanel != null) settingsPanel.applyTheme();
 
         refreshSidebarData();

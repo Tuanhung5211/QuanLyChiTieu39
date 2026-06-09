@@ -21,6 +21,7 @@ public class FinanceService extends Subject {
     // =====================================================================
     private List<Transaction> transactionList;
     private Map<String, Category> categoryMap;
+    private RecurringTransactionService recurringTransactionService;
     private static final String JSON_FILE_PATH = "transactions.json";
 
     // =====================================================================
@@ -29,6 +30,7 @@ public class FinanceService extends Subject {
     public FinanceService() {
         transactionList = new ArrayList<>();
         categoryMap = new HashMap<>();
+        this.recurringTransactionService = new RecurringTransactionService(this);
         loadInitialData();
     }
 
@@ -51,6 +53,15 @@ public class FinanceService extends Subject {
             System.err.println("Không thể tải file JSON: " + e.getMessage());
             transactionList = new ArrayList<>();
         }
+
+        // Tải giao dịch lặp lại
+        try {
+            recurringTransactionService.loadRecurringTransactions();
+            // Kiểm tra và sinh giao dịch thực tế từ các mẫu lặp lại
+            recurringTransactionService.checkAndGenerateTransactions();
+        } catch (Exception e) {
+            System.err.println("Không thể tải giao dịch lặp lại: " + e.getMessage());
+        }
     }
 
     public void syncFromDatabase() {
@@ -63,6 +74,9 @@ public class FinanceService extends Subject {
             saveToFile();
             notifyObservers(EventType.DATA_LOADED, null);
         }
+
+        // Reload recurring transactions
+        recurringTransactionService.loadRecurringTransactions();
     }
 
     // =====================================================================
@@ -186,5 +200,16 @@ public class FinanceService extends Subject {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) return 0;
         return DatabaseUtil.getTransactionCount(userId);
+    }
+
+    // =====================================================================
+    // 6. QUẢN LÝ RECURRING TRANSACTIONS
+    // =====================================================================
+    public RecurringTransactionService getRecurringTransactionService() {
+        return recurringTransactionService;
+    }
+
+    public void loadRecurringTransactions() {
+        recurringTransactionService.loadRecurringTransactions();
     }
 }

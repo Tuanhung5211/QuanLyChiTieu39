@@ -71,3 +71,31 @@ CREATE TABLE IF NOT EXISTS budgets (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     UNIQUE KEY uq_user_month_year (user_id, month, year) -- Đảm bảo tính duy nhất theo cặp tài khoản + thời gian
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- BẢNG RECURRING_TRANSACTIONS: Giao dịch lặp lại
+-- ============================================
+CREATE TABLE IF NOT EXISTS recurring_transactions (
+    id VARCHAR(50) PRIMARY KEY COMMENT 'ID giao dịch lặp lại',
+    user_id VARCHAR(20) NOT NULL COMMENT 'ID người dùng sở hữu',
+    amount DECIMAL(15, 2) NOT NULL COMMENT 'Số tiền giao dịch',
+    type ENUM('INCOME', 'EXPENSE') NOT NULL COMMENT 'Loại giao dịch',
+    category_id VARCHAR(10) COMMENT 'ID danh mục tham chiếu',
+    note TEXT COMMENT 'Ghi chú',
+    recurrence_type ENUM('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY', 'CUSTOM') NOT NULL COMMENT 'Kiểu lặp lại',
+    custom_interval_days INT DEFAULT 0 COMMENT 'Khoảng cách (ngày) nếu CUSTOM',
+    start_date DATE NOT NULL COMMENT 'Ngày bắt đầu',
+    end_date DATE COMMENT 'Ngày kết thúc (NULL = không hạn chế)',
+    created_at DATETIME NOT NULL COMMENT 'Thời gian tạo',
+    is_active BOOLEAN DEFAULT TRUE COMMENT 'Trạng thái hoạt động',
+    last_generated_date DATE COMMENT 'Ngày tạo giao dịch cuối cùng',
+
+    -- Foreign Keys
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Indexes
+    INDEX idx_user_id (user_id),
+    INDEX idx_is_active (is_active),
+    INDEX idx_recurrence_type (recurrence_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

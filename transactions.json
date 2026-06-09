@@ -1,5 +1,17 @@
 [
   {
+    "id": "24405948",
+    "amount": 30000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "93af4c74",
+      "name": "Trái cây",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-06-08T11:52:09",
+    "note": ""
+  },
+  {
     "id": "436c4f2a",
     "amount": 500000.0,
     "type": "EXPENSE",
@@ -36,6 +48,18 @@
     "note": "lam them"
   },
   {
+    "id": "c215ebe6-0",
+    "amount": 200000.0,
+    "type": "EXPENSE",
+    "category": {
+      "id": "2edb87a6",
+      "name": "Thể thao",
+      "type": "EXPENSE"
+    },
+    "dateTime": "2026-06-09T09:43:11",
+    "note": "tập gym"
+  },
+  {
     "id": "e94d3d02",
     "amount": 40000.0,
     "type": "EXPENSE",
@@ -45,18 +69,6 @@
       "type": "EXPENSE"
     },
     "dateTime": "2026-05-18T20:54",
-    "note": ""
-  },
-  {
-    "id": "24405948",
-    "amount": 30000.0,
-    "type": "EXPENSE",
-    "category": {
-      "id": "93af4c74",
-      "name": "Trái cây",
-      "type": "EXPENSE"
-    },
-    "dateTime": "2026-06-08T11:52:08.642938627",
     "note": ""
   }
 ]
