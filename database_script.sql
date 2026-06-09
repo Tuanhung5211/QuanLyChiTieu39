@@ -44,36 +44,40 @@ CREATE TABLE IF NOT EXISTS categories (
 -- ============================================
 CREATE TABLE IF NOT EXISTS transactions (
                                             id VARCHAR(10) PRIMARY KEY COMMENT 'ID giao dịch',
-    amount DECIMAL(15, 2) NOT NULL COMMENT 'Số tiền giao dịch',
+    amount DECIMAL(15,2) NOT NULL COMMENT 'Số tiền giao dịch',
     type ENUM('INCOME', 'EXPENSE') NOT NULL COMMENT 'Loại giao dịch',
     category_id VARCHAR(10) COMMENT 'ID danh mục tham chiếu',
     date_time DATETIME NOT NULL COMMENT 'Thời gian giao dịch',
     note TEXT COMMENT 'Ghi chú thêm',
     user_id VARCHAR(20) COMMENT 'ID người dùng sở hữu',
 
-    -- Foreign Keys
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
-    -- Indexes cho tối ưu truy vấn
     INDEX idx_user_id (user_id),
     INDEX idx_date_time (date_time),
     INDEX idx_type (type)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- BẢNG BUDGETS: Ngân sách hàng tháng
+-- BẢNG BUDGETS: Ngân sách (hỗ trợ theo ngày/tháng/năm và theo danh mục)
 -- ============================================
 CREATE TABLE IF NOT EXISTS budgets (
                                        id VARCHAR(50) PRIMARY KEY COMMENT 'ID ngân sách',
-    month INT NOT NULL,
-    year INT NOT NULL,
-    budget_limit DECIMAL(15, 2) NOT NULL,
-    spent DECIMAL(15, 2) DEFAULT 0,
-    user_id VARCHAR(20),
+    budget_limit DECIMAL(15,2) NOT NULL COMMENT 'Hạn mức chi tiêu',
+    spent DECIMAL(15,2) DEFAULT 0 COMMENT 'Số tiền đã chi',
+    start_date DATE NOT NULL COMMENT 'Ngày bắt đầu hiệu lực',
+    end_date DATE NOT NULL COMMENT 'Ngày kết thúc hiệu lực',
+    threshold INT DEFAULT 80 COMMENT 'Ngưỡng cảnh báo (%)',
+    category_id VARCHAR(10) COMMENT 'ID danh mục (NULL nếu là ngân sách tổng thể)',
+    user_id VARCHAR(20) NOT NULL COMMENT 'ID người dùng sở hữu',
 
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_user_month_year (user_id, month, year)
+
+    INDEX idx_user_id (user_id),
+    INDEX idx_date_range (start_date, end_date),
+    INDEX idx_category (category_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
@@ -82,7 +86,7 @@ CREATE TABLE IF NOT EXISTS budgets (
 CREATE TABLE IF NOT EXISTS recurring_transactions (
                                                       id VARCHAR(50) PRIMARY KEY COMMENT 'ID giao dịch lặp lại',
     user_id VARCHAR(20) NOT NULL COMMENT 'ID người dùng sở hữu',
-    amount DECIMAL(15, 2) NOT NULL COMMENT 'Số tiền giao dịch',
+    amount DECIMAL(15,2) NOT NULL COMMENT 'Số tiền giao dịch',
     type ENUM('INCOME', 'EXPENSE') NOT NULL COMMENT 'Loại giao dịch',
     category_id VARCHAR(10) COMMENT 'ID danh mục tham chiếu',
     note TEXT COMMENT 'Ghi chú',
@@ -94,20 +98,13 @@ CREATE TABLE IF NOT EXISTS recurring_transactions (
     is_active BOOLEAN DEFAULT TRUE COMMENT 'Trạng thái hoạt động',
     last_generated_date DATE COMMENT 'Ngày tạo giao dịch cuối cùng',
 
-    -- Foreign Keys
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 
-    -- Indexes
     INDEX idx_user_id (user_id),
     INDEX idx_is_active (is_active),
     INDEX idx_recurrence_type (recurrence_type)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================
--- THÊM CÁC RÀNG BUỘC KIỂM TRA (NẾU CẦN)
--- ============================================
--- (Có thể thêm trigger để tự động cập nhật spent trong budgets khi thêm/sửa/xóa transaction)
 
 -- ============================================
 -- KHỞI TẠO DỮ LIỆU MẪU (TÙY CHỌN)

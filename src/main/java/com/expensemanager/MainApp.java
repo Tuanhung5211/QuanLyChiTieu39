@@ -1,17 +1,16 @@
 package com.expensemanager;
 
 import com.expensemanager.ui.LoginFrame;
+import com.formdev.flatlaf.FlatDarkLaf; // Import FlatLaf
 import javax.swing.SwingUtilities;
 
 public class MainApp {
     public static void main(String[] args) {
+        // 1. Kích hoạt FlatLaf Dark Mode - Đây là dòng "ma thuật" giải quyết mọi lỗi màu sắc
+        FlatDarkLaf.setup();
+
         SwingUtilities.invokeLater(() -> {
-            try {
-                // 🌟 FIX LỖI GIAO DIỆN TRẮNG: Sử dụng CrossPlatform thay vì SystemLook
-                javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getCrossPlatformLookAndFeelClassName());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            // 2. Mở giao diện
             new LoginFrame().setVisible(true);
         });
     }

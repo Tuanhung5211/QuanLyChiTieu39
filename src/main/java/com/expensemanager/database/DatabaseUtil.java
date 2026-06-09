@@ -226,8 +226,11 @@ public class DatabaseUtil {
                 b.setId(rs.getString("id"));
                 b.setLimit(rs.getDouble("budget_limit"));
                 b.setSpent(rs.getDouble("spent"));
-                b.setStartDate(rs.getDate("start_date").toLocalDate());
-                b.setEndDate(rs.getDate("end_date").toLocalDate());
+                java.sql.Date startDateSql = rs.getDate("start_date");
+                if (startDateSql != null) b.setStartDate(startDateSql.toLocalDate());
+
+                java.sql.Date endDateSql = rs.getDate("end_date");
+                if (endDateSql != null) b.setEndDate(endDateSql.toLocalDate());
                 b.setThreshold(rs.getInt("threshold"));
                 b.setUserId(userId);
                 return b;
@@ -250,8 +253,14 @@ public class DatabaseUtil {
                 b.setId(rs.getString("id"));
                 b.setLimit(rs.getDouble("budget_limit"));
                 b.setSpent(rs.getDouble("spent"));
-                b.setStartDate(rs.getDate("start_date").toLocalDate());
-                b.setEndDate(rs.getDate("end_date").toLocalDate());
+                java.sql.Date startDateSql = rs.getDate("start_date");
+                if (startDateSql != null) {
+                    b.setStartDate(startDateSql.toLocalDate());
+                }
+                java.sql.Date endDateSql = rs.getDate("end_date");
+                if (endDateSql != null) {
+                    b.setEndDate(endDateSql.toLocalDate());
+                }
                 b.setThreshold(rs.getInt("threshold"));
                 b.setUserId(userId);
 

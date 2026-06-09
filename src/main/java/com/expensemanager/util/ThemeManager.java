@@ -1,5 +1,6 @@
 package com.expensemanager.util;
 
+import javax.swing.*;
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -103,6 +104,26 @@ public class ThemeManager {
     private static void notifyListeners() {
         for (Runnable listener : listeners) {
             listener.run();
+        }
+    }
+
+    public static void forceDarkModeUI() {
+        // Ép các thành phần cơ bản của hệ thống theo màu của ThemeManager
+        UIManager.put("Panel.background", getColor("bg"));
+        UIManager.put("Label.foreground", getColor("textPrimary"));
+        UIManager.put("Button.background", getColor("surface"));
+        UIManager.put("Button.foreground", getColor("textPrimary"));
+        UIManager.put("TextField.background", getColor("input"));
+        UIManager.put("TextField.foreground", getColor("textPrimary"));
+        UIManager.put("ComboBox.background", getColor("input"));
+        UIManager.put("ComboBox.foreground", getColor("textPrimary"));
+        UIManager.put("Table.background", getColor("surface"));
+        UIManager.put("Table.foreground", getColor("textPrimary"));
+        UIManager.put("TableHeader.background", getColor("input"));
+
+        // Áp dụng thay đổi mà không cần khởi động lại ứng dụng
+        for (java.awt.Window window : java.awt.Window.getWindows()) {
+            javax.swing.SwingUtilities.updateComponentTreeUI(window);
         }
     }
 }
