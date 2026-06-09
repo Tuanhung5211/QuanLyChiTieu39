@@ -1,8 +1,11 @@
 package com.expensemanager.database;
 
 import com.expensemanager.entity.*;
+import com.expensemanager.service.UserService;
+
 import java.sql.*;
 import java.sql.SQLSyntaxErrorException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +19,46 @@ public class DatabaseUtil {
                 DatabaseConfig.DB_USER,
                 DatabaseConfig.DB_PASSWORD
         );
+    }
+
+    static {
+        ensureUserTableColumns();
+        createDefaultAdminIfNotExists();
+    }
+
+
+    static {
+        ensureUserTableColumns();
+    }
+
+    // Phương thức kiểm tra và thêm cột nếu thiếu
+    private static void ensureUserTableColumns() {
+        try (Connection conn = getConnection()) {
+            DatabaseMetaData meta = conn.getMetaData();
+            boolean hasPremium = false, hasAdmin = false;
+
+            try (ResultSet rs = meta.getColumns(null, null, "users", "premium_expiry_date")) {
+                if (rs.next()) hasPremium = true;
+            }
+            try (ResultSet rs = meta.getColumns(null, null, "users", "is_admin")) {
+                if (rs.next()) hasAdmin = true;
+            }
+
+            if (!hasPremium) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate("ALTER TABLE users ADD COLUMN premium_expiry_date DATE DEFAULT NULL");
+                    System.out.println("✅ Đã thêm cột premium_expiry_date");
+                }
+            }
+            if (!hasAdmin) {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.executeUpdate("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE");
+                    System.out.println("✅ Đã thêm cột is_admin");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi cập nhật cấu trúc bảng users: " + e.getMessage());
+        }
     }
 
     // ========== CATEGORIES ==========
@@ -295,9 +338,8 @@ public class DatabaseUtil {
 
     // ========== USERS ==========
     public static void insertUser(User user) {
-        String sql = "INSERT INTO users (id, username, password_hash, nickname, avatar, email, gender) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        String sql = "INSERT INTO users (id, username, password_hash, nickname, avatar, email, gender, premium_expiry_date, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, user.getId());
             stmt.setString(2, user.getUsername());
             stmt.setString(3, user.getPasswordHash());
@@ -305,6 +347,8 @@ public class DatabaseUtil {
             stmt.setString(5, user.getAvatar());
             stmt.setString(6, user.getEmail());
             stmt.setString(7, user.getGender());
+            stmt.setDate(8, user.getPremiumExpiryDate() != null ? Date.valueOf(user.getPremiumExpiryDate()) : null);
+            stmt.setBoolean(9, user.isAdmin());
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi khi lưu thông tin tài khoản đăng ký mới", e);
@@ -313,8 +357,7 @@ public class DatabaseUtil {
 
     public static User getUserByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, username);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -324,9 +367,13 @@ public class DatabaseUtil {
                     String avatar = rs.getString("avatar");
                     String email = rs.getString("email");
                     String gender = rs.getString("gender");
+                    Date premiumDate = rs.getDate("premium_expiry_date");
+                    boolean isAdmin = rs.getBoolean("is_admin");
 
                     User user = new User(id, username, passwordHash, nickname, email, gender);
                     user.setAvatar(avatar);
+                    user.setPremiumExpiryDate(premiumDate != null ? premiumDate.toLocalDate() : null);
+                    user.setAdmin(isAdmin);
                     return user;
                 }
             }
@@ -691,6 +738,75 @@ public class DatabaseUtil {
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi khi xóa giao dịch lặp lại ID: " + id, e);
+        }
+    }
+
+    // Thêm phương thức lấy danh sách tất cả user (dùng cho admin)
+    public static List<User> getAllUsers() {
+        List<User> list = new ArrayList<>();
+        String sql = "SELECT * FROM users ORDER BY username";
+        try (Connection conn = getConnection(); Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                String id = rs.getString("id");
+                String username = rs.getString("username");
+                String passwordHash = rs.getString("password_hash");
+                String nickname = rs.getString("nickname");
+                String avatar = rs.getString("avatar");
+                String email = rs.getString("email");
+                String gender = rs.getString("gender");
+                Date premiumDate = rs.getDate("premium_expiry_date");
+                boolean isAdmin = rs.getBoolean("is_admin");
+
+                User user = new User(id, username, passwordHash, nickname, email, gender);
+                user.setAvatar(avatar);
+                user.setPremiumExpiryDate(premiumDate != null ? premiumDate.toLocalDate() : null);
+                user.setAdmin(isAdmin);
+                list.add(user);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi tải danh sách người dùng", e);
+        }
+        return list;
+    }
+
+    // Cập nhật ngày hết hạn Premium cho user
+    public static void updateUserPremium(String userId, LocalDate expiryDate) {
+        String sql = "UPDATE users SET premium_expiry_date = ? WHERE id = ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setDate(1, expiryDate != null ? Date.valueOf(expiryDate) : null);
+            stmt.setString(2, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi cập nhật Premium cho user: " + userId, e);
+        }
+    }
+
+    // Cập nhật quyền admin (nếu cần)
+    public static void updateUserAdmin(String userId, boolean isAdmin) {
+        String sql = "UPDATE users SET is_admin = ? WHERE id = ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setBoolean(1, isAdmin);
+            stmt.setString(2, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi cập nhật quyền admin", e);
+        }
+    }
+
+    // Tạo tài khoản admin mặc định nếu chưa có
+    public static void createDefaultAdminIfNotExists() {
+        User admin = getUserByUsername("admin");
+        if (admin == null) {
+            String id = "admin_" + System.currentTimeMillis();
+            String hashedPass = com.expensemanager.service.UserService.hashPassword("admin123");
+            User defaultAdmin = new User(id, "admin", hashedPass, "Administrator", "admin@example.com", "Other");
+            defaultAdmin.setAdmin(true);
+            defaultAdmin.setPremiumExpiryDate(null);
+            insertUser(defaultAdmin);
+            System.out.println("✅ Đã tạo tài khoản admin: admin / admin123");
+        } else if (!admin.isAdmin()) {
+            updateUserAdmin(admin.getId(), true);
+            System.out.println("✅ Đã cấp quyền admin cho user: admin");
         }
     }
 }
