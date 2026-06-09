@@ -137,7 +137,7 @@ public class MainFrame extends JFrame implements Observer {
 
     private JPanel createSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
-        sidebar.setPreferredSize(new Dimension(240, 0));
+        sidebar.setPreferredSize(new Dimension(350, 0));
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, ThemeManager.getColor("border")));
 
         JPanel topContainer = new JPanel();
@@ -204,7 +204,7 @@ public class MainFrame extends JFrame implements Observer {
             @Override
             public void mouseEntered(MouseEvent e) {
                 btnLogout.setBackground(ThemeManager.getColor("danger"));
-                btnLogout.setForeground(ThemeManager.getColor("bg"));   // SỬA: Color.WHITE → ThemeManager.getColor("bg")
+                btnLogout.setForeground(ThemeManager.getColor("bg"));
             }
             @Override
             public void mouseExited(MouseEvent e) {
@@ -465,15 +465,17 @@ public class MainFrame extends JFrame implements Observer {
                 revalidate();
                 repaint();
             }
+            // Cập nhật trạng thái nút Premium trong SettingsPanel
+            if (settingsPanel != null) {
+                settingsPanel.updateLanguageAndResponsive(isVietnamese, getWidth());
+            }
             JOptionPane.showMessageDialog(this, isVietnamese ? "Cảm ơn bạn đã nâng cấp!" : "Thank you for upgrading!");
         }
     }
 
     private void applyThemeToAll() {
-        // 1. Quét đệ quy toàn bộ content pane để áp dụng theme (bao gồm cả JScrollPane)
         ThemeManager.applyThemeRecursively(this.getContentPane());
 
-        // 2. Áp dụng theme cho các panel đặc biệt (biểu đồ, canvas,...)
         if (dashboardPanel != null) dashboardPanel.applyTheme();
         if (statisticsPanel != null) statisticsPanel.applyTheme();
         if (budgetPanel != null) budgetPanel.applyTheme();
@@ -481,7 +483,6 @@ public class MainFrame extends JFrame implements Observer {
         if (settingsPanel != null) settingsPanel.applyTheme();
         if (adminPanel != null) adminPanel.applyTheme();
 
-        // 3. Các thành phần khác của MainFrame
         if (sidebarPanel != null) {
             sidebarPanel.setBackground(ThemeManager.getColor("surface"));
             sidebarPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, ThemeManager.getColor("border")));
@@ -502,16 +503,15 @@ public class MainFrame extends JFrame implements Observer {
             }
         }
 
-        // 4. Sidebar info
         if (lblAvatar != null) {
             lblAvatar.setBackground(ThemeManager.getColor("input"));
             lblAvatar.setForeground(ThemeManager.getColor("accent"));
             lblAvatar.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         }
         if (lblNickname != null) lblNickname.setForeground(ThemeManager.getColor("textPrimary"));
-        // … các label khác giữ nguyên
         if (adBanner != null) adBanner.applyTheme();
     }
+
     @Override
     public void update(EventType eventType, Object data) {
         if (eventType == EventType.DATA_LOADED) {

@@ -26,7 +26,7 @@ public class SystemConfigPanel extends JPanel {
 
         initComponents();
         syncComboWithCurrentSize();
-        updateResponsiveLayout(isVietnamese, 560);
+        updateResponsiveLayout(isVietnamese);
         applyTheme();
     }
 
@@ -34,14 +34,14 @@ public class SystemConfigPanel extends JPanel {
         configCard = new JPanel(new GridBagLayout());
         configCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(22, 26, 22, 26)
+                BorderFactory.createEmptyBorder(15, 20, 15, 20)  // giảm padding
         ));
         configCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        gbc.insets = new Insets(6, 0, 6, 0);
+        gbc.insets = new Insets(4, 0, 4, 0);  // giảm insets
 
         lblLanguageTitle = new JLabel();
         lblLanguageTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
@@ -70,9 +70,9 @@ public class SystemConfigPanel extends JPanel {
         configCard.add(btnSaveLanguage, gbc);
 
         separator = new JSeparator();
-        gbc.gridy = 4; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.insets = new Insets(18, 0, 18, 0);
+        gbc.gridy = 4; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.insets = new Insets(12, 0, 12, 0);  // giảm khoảng cách
         configCard.add(separator, gbc);
-        gbc.insets = new Insets(6, 0, 6, 0);
+        gbc.insets = new Insets(4, 0, 4, 0);
 
         lblSizeTitle = new JLabel();
         lblSizeTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
@@ -110,8 +110,7 @@ public class SystemConfigPanel extends JPanel {
         if (rbEnglish != null) rbEnglish.setForeground(ThemeManager.getColor("textPrimary"));
         if (btnSaveLanguage != null) {
             btnSaveLanguage.setBackground(ThemeManager.getColor("accent"));
-            // Ensure high contrast text on accent button
-            btnSaveLanguage.setForeground(ThemeManager.getColor("bg"));
+            btnSaveLanguage.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         }
         if (lblSizeTitle != null) lblSizeTitle.setForeground(ThemeManager.getColor("accent"));
         if (lblSizeHint != null) lblSizeHint.setForeground(ThemeManager.getColor("textPrimary"));
@@ -121,8 +120,7 @@ public class SystemConfigPanel extends JPanel {
         }
         if (btnSaveSize != null) {
             btnSaveSize.setBackground(ThemeManager.getColor("accent"));
-            // Ensure high contrast text on accent button
-            btnSaveSize.setForeground(ThemeManager.getColor("bg"));
+            btnSaveSize.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         }
         if (separator != null) separator.setForeground(ThemeManager.getColor("border"));
     }
@@ -154,23 +152,12 @@ public class SystemConfigPanel extends JPanel {
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(BorderFactory.createEmptyBorder(8, 22, 8, 22));
+        btn.setBorder(BorderFactory.createEmptyBorder(6, 20, 6, 20));  // giảm chiều cao nút
     }
 
-    public void updateResponsiveLayout(boolean isVN, int fluidWidth) {
+    public void updateResponsiveLayout(boolean isVN) {
         this.isVietnamese = isVN;
         int currentSizeIndex = comboWindowSize.getSelectedIndex();
-
-        setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
-        if (configCard != null) {
-            configCard.setPreferredSize(new Dimension(fluidWidth, 440));
-            configCard.setMaximumSize(new Dimension(fluidWidth, 440));
-            configCard.setMinimumSize(new Dimension(fluidWidth, 440));
-        }
-        if (comboWindowSize != null) {
-            comboWindowSize.setPreferredSize(new Dimension(fluidWidth - 52, 40));
-            comboWindowSize.setMaximumSize(new Dimension(fluidWidth - 52, 40));
-        }
 
         if (isVN) {
             lblLanguageTitle.setText("Ngôn ngữ hiển thị");

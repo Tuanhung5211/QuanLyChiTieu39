@@ -41,6 +41,7 @@ public class DashboardPanel extends JPanel implements Observer {
     private JTextField txtSearch;
     private JComboBox<String> cmbFilter;
     private JButton btnAdd, btnPrevMonth, btnNextMonth;
+    private JButton btnCalendar;   // <-- THÊM NÚT LỊCH
 
     // =====================================================================
     // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC
@@ -156,7 +157,29 @@ public class DashboardPanel extends JPanel implements Observer {
         cmbFilter.addActionListener(e -> refreshData());
         filterBar.add(cmbFilter);
 
+        // --- NÚT LỊCH ---
+        btnCalendar = new JButton("📅");
+        btnCalendar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+        btnCalendar.setToolTipText(isVietnamese ? "Xem lịch giao dịch" : "Transaction Calendar");
+        btnCalendar.setFocusPainted(false);
+        btnCalendar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnCalendar.addActionListener(e -> openCalendarDialog());
+        filterBar.add(btnCalendar);
+
         return filterBar;
+    }
+
+    private void openCalendarDialog() {
+        // Tạo dialog không chặn (modeless)
+        JDialog calendarDialog = new JDialog(mainFrame, isVietnamese ? "Lịch giao dịch" : "Transaction Calendar", false);
+        calendarDialog.setSize(850, 600);
+        calendarDialog.setLocationRelativeTo(this);
+
+        CalendarPanel calendarPanel = new CalendarPanel(mainFrame, financeService, budgetManager);
+        calendarPanel.applyTheme(); // áp dụng theme ngay
+
+        calendarDialog.getContentPane().add(calendarPanel, BorderLayout.CENTER);
+        calendarDialog.setVisible(true);
     }
 
     private JPanel createTransactionRow(Transaction t, DateTimeFormatter dateTimeFormatter) {
@@ -361,6 +384,7 @@ public class DashboardPanel extends JPanel implements Observer {
             cmbFilter.setModel(new DefaultComboBoxModel<>(isVN ? new String[]{"Tất cả", "Thu nhập", "Chi tiêu"} : new String[]{"All", "Income", "Expense"}));
             if (idx >= 0) cmbFilter.setSelectedIndex(idx);
         }
+        if (btnCalendar != null) btnCalendar.setToolTipText(isVN ? "Xem lịch giao dịch" : "Transaction Calendar");
         if (lblIncomeTitle != null) lblIncomeTitle.setText(isVN ? "Tổng thu nhập" : "Total Income");
         if (lblExpenseTitle != null) lblExpenseTitle.setText(isVN ? "Tổng chi tiêu" : "Total Expense");
         if (lblBalanceTitle != null) lblBalanceTitle.setText(isVN ? "Số dư hiện tại" : "Balance");
@@ -382,11 +406,10 @@ public class DashboardPanel extends JPanel implements Observer {
     public void applyTheme() {
         ThemeManager.applyThemeRecursively(this);
 
-        // Áp dụng màu cho các component đặc thù không tự quét được
         for (Component comp : getComponents()) {
             if (comp instanceof JPanel && "headerPanel".equals(comp.getName())) {
                 comp.setBackground(ThemeManager.getColor("surface"));
-                ((JPanel) comp).setOpaque(true); // 👉 ĐÃ SỬA LỖI Ở ĐÂY: Thêm ép kiểu (JPanel)
+                ((JPanel) comp).setOpaque(true);
             }
         }
 
@@ -422,9 +445,17 @@ public class DashboardPanel extends JPanel implements Observer {
             btnAdd.setForeground(ThemeManager.getColor("bg"));
         }
 
+        // Nút lịch
+        if (btnCalendar != null) {
+            btnCalendar.setBackground(ThemeManager.getColor("surface"));
+            btnCalendar.setForeground(ThemeManager.getColor("textPrimary"));
+            btnCalendar.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
+        }
+
         refreshData();
     }
+
     public void updateCalendarLanguage(boolean isVN) {
-        // Bỏ trống vì giao diện Dashboard cũ không sử dụng CalendarPanel
+        // không cần dùng trong dashboard này, nhưng có thể dùng để đồng bộ sau này
     }
 }

@@ -55,7 +55,6 @@ public class AddTransactionDialog extends JDialog {
 
         loadCategoriesAsync();
 
-        // 🔥 Áp dụng ẩn thanh cuộn & tăng tốc độ cuộn
         ThemeManager.applyThemeRecursively(this);
     }
 
@@ -113,7 +112,19 @@ public class AddTransactionDialog extends JDialog {
         centerPanel.setOpaque(false);
 
         centerPanel.add(createLabel(isVietnamese ? "Số tiền (VND)" : "Amount (VND)"));
-        txtAmount = new JTextField();
+
+        txtAmount = new JTextField() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        txtAmount.setOpaque(false);
         styleTextField(txtAmount, "0");
         txtAmount.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         txtAmount.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -175,7 +186,7 @@ public class AddTransactionDialog extends JDialog {
         });
 
         JScrollPane scrollNote = new JScrollPane(txtNote);
-        scrollNote.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
+        scrollNote.setBorder(new javax.swing.border.LineBorder(ThemeManager.getColor("border"), 1, true));
         scrollNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
         scrollNote.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(scrollNote);
@@ -346,12 +357,13 @@ public class AddTransactionDialog extends JDialog {
         lblIcon.setPreferredSize(new Dimension(48, 48));
         lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
 
+        // SỬA MÀU CHỮ EMOJI
         if (selectedCategory != null && selectedCategory.getId().equals(c.getId())) {
             lblIcon.setBackground(ThemeManager.getColor("accent"));
-            lblIcon.setForeground(ThemeManager.getColor("bg"));
+            lblIcon.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         } else {
             lblIcon.setBackground(ThemeManager.getColor("input"));
-            lblIcon.setForeground(ThemeManager.getColor("bg"));
+            lblIcon.setForeground(ThemeManager.getColor("textPrimary"));  // đổi từ "bg" sang "textPrimary"
         }
 
         JLabel lblName = new JLabel(c.getName(), SwingConstants.CENTER);
@@ -441,7 +453,7 @@ public class AddTransactionDialog extends JDialog {
         tf.setCaretColor(ThemeManager.getColor("accent"));
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         tf.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
+                new javax.swing.border.LineBorder(ThemeManager.getColor("border"), 1, true),
                 BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
         tf.setHorizontalAlignment(JTextField.CENTER);

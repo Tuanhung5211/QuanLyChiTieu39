@@ -42,7 +42,6 @@ public class SettingsPanel extends JPanel {
         applyTheme();
     }
 
-    // ===================== KHỞI TẠO GIAO DIỆN =====================
     private void initComponents() {
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
@@ -99,31 +98,31 @@ public class SettingsPanel extends JPanel {
         subContentPanel = new JPanel(subCardLayout);
         subContentPanel.setOpaque(false);
 
-        subContentPanel.add(createResponsiveWrapper(accountSettingsPanel), "account");
-        subContentPanel.add(createResponsiveWrapper(systemConfigPanel), "config");
-        subContentPanel.add(createResponsiveWrapper(categoryManagerPanel), "category");
-        subContentPanel.add(createResponsiveWrapper(themePanel), "theme");
+        // Đặt panel vào NORTH để không bị giãn dọc
+        subContentPanel.add(wrapInNorthPanel(accountSettingsPanel), "account");
+        subContentPanel.add(wrapInNorthPanel(systemConfigPanel), "config");
+        subContentPanel.add(wrapInNorthPanel(categoryManagerPanel), "category");
+        subContentPanel.add(wrapInNorthPanel(themePanel), "theme");
 
-        bodyContainer.add(subContentPanel, BorderLayout.CENTER);
-        add(bodyContainer, BorderLayout.CENTER);
-    }
-
-    private JScrollPane createResponsiveWrapper(JPanel targetPanel) {
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setOpaque(false);
-        wrapper.add(targetPanel, BorderLayout.NORTH);
-
-        JScrollPane scrollPane = new JScrollPane(wrapper);
+        JScrollPane scrollPane = new JScrollPane(subContentPanel);
         scrollPane.setBorder(null);
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        return scrollPane;
+
+        bodyContainer.add(scrollPane, BorderLayout.CENTER);
+        add(bodyContainer, BorderLayout.CENTER);
     }
 
-    // ===================== PANEL GIAO DIỆN (THEME) =====================
+    // Panel nằm ở NORTH -> không bị giãn
+    private JPanel wrapInNorthPanel(JPanel panel) {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.add(panel, BorderLayout.NORTH);
+        return wrapper;
+    }
+
     private JPanel createThemePanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
@@ -177,7 +176,7 @@ public class SettingsPanel extends JPanel {
                 ThemeCustomizerDialog dialog = new ThemeCustomizerDialog(
                         (Frame) SwingUtilities.getWindowAncestor(this), isVietnamese);
                 dialog.setVisible(true);
-                refreshThemeUI(themePanel); // cập nhật lại preview sau khi đóng dialog
+                refreshThemeUI(themePanel);
             }
         });
 
@@ -201,7 +200,6 @@ public class SettingsPanel extends JPanel {
         previewPanel.add(createColorBox("accent", "Accent"));
 
         panel.add(previewPanel, gbc);
-
         return panel;
     }
 
@@ -214,15 +212,12 @@ public class SettingsPanel extends JPanel {
         JLabel lbl = new JLabel(name, SwingConstants.CENTER);
         lbl.setForeground(ThemeManager.getColor("textPrimary"));
         box.add(lbl, BorderLayout.CENTER);
-
         return box;
     }
 
     private void refreshThemeUI(JPanel panel) {
         if (panel == null) return;
-        // Áp dụng theme đệ quy cho toàn bộ panel theme
         ThemeManager.applyThemeRecursively(panel);
-        // Sau đó cập nhật lại các ô màu preview để đảm bảo chính xác
         for (Component comp : panel.getComponents()) {
             if (comp instanceof JPanel && "previewPanel".equals(comp.getName())) {
                 for (Component colorComp : ((JPanel) comp).getComponents()) {
@@ -243,7 +238,6 @@ public class SettingsPanel extends JPanel {
             }
         }
 
-        // Cập nhật combobox và nút
         if (cmbThemePreset != null) {
             cmbThemePreset.setBackground(ThemeManager.getColor("input"));
             cmbThemePreset.setForeground(ThemeManager.getColor("textPrimary"));
@@ -251,14 +245,13 @@ public class SettingsPanel extends JPanel {
         }
         if (btnCustom != null) {
             btnCustom.setBackground(ThemeManager.getColor("accent"));
-            btnCustom.setForeground(ThemeManager.getColor("bg"));
+            btnCustom.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         }
 
         panel.revalidate();
         panel.repaint();
     }
 
-    // ===================== ĐIỀU HƯỚNG TAB =====================
     private JButton createSubNavButton(String text, boolean isActive) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -303,16 +296,12 @@ public class SettingsPanel extends JPanel {
         }
     }
 
-    // ===================== CẬP NHẬT NGÔN NGỮ & THEME =====================
     public void applyTheme() {
-        // Áp dụng theme đệ quy cho toàn bộ SettingsPanel
         ThemeManager.applyThemeRecursively(this);
 
-        // Cập nhật màu cho các phần tử đặc biệt (tab, tiêu đề)
         if (lblMainTitle != null) lblMainTitle.setForeground(ThemeManager.getColor("textPrimary"));
         updateSubNavButtonsTheme();
 
-        // Áp dụng cho các panel con
         if (accountSettingsPanel != null) accountSettingsPanel.applyTheme();
         if (systemConfigPanel != null) systemConfigPanel.applyTheme();
         if (categoryManagerPanel != null) categoryManagerPanel.applyTheme();
@@ -327,12 +316,6 @@ public class SettingsPanel extends JPanel {
     public void updateLanguageText() {
         if (mainFrame != null) this.isVietnamese = mainFrame.isVietnamese();
 
-        int panelWidth = this.getWidth();
-        if (panelWidth <= 0 && mainFrame != null) panelWidth = mainFrame.getWidth() - 240;
-        int fluidWidth = panelWidth - 220 - 25 - 70;
-        if (fluidWidth < 500) fluidWidth = 560;
-
-        // Đặt lại văn bản cho các thành phần
         if (isVietnamese) {
             lblMainTitle.setText("Cài đặt hệ thống");
             btnAccountTab.setText("Thông tin cá nhân");
@@ -344,7 +327,6 @@ public class SettingsPanel extends JPanel {
             if (lblPreview != null) lblPreview.setText("Xem trước màu sắc:");
             if (btnCustom != null) btnCustom.setText("Tùy chỉnh màu (Premium)");
 
-            // Cập nhật combobox theme
             if (cmbThemePreset != null) {
                 java.awt.event.ItemListener[] listeners = cmbThemePreset.getItemListeners();
                 for (java.awt.event.ItemListener l : listeners) cmbThemePreset.removeItemListener(l);
@@ -389,27 +371,22 @@ public class SettingsPanel extends JPanel {
             }
         }
 
-        // Cập nhật responsive cho các panel con
-        if (accountSettingsPanel != null) accountSettingsPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
-        if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
-        if (categoryManagerPanel != null) categoryManagerPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
+        if (accountSettingsPanel != null) accountSettingsPanel.updateResponsiveLayout(isVietnamese);
+        if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVietnamese);
+        if (categoryManagerPanel != null) categoryManagerPanel.updateResponsiveLayout(isVietnamese);
     }
 
     public void updateLanguageAndResponsive(boolean isVN, int targetFrameWidth) {
         this.isVietnamese = isVN;
-        int panelWidth = targetFrameWidth - 240;
-        int fluidWidth = panelWidth - 220 - 25 - 70;
-        if (fluidWidth < 500) fluidWidth = 560;
-
         updateLanguageText();
 
         if (accountSettingsPanel != null) {
-            accountSettingsPanel.updateResponsiveLayout(isVN, fluidWidth);
+            accountSettingsPanel.updateResponsiveLayout(isVN);
             accountSettingsPanel.refreshData();
         }
-        if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVN, fluidWidth);
+        if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVN);
         if (categoryManagerPanel != null) {
-            categoryManagerPanel.updateResponsiveLayout(isVN, fluidWidth);
+            categoryManagerPanel.updateResponsiveLayout(isVN);
             categoryManagerPanel.refreshCategories();
         }
         if (themePanel != null) refreshThemeUI(themePanel);

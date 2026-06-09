@@ -716,4 +716,56 @@ public class DatabaseUtil {
             System.out.println("✅ Đã cấp quyền admin cho user: admin");
         }
     }
+    // Hàm lấy danh sách giao dịch theo khoảng thời gian
+    public static List<Transaction> getTransactionsByDateRange(String userId, java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        List<Transaction> list = new ArrayList<>();
+
+        // Đảm bảo startDate luôn nhỏ hơn hoặc bằng endDate
+        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+            java.time.LocalDate temp = startDate;
+            startDate = endDate;
+            endDate = temp;
+        }
+
+        // Câu truy vấn SQL lấy giao dịch trong khoảng ngày
+        String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
+                "FROM transactions t JOIN categories c ON t.category_id = c.id " +
+                "WHERE t.user_id = ? AND DATE(t.date_time) >= ? AND DATE(t.date_time) <= ? " +
+                "ORDER BY t.date_time DESC";
+
+        try (Connection conn = getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setString(1, userId);
+            pstmt.setString(2, startDate.toString());
+            pstmt.setString(3, endDate.toString());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                // Tùy thuộc vào code cũ của bạn, hàm map dữ liệu từ ResultSet sang List<Transaction>
+                // có thể tên là mapTransactions(rs) hoặc bạn dùng vòng lặp rs.next()
+                // Dưới đây là cách dùng vòng lặp thủ công an toàn nhất:
+                while (rs.next()) {
+                    String id = rs.getString("id");
+                    double amount = rs.getDouble("amount");
+                    String note = rs.getString("note");
+                    java.time.LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
+
+                    // Lấy thông tin Category
+                    String catId = rs.getString("category_id");
+                    String catName = rs.getString("category_name");
+                    String typeStr = rs.getString("category_type");
+                    com.expensemanager.entity.TransactionType type = com.expensemanager.entity.TransactionType.valueOf(typeStr);
+                    com.expensemanager.entity.Category category = new com.expensemanager.entity.Category(catId, catName, type);
+
+                    Transaction t = new Transaction(id, amount, type, category, note);
+                    t.setDateTime(dateTime);
+                    list.add(t);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi khi tải giao dịch theo khoảng ngày: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

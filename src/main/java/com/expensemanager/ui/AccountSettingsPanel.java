@@ -31,16 +31,16 @@ public class AccountSettingsPanel extends JPanel {
         setOpaque(false);
 
         initComponents();
-        updateResponsiveLayout(isVietnamese, 560);
+        updateResponsiveLayout(isVietnamese);
         refreshData();
         applyTheme();
     }
 
     private void initComponents() {
-        profileCard = new JPanel(new BorderLayout(0, 15));
+        profileCard = new JPanel(new BorderLayout(0, 10));
         profileCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(20, 20, 20, 20)
+                BorderFactory.createEmptyBorder(15, 20, 15, 20)
         ));
         profileCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -52,7 +52,7 @@ public class AccountSettingsPanel extends JPanel {
         pForm.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(8, 8, 8, 8);
+        gbc.insets = new Insets(5, 8, 5, 8);
 
         // Nickname
         gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0.25;
@@ -83,20 +83,20 @@ public class AccountSettingsPanel extends JPanel {
         pForm.add(cmbGender, gbc);
 
         // Save
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.insets = new Insets(15, 8, 5, 8);
+        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.insets = new Insets(12, 8, 3, 8);
         btnUpdateProfile = new JButton(); stylePrimaryButton(btnUpdateProfile);
         btnUpdateProfile.addActionListener(e -> updateProfile());
         pForm.add(btnUpdateProfile, gbc);
 
         // Change password
-        gbc.gridy = 4;
+        gbc.gridy = 4; gbc.insets = new Insets(3, 8, 3, 8);
         btnOpenChangePass = new JButton();
         btnOpenChangePass.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btnOpenChangePass.setFocusPainted(false);
         btnOpenChangePass.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnOpenChangePass.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(10, 0, 10, 0)
+                BorderFactory.createEmptyBorder(8, 0, 8, 0)
         ));
         btnOpenChangePass.addActionListener(e -> openChangePasswordDialog());
         pForm.add(btnOpenChangePass, gbc);
@@ -109,7 +109,7 @@ public class AccountSettingsPanel extends JPanel {
         btnDeleteAccount.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnDeleteAccount.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("danger"), 1, true),
-                BorderFactory.createEmptyBorder(10, 0, 10, 0)
+                BorderFactory.createEmptyBorder(8, 0, 8, 0)
         ));
         btnDeleteAccount.addActionListener(e -> deleteAccount());
         btnDeleteAccount.addMouseListener(new MouseAdapter() {
@@ -135,7 +135,7 @@ public class AccountSettingsPanel extends JPanel {
             profileCard.setBackground(ThemeManager.getColor("surface"));
             profileCard.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                    BorderFactory.createEmptyBorder(20, 20, 20, 20)
+                    BorderFactory.createEmptyBorder(15, 20, 15, 20)
             ));
         }
         if (lblProfileTitle != null) lblProfileTitle.setForeground(ThemeManager.getColor("accent"));
@@ -158,8 +158,7 @@ public class AccountSettingsPanel extends JPanel {
         }
         if (btnUpdateProfile != null) {
             btnUpdateProfile.setBackground(ThemeManager.getColor("accent"));
-            // Use white text to improve contrast on dark accent
-            btnUpdateProfile.setForeground(ThemeManager.getColor("bg"));
+            btnUpdateProfile.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         }
         if (btnOpenChangePass != null) {
             btnOpenChangePass.setBackground(ThemeManager.getColor("input"));
@@ -353,7 +352,7 @@ public class AccountSettingsPanel extends JPanel {
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         tf.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border")),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+                BorderFactory.createEmptyBorder(8, 15, 8, 15)
         ));
     }
 
@@ -361,20 +360,12 @@ public class AccountSettingsPanel extends JPanel {
         btn.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btn.setFocusPainted(false);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        btn.setBorder(BorderFactory.createEmptyBorder(8, 0, 8, 0));
     }
 
-    public void updateResponsiveLayout(boolean isVN, int fluidWidth) {
+    public void updateResponsiveLayout(boolean isVN) {
         this.isVietnamese = isVN;
         int currentGenderIndex = cmbGender.getSelectedIndex();
-
-        setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
-
-        if (profileCard != null) {
-            profileCard.setPreferredSize(new Dimension(fluidWidth, 450));
-            profileCard.setMaximumSize(new Dimension(fluidWidth, 450));
-            profileCard.setMinimumSize(new Dimension(fluidWidth, 450));
-        }
 
         if (isVN) {
             lblProfileTitle.setText("Thông tin cá nhân");

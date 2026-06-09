@@ -72,7 +72,7 @@ public class BudgetPanel extends JPanel implements Observer {
         leftColumn.add(lblFormTitle, BorderLayout.NORTH);
 
         JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setOpaque(false);  // Đảm bảo không có nền trắng
+        formPanel.setOpaque(false);
         formPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
                 BorderFactory.createEmptyBorder(20, 20, 25, 20)
@@ -391,7 +391,6 @@ public class BudgetPanel extends JPanel implements Observer {
         cb.setForeground(ThemeManager.getColor("textPrimary"));
         cb.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cb.setOpaque(true);
-        // Viền đồng bộ theme
         cb.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1),
                 BorderFactory.createEmptyBorder(2, 6, 2, 6)
@@ -402,12 +401,10 @@ public class BudgetPanel extends JPanel implements Observer {
         spinner.setBackground(ThemeManager.getColor("input"));
         spinner.setForeground(ThemeManager.getColor("textPrimary"));
         spinner.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        // Viền ngoài đồng bộ theme
         spinner.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1),
                 BorderFactory.createEmptyBorder(2, 2, 2, 2)
         ));
-        // Style text field bên trong
         JComponent editor = spinner.getEditor();
         if (editor instanceof JSpinner.DefaultEditor) {
             JSpinner.DefaultEditor defaultEditor = (JSpinner.DefaultEditor) editor;
@@ -440,16 +437,15 @@ public class BudgetPanel extends JPanel implements Observer {
 
         if (btnSaveBudget != null) {
             btnSaveBudget.setBackground(ThemeManager.getColor("accent"));
-            btnSaveBudget.setForeground(ThemeManager.getColor("bg"));
+            // SỬA: Dùng màu tương phản thay vì cứng "bg"
+            btnSaveBudget.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         }
 
-        // Cập nhật lại style (bao gồm viền) cho các combobox & spinner
         if (cmbScope != null) styleComboBox(cmbScope);
         if (cmbCategory != null) styleComboBox(cmbCategory);
         if (cmbPeriod != null) styleComboBox(cmbPeriod);
         if (spinReminderThreshold != null) styleSpinner(spinReminderThreshold);
 
-        // Cập nhật màu cho các nhãn phụ
         for (Component c : this.getComponents()) {
             updateLabelsTheme(c);
         }
@@ -473,14 +469,12 @@ public class BudgetPanel extends JPanel implements Observer {
         if (lblListTitle != null) lblListTitle.setText(isVN ? "TIẾN TRÌNH HẠN MỨC HIỆN TẠI" : "CURRENT BUDGET PROGRESS");
         if (btnSaveBudget != null) btnSaveBudget.setText(isVN ? "Kích hoạt Ngân sách" : "Activate Budget");
 
-        // Cập nhật label form
         if (lblScope != null) lblScope.setText(isVN ? "Phạm vi áp dụng:" : "Scope:");
         if (lblCategory != null) lblCategory.setText(isVN ? "Danh mục:" : "Category:");
         if (lblPeriod != null) lblPeriod.setText(isVN ? "Kỳ hạn:" : "Period:");
         if (lblAmount != null) lblAmount.setText(isVN ? "Số tiền (VND):" : "Amount (VND):");
         if (lblReminder != null) lblReminder.setText(isVN ? "Ngưỡng nhắc nhở (%):" : "Reminder Threshold (%):");
 
-        // Cập nhật nội dung combobox
         if (cmbScope != null) {
             int sel = cmbScope.getSelectedIndex();
             cmbScope.setModel(new DefaultComboBoxModel<>(isVN ? new String[]{"Tổng thể", "Theo danh mục"} : new String[]{"Overall", "By Category"}));

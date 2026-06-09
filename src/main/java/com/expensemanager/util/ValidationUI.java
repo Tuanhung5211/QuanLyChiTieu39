@@ -7,63 +7,73 @@ import javax.swing.border.Border;
 import java.awt.*;
 
 public class ValidationUI {
-    private static Border defaultBorder;
-    private static final int ERROR_THICKNESS = 2;
+    // Tăng độ dày nếu muốn rõ nét hơn, chuẩn Material thường để 1px bo góc nhẹ
+    private static final int ERROR_THICKNESS = 1;
 
-    // Khởi tạo border mặc định từ một JTextField đã được style
-    public static void initDefaultBorder(JTextField sample) {
-        if (sample != null && sample.getBorder() != null) {
-            defaultBorder = sample.getBorder();
-        }
-    }
-
-    // Lấy border mặc định đồng bộ theo ThemeManager
-    private static Border getDefaultBorder() {
-        if (defaultBorder != null) return defaultBorder;
+    // Viền mặc định: Rộng rãi, thoáng đãng, bo tròn (true)
+    public static Border getDefaultBorder() {
+        Color borderColor = ThemeManager.getColor("border");
         return BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ThemeManager.getColor("border")),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+                BorderFactory.createLineBorder(borderColor, 1, true),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16) // Padding Google: rộng và phẳng
         );
     }
 
-    // Tạo border lỗi đồng bộ theo màu "danger" của ThemeManager
-    private static Border createErrorBorder() {
-        Color errorColor = ThemeManager.getColor("danger");
+    // Thiết lập viền khởi tạo (Lấy từ màu Theme)
+    public static void initDefaultBorder(JTextField field) {
+        if (field != null) {
+            field.setBorder(getDefaultBorder());
+        }
+    }
 
-        if (defaultBorder != null && defaultBorder instanceof javax.swing.border.CompoundBorder) {
-            javax.swing.border.CompoundBorder cb = (javax.swing.border.CompoundBorder) defaultBorder;
+    // Viền báo lỗi: Màu đỏ danger của hệ thống
+    public static Border createErrorBorder() {
+        Color errorColor = ThemeManager.getColor("danger");
+        return BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(errorColor, ERROR_THICKNESS, true),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)
+        );
+    }
+
+    public static Border createErrorBorder(JComboBox<?> cb) {
+        Color errorColor = ThemeManager.getColor("danger");
+        if (cb.getBorder() instanceof javax.swing.border.CompoundBorder) {
+            javax.swing.border.CompoundBorder current = (javax.swing.border.CompoundBorder) cb.getBorder();
             return BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(errorColor, ERROR_THICKNESS),
-                    cb.getInsideBorder()
+                    BorderFactory.createLineBorder(errorColor, ERROR_THICKNESS, true),
+                    current.getInsideBorder()
             );
         }
         return BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(errorColor, ERROR_THICKNESS),
-                BorderFactory.createEmptyBorder(9, 14, 9, 14)
+                BorderFactory.createLineBorder(errorColor, ERROR_THICKNESS, true),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)
         );
     }
 
-    // Set border lỗi cho field
     public static void setErrorBorder(JTextField field) {
         if (field != null) {
             field.setBorder(createErrorBorder());
         }
     }
 
-    // Reset border về mặc định
     public static void resetBorder(JTextField field) {
         if (field != null) {
             field.setBorder(getDefaultBorder());
         }
     }
 
-    // Tự động xóa lỗi khi người dùng gõ hoặc focus vào field
+    // Tự động xóa lỗi khi người dùng gõ hoặc click vào ô
     public static void addAutoReset(JTextField field) {
         if (field == null) return;
         field.addFocusListener(new java.awt.event.FocusAdapter() {
             @Override
             public void focusGained(java.awt.event.FocusEvent e) {
                 resetBorder(field);
+                field.setBackground(ThemeManager.getColor("bg")); // Hiệu ứng sáng nền khi focus
+            }
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                field.setBackground(ThemeManager.getColor("inputBg")); // Trả về màu nền input
             }
         });
         field.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {

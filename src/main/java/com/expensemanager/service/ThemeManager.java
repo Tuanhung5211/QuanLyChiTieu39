@@ -1,8 +1,7 @@
 package com.expensemanager.service;
 
 import javax.swing.*;
-import javax.swing.text.JTextComponent;
-import java.awt.*;
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,12 +25,21 @@ public class ThemeManager {
     public static Color getColor(String key) {
         return currentTheme.getOrDefault(key, Color.RED);
     }
+    // =========================================================================
+    // HÀM LẤY MÀU TƯƠNG PHẢN (Hỗ trợ các class khác gọi đến)
+    // =========================================================================
+    public static Color getContrastColor(Color bg) {
+        if (bg == null) return Color.BLACK;
+        // Tính toán độ sáng của màu nền được truyền vào
+        double luminance = (0.299 * bg.getRed() + 0.587 * bg.getGreen() + 0.114 * bg.getBlue()) / 255.0;
 
-    public static Color getContrastColor(Color background) {
-        double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue()) / 255;
-        return luminance > 0.5 ? Color.BLACK : Color.WHITE;
+        // Nếu nền tối (< 0.5) -> Trả về chữ trắng/sáng. Ngược lại trả về chữ xám đen (Material)
+        return luminance < 0.5 ? new Color(245, 245, 245) : new Color(32, 33, 36);
     }
 
+    // =========================================================================
+    // HÀM TỰ ĐỘNG TÍNH TOÁN VÀ ĐIỀU CHỈNH MÀU SẮC (CÂN BẰNG TƯƠNG PHẢN)
+    // =========================================================================
     private static void finalizeThemeColors(Color bg, Color surface, Color accent) {
         currentTheme.put("bg", bg);
         currentTheme.put("surface", surface);
@@ -41,19 +49,19 @@ public class ThemeManager {
         isDarkMode = luminance < 0.5;
 
         if (isDarkMode) {
-            currentTheme.put("textPrimary", new Color(240, 240, 240));
-            currentTheme.put("textSecondary", new Color(160, 160, 160));
+            currentTheme.put("textPrimary", new Color(245, 245, 245));
+            currentTheme.put("textSecondary", new Color(170, 170, 170));
             currentTheme.put("border", surface.brighter().brighter());
-            currentTheme.put("inputBg", bg.brighter().brighter());
-            currentTheme.put("input", bg.brighter().brighter());
+            currentTheme.put("inputBg", bg.brighter());
+            currentTheme.put("input", bg.brighter());
             currentTheme.put("progressTrack", new Color(65, 65, 65));
         } else {
-            currentTheme.put("textPrimary", new Color(30, 30, 30));
-            currentTheme.put("textSecondary", new Color(100, 100, 100));
-            currentTheme.put("border", surface.darker().darker());
-            currentTheme.put("inputBg", surface.darker());
-            currentTheme.put("input", surface.darker());
-            currentTheme.put("progressTrack", new Color(210, 210, 210));
+            currentTheme.put("textPrimary", new Color(32, 33, 36)); // Màu đen xám chuẩn Google
+            currentTheme.put("textSecondary", new Color(95, 99, 104)); // Màu xám chuẩn Google
+            currentTheme.put("border", new Color(218, 220, 224)); // Viền xám nhạt Google
+            currentTheme.put("inputBg", new Color(241, 243, 244)); // Nền ô input Google
+            currentTheme.put("input", new Color(241, 243, 244));
+            currentTheme.put("progressTrack", new Color(232, 234, 237));
         }
 
         putCommonColors();
@@ -67,7 +75,7 @@ public class ThemeManager {
 
     public static void applyLightTheme() {
         currentPreset = ThemePreset.LIGHT;
-        finalizeThemeColors(new Color(245, 245, 245), new Color(255, 255, 255), new Color(255, 152, 0));
+        finalizeThemeColors(new Color(250, 250, 250), new Color(255, 255, 255), new Color(26, 115, 232)); // Xanh Google
     }
 
     public static void applyOceanTheme() {
@@ -97,26 +105,26 @@ public class ThemeManager {
 
     public static void applyMaterialLightTheme() {
         currentPreset = ThemePreset.MATERIAL_LIGHT;
-        finalizeThemeColors(new Color(255, 255, 255), new Color(242, 242, 242), new Color(33, 150, 243));
+        finalizeThemeColors(new Color(255, 255, 255), new Color(248, 249, 250), new Color(33, 150, 243));
     }
 
     private static void putCommonColors() {
-        currentTheme.put("success", new Color(76, 175, 80));
-        currentTheme.put("danger", new Color(244, 67, 54));
-        currentTheme.put("warning", new Color(255, 152, 0));
-        currentTheme.put("chart0", new Color(46, 204, 113));
-        currentTheme.put("chart1", new Color(52, 152, 219));
-        currentTheme.put("chart2", new Color(155, 89, 182));
-        currentTheme.put("chart3", new Color(230, 126, 34));
-        currentTheme.put("chart4", new Color(241, 196, 15));
-        currentTheme.put("chart5", new Color(231, 76, 60));
-        currentTheme.put("chart6", new Color(26, 188, 156));
-        currentTheme.put("chart7", new Color(149, 165, 166));
-        currentTheme.put("chart8", new Color(243, 156, 18));
+        currentTheme.put("success", new Color(52, 168, 83)); // Xanh lá Google
+        currentTheme.put("danger", new Color(234, 67, 53)); // Đỏ Google
+        currentTheme.put("warning", new Color(251, 188, 5)); // Vàng Google
+
+        currentTheme.put("chart0", new Color(66, 133, 244)); // Xanh lam Google
+        currentTheme.put("chart1", new Color(234, 67, 53));  // Đỏ Google
+        currentTheme.put("chart2", new Color(251, 188, 5));  // Vàng Google
+        currentTheme.put("chart3", new Color(52, 168, 83));  // Xanh lá Google
+        currentTheme.put("chart4", new Color(255, 112, 67));
+        currentTheme.put("chart5", new Color(171, 71, 188));
+        currentTheme.put("chart6", new Color(38, 166, 154));
+        currentTheme.put("chart7", new Color(141, 110, 99));
+        currentTheme.put("chart8", new Color(120, 144, 156));
     }
 
     public static void setTheme(ThemePreset preset) {
-        forceThemeUI();
         switch (preset) {
             case DARK: applyDarkTheme(); break;
             case LIGHT: applyLightTheme(); break;
@@ -129,21 +137,11 @@ public class ThemeManager {
             case CUSTOM: currentPreset = ThemePreset.CUSTOM; break;
             default: applyDarkTheme(); break;
         }
-
-        for (Window window : Window.getWindows()) {
-            applyToWindow(window);
+        forceThemeUI();
+        for (java.awt.Window window : java.awt.Window.getWindows()) {
+            javax.swing.SwingUtilities.updateComponentTreeUI(window);
+            window.repaint();
         }
-    }
-
-    public static void applyToWindow(Window window) {
-        if (window == null) return;
-        if (window instanceof RootPaneContainer) {
-            applyThemeRecursively(((RootPaneContainer) window).getContentPane());
-        } else {
-            applyThemeRecursively(window);
-        }
-        SwingUtilities.updateComponentTreeUI(window);
-        window.repaint();
     }
 
     public static void setCustomColor(String key, Color color) {
@@ -155,104 +153,88 @@ public class ThemeManager {
     public static ThemePreset getCurrentPreset() { return currentPreset; }
     public static boolean isDark() { return isDarkMode; }
     public static void addThemeListener(Runnable listener) { listeners.add(listener); }
-    private static void notifyListeners() {
-        for (Runnable listener : listeners) listener.run();
-    }
+    private static void notifyListeners() { for (Runnable listener : listeners) { listener.run(); } }
 
     public static void forceThemeUI() {
         UIManager.put("Panel.background", getColor("bg"));
-        UIManager.put("Panel.foreground", getColor("textPrimary"));
         UIManager.put("Label.foreground", getColor("textPrimary"));
+
+        // Tắt viền focus (nét đứt) cực xấu của Java Swing mặc định
+        UIManager.put("Button.focus", new Color(0, 0, 0, 0));
+        UIManager.put("ToggleButton.focus", new Color(0, 0, 0, 0));
+        UIManager.put("CheckBox.focus", new Color(0, 0, 0, 0));
+        UIManager.put("TabbedPane.focus", new Color(0, 0, 0, 0));
+
         UIManager.put("Button.background", getColor("surface"));
         UIManager.put("Button.foreground", getColor("textPrimary"));
         UIManager.put("TextField.background", getColor("inputBg"));
         UIManager.put("TextField.foreground", getColor("textPrimary"));
         UIManager.put("ComboBox.background", getColor("inputBg"));
         UIManager.put("ComboBox.foreground", getColor("textPrimary"));
+
+        // Thiết kế phẳng cho Table
         UIManager.put("Table.background", getColor("surface"));
         UIManager.put("Table.foreground", getColor("textPrimary"));
-        UIManager.put("TableHeader.background", getColor("inputBg"));
-        UIManager.put("TableHeader.foreground", getColor("textPrimary"));
+        UIManager.put("Table.gridColor", getColor("border"));
+        UIManager.put("Table.showVerticalLines", false); // Tắt kẻ dọc cho thoáng giống Google
+        UIManager.put("TableHeader.background", getColor("bg")); // Header phẳng với nền
+        UIManager.put("TableHeader.foreground", getColor("textSecondary"));
+
         UIManager.put("CheckBox.background", getColor("bg"));
         UIManager.put("CheckBox.foreground", getColor("textPrimary"));
         UIManager.put("RadioButton.background", getColor("bg"));
         UIManager.put("RadioButton.foreground", getColor("textPrimary"));
-        UIManager.put("OptionPane.background", getColor("surface"));
+        UIManager.put("OptionPane.background", getColor("bg"));
         UIManager.put("OptionPane.messageForeground", getColor("textPrimary"));
     }
 
-    public static void applyThemeRecursively(Component comp) {
+    public static void applyThemeRecursively(java.awt.Component comp) {
         if (comp == null) return;
 
-        // Ẩn thanh cuộn dọc & tăng tốc độ cuộn
-        if (comp instanceof JScrollPane) {
-            JScrollPane sp = (JScrollPane) comp;
-            sp.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
-            sp.getVerticalScrollBar().setUnitIncrement(20);
-            sp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        }
-
-        if (comp instanceof JPanel || comp instanceof JViewport) {
+        if (comp instanceof javax.swing.JPanel || comp instanceof javax.swing.JScrollPane || comp instanceof javax.swing.JViewport) {
             if (comp.getName() == null || !comp.getName().startsWith("colorBox_")) {
                 comp.setBackground(getColor("bg"));
             }
         }
 
-        if (comp instanceof JTextField || comp instanceof JTextArea || comp instanceof JPasswordField) {
+        if (comp instanceof javax.swing.JTextField || comp instanceof javax.swing.JTextArea || comp instanceof javax.swing.JPasswordField) {
             comp.setBackground(getColor("inputBg"));
             comp.setForeground(getColor("textPrimary"));
-            ((JTextComponent) comp).setCaretColor(getColor("accent"));
-        } else if (comp instanceof JComboBox) {
+            ((javax.swing.text.JTextComponent) comp).setCaretColor(getColor("accent"));
+        } else if (comp instanceof javax.swing.JComboBox) {
             comp.setBackground(getColor("inputBg"));
             comp.setForeground(getColor("textPrimary"));
-        } else if (comp instanceof JSpinner) {
-            comp.setBackground(getColor("inputBg"));
-            comp.setForeground(getColor("textPrimary"));
-            JComponent editor = ((JSpinner) comp).getEditor();
-            if (editor instanceof JSpinner.DefaultEditor) {
-                JTextField tf = ((JSpinner.DefaultEditor) editor).getTextField();
-                tf.setBackground(getColor("inputBg"));
-                tf.setForeground(getColor("textPrimary"));
-                tf.setCaretColor(getColor("accent"));
-            }
         }
 
-        if (comp instanceof JTable) {
-            JTable table = (JTable) comp;
+        if (comp instanceof javax.swing.JTable) {
+            javax.swing.JTable table = (javax.swing.JTable) comp;
             table.setBackground(getColor("surface"));
             table.setForeground(getColor("textPrimary"));
             table.setGridColor(getColor("border"));
+            table.setIntercellSpacing(new java.awt.Dimension(0, 0)); // Bỏ khoảng cách ô mặc định
+            table.setRowHeight(40); // Tăng chiều cao hàng cho thoáng
             if (table.getTableHeader() != null) {
-                table.getTableHeader().setBackground(getColor("inputBg"));
-                table.getTableHeader().setForeground(getColor("textPrimary"));
+                table.getTableHeader().setBackground(getColor("bg"));
+                table.getTableHeader().setForeground(getColor("textSecondary"));
+                table.getTableHeader().setFont(new java.awt.Font("Segoe UI", java.awt.Font.BOLD, 13));
+                table.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, getColor("border")));
             }
         }
 
-        if (comp instanceof JLabel) {
+        if (comp instanceof javax.swing.JLabel) {
             if (comp.getForeground().getRGB() != getColor("accent").getRGB()) {
                 comp.setForeground(getColor("textPrimary"));
             }
         }
 
-        if (comp instanceof JCheckBox || comp instanceof JRadioButton) {
+        if (comp instanceof javax.swing.JCheckBox || comp instanceof javax.swing.JRadioButton) {
             comp.setBackground(getColor("bg"));
             comp.setForeground(getColor("textPrimary"));
-            ((JToggleButton) comp).setOpaque(false);
+            ((javax.swing.JToggleButton) comp).setOpaque(false);
         }
 
-        if (comp instanceof JButton) {
-            JButton btn = (JButton) comp;
-            Color bg = btn.getBackground();
-            if (bg != null && (bg.equals(getColor("accent")) || bg.equals(getColor("success")) ||
-                    bg.equals(getColor("danger")) || bg.equals(getColor("warning")))) {
-                btn.setForeground(getContrastColor(bg));
-            } else {
-                btn.setForeground(getColor("textPrimary"));
-            }
-        }
-
-        if (comp instanceof Container) {
-            for (Component child : ((Container) comp).getComponents()) {
+        if (comp instanceof java.awt.Container) {
+            for (java.awt.Component child : ((java.awt.Container) comp).getComponents()) {
                 applyThemeRecursively(child);
             }
         }

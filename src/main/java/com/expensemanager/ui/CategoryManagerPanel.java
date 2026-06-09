@@ -41,7 +41,6 @@ public class CategoryManagerPanel extends JPanel {
     private String selectedEmoji = "\uD83D\uDCCD";
     private int currentEmojiPage = 1;
     private final int EMOJI_PER_PAGE = 18;
-    private int currentFluidWidth = 560;
 
     private List<Category> allCategories = new ArrayList<>();
 
@@ -62,10 +61,10 @@ public class CategoryManagerPanel extends JPanel {
         setOpaque(false);
 
         initComponentsListCard();
-        add(Box.createVerticalStrut(20));
+        add(Box.createVerticalStrut(12));  // giảm khoảng cách giữa hai card
         initComponentsAddCard();
 
-        updateResponsiveLayout(isVietnamese, 560);
+        updateResponsiveLayout(isVietnamese);
         applyTheme();
 
         loadCategoriesAsync();
@@ -90,10 +89,10 @@ public class CategoryManagerPanel extends JPanel {
     }
 
     private void initComponentsListCard() {
-        listCard = new JPanel(new BorderLayout(0, 10));
+        listCard = new JPanel(new BorderLayout(0, 8));
         listCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(15, 20, 15, 20)
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)  // giảm padding
         ));
         listCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -158,7 +157,7 @@ public class CategoryManagerPanel extends JPanel {
         listCenterContainer.setLayout(new BoxLayout(listCenterContainer, BoxLayout.Y_AXIS));
         listCenterContainer.setOpaque(false);
         listCenterContainer.add(listGridWrapper);
-        listCenterContainer.add(Box.createVerticalStrut(8));
+        listCenterContainer.add(Box.createVerticalStrut(6));   // giảm khoảng cách
         listCenterContainer.add(listPaginationPanel);
         listCard.add(listCenterContainer, BorderLayout.CENTER);
 
@@ -177,7 +176,7 @@ public class CategoryManagerPanel extends JPanel {
         addCard = new JPanel(new BorderLayout());
         addCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(18, 20, 18, 20)
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)  // giảm padding
         ));
         addCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -186,11 +185,11 @@ public class CategoryManagerPanel extends JPanel {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        gbc.insets = new Insets(4, 0, 4, 0);
+        gbc.insets = new Insets(2, 0, 2, 0);   // giảm insets
 
         lblCategoryTitle = new JLabel(isVietnamese ? "Thêm danh mục mới" : "Add New Category");
         lblCategoryTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        lblCategoryTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+        lblCategoryTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
         gbc.gridx = 0; gbc.gridy = 0; pForm.add(lblCategoryTitle, gbc);
 
         lblCatNameHint = createLabel(isVietnamese ? "Tên danh mục:" : "Category Name:");
@@ -239,7 +238,7 @@ public class CategoryManagerPanel extends JPanel {
         btnSaveCategory.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnSaveCategory.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnSaveCategory.addActionListener(e -> executeAddCategory());
-        gbc.gridy = 8; gbc.insets = new Insets(12, 0, 0, 0); pForm.add(btnSaveCategory, gbc);
+        gbc.gridy = 8; gbc.insets = new Insets(8, 0, 0, 0); pForm.add(btnSaveCategory, gbc);
 
         addCard.add(pForm, BorderLayout.CENTER);
         add(addCard);
@@ -298,7 +297,9 @@ public class CategoryManagerPanel extends JPanel {
     private JPanel createCategoryListCellComponent(Category c) {
         JPanel cell = new JPanel(new BorderLayout(0, 4));
         cell.setOpaque(false);
-        cell.setPreferredSize(new Dimension(getEmojiCellWidth(), getEmojiCellHeight()));
+        int cellWidth = getEmojiCellWidth();
+        int cellHeight = getEmojiCellHeight();
+        cell.setPreferredSize(new Dimension(cellWidth, cellHeight));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
@@ -380,7 +381,9 @@ public class CategoryManagerPanel extends JPanel {
     private JPanel createEmojiCellComponent(String emoji) {
         JPanel cell = new JPanel(new BorderLayout());
         cell.setOpaque(true);
-        cell.setPreferredSize(new Dimension(getEmojiCellWidth(), getEmojiCellHeight()));
+        int cellWidth = getEmojiCellWidth();
+        int cellHeight = getEmojiCellHeight();
+        cell.setPreferredSize(new Dimension(cellWidth, cellHeight));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         Font ef = EmojiUtil.getEmojiFont(20);
@@ -414,7 +417,6 @@ public class CategoryManagerPanel extends JPanel {
             JOptionPane.showMessageDialog(this, isVietnamese ? "Vui lòng điền tên danh mục!" : "Please fill in the category name!", "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        String selectedEmoji = this.selectedEmoji;
         TransactionType type = comboCategoryType.getSelectedIndex() == 0 ? TransactionType.EXPENSE : TransactionType.INCOME;
         String generatedId = UUID.randomUUID().toString().substring(0, 8);
         Category newCat = new Category(generatedId, name, type);
@@ -432,24 +434,19 @@ public class CategoryManagerPanel extends JPanel {
         }
     }
 
-    private int getEmojiCellWidth() { return (currentFluidWidth - 48 - 64) / 9; }
-    private int getEmojiCellHeight() { int w = getEmojiCellWidth(); return w >= 85 ? 76 : (w >= 70 ? 62 : 48); }
+    private int getEmojiCellWidth() {
+        int panelWidth = getWidth();
+        if (panelWidth <= 0) panelWidth = 560;
+        return (panelWidth - 48 - 64) / 9;
+    }
 
-    public void updateResponsiveLayout(boolean isVN, int fluidWidth) {
+    private int getEmojiCellHeight() {
+        int w = getEmojiCellWidth();
+        return w >= 85 ? 76 : (w >= 70 ? 62 : 48);
+    }
+
+    public void updateResponsiveLayout(boolean isVN) {
         this.isVietnamese = isVN;
-        this.currentFluidWidth = fluidWidth;
-        int currentTypeIndex = comboCategoryType.getSelectedIndex();
-        int gridH = (getEmojiCellHeight() * 2) + 12;
-
-        setMaximumSize(new Dimension(fluidWidth, Integer.MAX_VALUE));
-
-        int totalListCardH = 42 + gridH + 8 + 32 + 10 + 36 + 15;
-        if (listCard != null) {
-            listCard.setPreferredSize(new Dimension(fluidWidth, totalListCardH));
-            listCard.setMaximumSize(new Dimension(fluidWidth, totalListCardH));
-            listCard.setMinimumSize(new Dimension(fluidWidth, totalListCardH));
-        }
-
         updateLanguageTexts();
         refreshCategories();
         refreshEmojiGrid();
@@ -481,7 +478,7 @@ public class CategoryManagerPanel extends JPanel {
             listCard.setBackground(ThemeManager.getColor("surface"));
             listCard.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                    BorderFactory.createEmptyBorder(15, 20, 15, 20)
+                    BorderFactory.createEmptyBorder(12, 15, 12, 15)
             ));
         }
         if (lblListTitle != null) lblListTitle.setForeground(ThemeManager.getColor("accent"));
@@ -492,7 +489,7 @@ public class CategoryManagerPanel extends JPanel {
             addCard.setBackground(ThemeManager.getColor("surface"));
             addCard.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                    BorderFactory.createEmptyBorder(18, 20, 18, 20)
+                    BorderFactory.createEmptyBorder(12, 15, 12, 15)
             ));
         }
         if (lblCategoryTitle != null) lblCategoryTitle.setForeground(ThemeManager.getColor("accent"));
@@ -547,7 +544,7 @@ public class CategoryManagerPanel extends JPanel {
         JLabel lbl = new JLabel(text);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lbl.setForeground(ThemeManager.getColor("textSecondary"));
-        lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 6, 0));
+        lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 4, 0)); // giảm khoảng cách dưới
         lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         return lbl;
     }
@@ -559,7 +556,7 @@ public class CategoryManagerPanel extends JPanel {
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         tf.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border")),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+                BorderFactory.createEmptyBorder(8, 15, 8, 15)  // giảm chiều cao ô
         ));
     }
 

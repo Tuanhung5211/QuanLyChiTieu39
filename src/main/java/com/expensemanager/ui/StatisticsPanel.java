@@ -16,6 +16,7 @@ import java.awt.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -193,20 +194,40 @@ public class StatisticsPanel extends JPanel implements Observer {
 
     private void renderLegend(Map<String, Double> dataMap, double totalExpense) {
         legendPanel.removeAll();
-        int ci = 0;
 
         List<Map.Entry<String, Double>> sortedEntries = dataMap.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                 .collect(Collectors.toList());
 
+        // 👉 LỌC TOP 9 VÀ GỘP MỤC "KHÁC" CHO CHÚ GIẢI
+        List<Map.Entry<String, Double>> displayEntries = new ArrayList<>();
+        double othersTotal = 0;
+
+        for (int i = 0; i < sortedEntries.size(); i++) {
+            if (i < 9) {
+                displayEntries.add(sortedEntries.get(i));
+            } else {
+                othersTotal += sortedEntries.get(i).getValue();
+            }
+        }
+
+        if (othersTotal > 0) {
+            displayEntries.add(new java.util.AbstractMap.SimpleEntry<>(isVietnamese ? "Khác" : "Others", othersTotal));
+        }
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0; gbc.weighty = 0.0; gbc.insets = new Insets(0, 0, 2, 0);
 
-        for (Map.Entry<String, Double> entry : sortedEntries) {
-            // Lấy màu từ ThemeManager thay vì mảng tĩnh
-            Color color = ThemeManager.getColor("chart" + (ci % 9));
+        int ci = 0;
+        for (Map.Entry<String, Double> entry : displayEntries) {
+            String catName = entry.getKey();
             double amt = entry.getValue();
             double percent = totalExpense > 0 ? (amt / totalExpense) * 100 : 0;
+
+            // Xử lý màu sắc: Mục khác dùng màu xám
+            Color color = (catName.equals("Khác") || catName.equals("Others"))
+                    ? ThemeManager.getColor("textSecondary")
+                    : ThemeManager.getColor("chart" + (ci % 9));
 
             JPanel itemContainer = new JPanel(new BorderLayout(0, 6));
             itemContainer.setOpaque(false);
@@ -223,12 +244,13 @@ public class StatisticsPanel extends JPanel implements Observer {
             indicator.setBackground(color);
             leftGroup.add(indicator);
 
-            String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(entry.getKey(), "\uD83D\uDCCD");
+            // Xử lý icon: Mục khác dùng cái hộp
+            String emoji = (catName.equals("Khác") || catName.equals("Others")) ? "📦" : EmojiUtil.CATEGORY_EMOJI.getOrDefault(catName, "\uD83D\uDCCD");
             JLabel lblEmoji = new JLabel(emoji);
             lblEmoji.setFont(EmojiUtil.getEmojiFont(15));
             leftGroup.add(lblEmoji);
 
-            JLabel lblCatText = new JLabel(entry.getKey() + " " + String.format("%.1f%%", percent));
+            JLabel lblCatText = new JLabel(catName + " " + String.format("%.1f%%", percent));
             lblCatText.setFont(new Font("Segoe UI", Font.PLAIN, 14));
             lblCatText.setForeground(ThemeManager.getColor("textPrimary"));
             leftGroup.add(lblCatText);
@@ -249,7 +271,6 @@ public class StatisticsPanel extends JPanel implements Observer {
                     Graphics2D g2d = (Graphics2D) g;
                     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                    // Nền progress bar dùng màu của Theme
                     g2d.setColor(ThemeManager.getColor("progressTrack"));
                     g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 4, 4);
 
@@ -324,19 +345,40 @@ public class StatisticsPanel extends JPanel implements Observer {
             return;
         }
 
+        // 👉 LỌC TOP 9 VÀ GỘP MỤC "KHÁC" CHO BIỂU ĐỒ TRÒN
+        List<Map.Entry<String, Double>> sortedPieEntries = dataMap.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .collect(Collectors.toList());
+
+        List<Map.Entry<String, Double>> displayPieEntries = new ArrayList<>();
+        double othersTotal = 0;
+        for (int i = 0; i < sortedPieEntries.size(); i++) {
+            if (i < 9) {
+                displayPieEntries.add(sortedPieEntries.get(i));
+            } else {
+                othersTotal += sortedPieEntries.get(i).getValue();
+            }
+        }
+        if (othersTotal > 0) {
+            displayPieEntries.add(new java.util.AbstractMap.SimpleEntry<>(isVietnamese ? "Khác" : "Others", othersTotal));
+        }
+
         int size = Math.min(w, h) - 80;
         int x = (w - size) / 2;
         int y = (h - size) / 2;
         int startAngle = 90;
         int ci = 0;
 
-        List<Map.Entry<String, Double>> sortedPieEntries = dataMap.entrySet().stream()
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .collect(Collectors.toList());
-
-        for (Map.Entry<String, Double> entry : sortedPieEntries) {
+        for (Map.Entry<String, Double> entry : displayPieEntries) {
             int arcAngle = (int) Math.round((entry.getValue() / total) * 360);
-            g2.setColor(ThemeManager.getColor("chart" + (ci % 9)));
+
+            // Màu của "Khác" là xám trung tính
+            if (entry.getKey().equals("Khác") || entry.getKey().equals("Others")) {
+                g2.setColor(ThemeManager.getColor("textSecondary"));
+            } else {
+                g2.setColor(ThemeManager.getColor("chart" + (ci % 9)));
+            }
+
             g2.fillArc(x, y, size, size, startAngle, arcAngle);
             startAngle += arcAngle;
             ci++;
@@ -608,7 +650,6 @@ public class StatisticsPanel extends JPanel implements Observer {
     public void applyTheme() {
         ThemeManager.applyThemeRecursively(this);
 
-        // Áp dụng màu cho các component khối vuông chứa biểu đồ và danh sách
         for (Component comp : getComponents()) {
             if (comp instanceof JPanel) {
                 for (Component innerComp : ((JPanel) comp).getComponents()) {
