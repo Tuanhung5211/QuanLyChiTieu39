@@ -197,7 +197,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
                         innerComp.setForeground(ThemeManager.getColor("textPrimary"));
                     } else if (innerComp instanceof JButton) {
                         innerComp.setBackground(ThemeManager.getColor("accent"));
-                        innerComp.setForeground(Color.WHITE); // Nút "Thêm lặp lại" giữ trắng để tương phản, có thể thay bg nếu muốn
+                        innerComp.setForeground(ThemeManager.getColor("bg")); // Nút "Thêm lặp lại" giữ trắng để tương phản, có thể thay bg nếu muốn
                     }
                 }
             } else if (comp instanceof JScrollPane) {

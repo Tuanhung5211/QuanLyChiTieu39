@@ -26,6 +26,7 @@ public class BudgetPanel extends JPanel implements Observer {
     private FinanceService financeService;
     private boolean isVietnamese = true;
 
+    // Form components
     private JComboBox<String> cmbScope;
     private JComboBox<Category> cmbCategory;
     private JComboBox<String> cmbPeriod;
@@ -33,6 +34,10 @@ public class BudgetPanel extends JPanel implements Observer {
     private JSpinner spinReminderThreshold;
     private JButton btnSaveBudget;
     private JLabel lblFormTitle, lblListTitle;
+
+    // Labels cần cập nhật ngôn ngữ
+    private JLabel lblScope, lblCategory, lblPeriod, lblAmount, lblReminder;
+
     private JPanel budgetListContainer;
     private JScrollPane scrollPane;
 
@@ -67,6 +72,7 @@ public class BudgetPanel extends JPanel implements Observer {
         leftColumn.add(lblFormTitle, BorderLayout.NORTH);
 
         JPanel formPanel = new JPanel(new GridBagLayout());
+        formPanel.setOpaque(false);  // Đảm bảo không có nền trắng
         formPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
                 BorderFactory.createEmptyBorder(20, 20, 25, 20)
@@ -105,7 +111,7 @@ public class BudgetPanel extends JPanel implements Observer {
 
     private void addFormFields(JPanel panel, GridBagConstraints gbc) {
         // 1. Phạm vi áp dụng
-        JLabel lblScope = new JLabel(isVietnamese ? "Phạm vi áp dụng:" : "Scope:");
+        lblScope = new JLabel(isVietnamese ? "Phạm vi áp dụng:" : "Scope:");
         panel.add(lblScope, gbc);
 
         cmbScope = new JComboBox<>(isVietnamese ? new String[]{"Tổng thể", "Theo danh mục"} : new String[]{"Overall", "By Category"});
@@ -113,7 +119,7 @@ public class BudgetPanel extends JPanel implements Observer {
         panel.add(cmbScope, gbc);
 
         // 2. Chọn Danh mục
-        JLabel lblCategory = new JLabel(isVietnamese ? "Danh mục:" : "Category:");
+        lblCategory = new JLabel(isVietnamese ? "Danh mục:" : "Category:");
         panel.add(lblCategory, gbc);
 
         cmbCategory = new JComboBox<>();
@@ -129,7 +135,7 @@ public class BudgetPanel extends JPanel implements Observer {
         cmbScope.addActionListener(e -> cmbCategory.setEnabled(cmbScope.getSelectedIndex() == 1));
 
         // 3. Chu kỳ hạn mức
-        JLabel lblPeriod = new JLabel(isVietnamese ? "Kỳ hạn:" : "Period:");
+        lblPeriod = new JLabel(isVietnamese ? "Kỳ hạn:" : "Period:");
         panel.add(lblPeriod, gbc);
 
         cmbPeriod = new JComboBox<>(isVietnamese ? new String[]{"Theo Ngày", "Theo Tháng", "Theo Năm"} : new String[]{"Daily", "Monthly", "Yearly"});
@@ -137,7 +143,7 @@ public class BudgetPanel extends JPanel implements Observer {
         panel.add(cmbPeriod, gbc);
 
         // 4. Số tiền giới hạn
-        JLabel lblAmount = new JLabel(isVietnamese ? "Số tiền (VND):" : "Amount (VND):");
+        lblAmount = new JLabel(isVietnamese ? "Số tiền (VND):" : "Amount (VND):");
         panel.add(lblAmount, gbc);
 
         txtAmount = new JTextField();
@@ -145,7 +151,7 @@ public class BudgetPanel extends JPanel implements Observer {
         panel.add(txtAmount, gbc);
 
         // 5. Ngưỡng cảnh báo nhắc nhở
-        JLabel lblReminder = new JLabel(isVietnamese ? "Ngưỡng nhắc nhở (%):" : "Reminder Threshold (%):");
+        lblReminder = new JLabel(isVietnamese ? "Ngưỡng nhắc nhở (%):" : "Reminder Threshold (%):");
         panel.add(lblReminder, gbc);
 
         spinReminderThreshold = new JSpinner(new SpinnerNumberModel(80, 10, 100, 5));
@@ -385,7 +391,7 @@ public class BudgetPanel extends JPanel implements Observer {
         cb.setForeground(ThemeManager.getColor("textPrimary"));
         cb.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         cb.setOpaque(true);
-        // Thêm viền đồng bộ theme
+        // Viền đồng bộ theme
         cb.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1),
                 BorderFactory.createEmptyBorder(2, 6, 2, 6)
@@ -396,7 +402,7 @@ public class BudgetPanel extends JPanel implements Observer {
         spinner.setBackground(ThemeManager.getColor("input"));
         spinner.setForeground(ThemeManager.getColor("textPrimary"));
         spinner.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        // Thêm viền ngoài đồng bộ theme
+        // Viền ngoài đồng bộ theme
         spinner.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1),
                 BorderFactory.createEmptyBorder(2, 2, 2, 2)
@@ -466,6 +472,26 @@ public class BudgetPanel extends JPanel implements Observer {
         if (lblFormTitle != null) lblFormTitle.setText(isVN ? "THIẾT LẬP HẠN MỨC" : "BUDGET CONFIG");
         if (lblListTitle != null) lblListTitle.setText(isVN ? "TIẾN TRÌNH HẠN MỨC HIỆN TẠI" : "CURRENT BUDGET PROGRESS");
         if (btnSaveBudget != null) btnSaveBudget.setText(isVN ? "Kích hoạt Ngân sách" : "Activate Budget");
+
+        // Cập nhật label form
+        if (lblScope != null) lblScope.setText(isVN ? "Phạm vi áp dụng:" : "Scope:");
+        if (lblCategory != null) lblCategory.setText(isVN ? "Danh mục:" : "Category:");
+        if (lblPeriod != null) lblPeriod.setText(isVN ? "Kỳ hạn:" : "Period:");
+        if (lblAmount != null) lblAmount.setText(isVN ? "Số tiền (VND):" : "Amount (VND):");
+        if (lblReminder != null) lblReminder.setText(isVN ? "Ngưỡng nhắc nhở (%):" : "Reminder Threshold (%):");
+
+        // Cập nhật nội dung combobox
+        if (cmbScope != null) {
+            int sel = cmbScope.getSelectedIndex();
+            cmbScope.setModel(new DefaultComboBoxModel<>(isVN ? new String[]{"Tổng thể", "Theo danh mục"} : new String[]{"Overall", "By Category"}));
+            if (sel >= 0 && sel < cmbScope.getItemCount()) cmbScope.setSelectedIndex(sel);
+        }
+        if (cmbPeriod != null) {
+            int sel = cmbPeriod.getSelectedIndex();
+            cmbPeriod.setModel(new DefaultComboBoxModel<>(isVN ? new String[]{"Theo Ngày", "Theo Tháng", "Theo Năm"} : new String[]{"Daily", "Monthly", "Yearly"}));
+            if (sel >= 0) cmbPeriod.setSelectedIndex(sel);
+        }
+
         refreshData();
     }
 

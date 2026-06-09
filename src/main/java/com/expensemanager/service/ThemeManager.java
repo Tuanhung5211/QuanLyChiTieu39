@@ -206,4 +206,60 @@ public class ThemeManager {
         UIManager.put("OptionPane.background", getColor("bg"));
         UIManager.put("OptionPane.messageForeground", getColor("textPrimary"));
     }
+    // =========================================================================
+    // HÀM QUÉT ĐỔI MÀU TỰ ĐỘNG CHO TOÀN BỘ COMPONENT
+    // =========================================================================
+    public static void applyThemeRecursively(java.awt.Component comp) {
+        if (comp == null) return;
+
+        // 1. Cập nhật màu Nền
+        if (comp instanceof javax.swing.JPanel || comp instanceof javax.swing.JScrollPane || comp instanceof javax.swing.JViewport) {
+            if (comp.getName() == null || !comp.getName().startsWith("colorBox_")) {
+                comp.setBackground(getColor("bg"));
+            }
+        }
+
+        // 2. Cập nhật Ô nhập liệu
+        if (comp instanceof javax.swing.JTextField || comp instanceof javax.swing.JTextArea || comp instanceof javax.swing.JPasswordField) {
+            comp.setBackground(getColor("input"));
+            comp.setForeground(getColor("textPrimary"));
+            ((javax.swing.text.JTextComponent) comp).setCaretColor(getColor("accent"));
+        } else if (comp instanceof javax.swing.JComboBox) {
+            comp.setBackground(getColor("input"));
+            comp.setForeground(getColor("textPrimary"));
+        }
+
+        // 3. Cập nhật Bảng (JTable)
+        if (comp instanceof javax.swing.JTable) {
+            javax.swing.JTable table = (javax.swing.JTable) comp;
+            table.setBackground(getColor("surface"));
+            table.setForeground(getColor("textPrimary"));
+            table.setGridColor(getColor("border"));
+            if (table.getTableHeader() != null) {
+                table.getTableHeader().setBackground(getColor("input"));
+                table.getTableHeader().setForeground(getColor("textPrimary"));
+            }
+        }
+
+        // 4. Cập nhật Nhãn chữ (Label)
+        if (comp instanceof javax.swing.JLabel) {
+            if (comp.getForeground().getRGB() != getColor("accent").getRGB()) {
+                comp.setForeground(getColor("textPrimary"));
+            }
+        }
+
+        // 5. Cập nhật Checkbox, Radio
+        if (comp instanceof javax.swing.JCheckBox || comp instanceof javax.swing.JRadioButton) {
+            comp.setBackground(getColor("bg"));
+            comp.setForeground(getColor("textPrimary"));
+            ((javax.swing.JToggleButton) comp).setOpaque(false);
+        }
+
+        // 6. Đi sâu vào các thành phần con bên trong
+        if (comp instanceof java.awt.Container) {
+            for (java.awt.Component child : ((java.awt.Container) comp).getComponents()) {
+                applyThemeRecursively(child);
+            }
+        }
+    }
 }
