@@ -170,7 +170,7 @@ public class DashboardPanel extends JPanel implements Observer {
         String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
 
         JLabel lblIcon = new JLabel(emoji);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
+        lblIcon.setFont(EmojiUtil.getEmojiFont(18));
         lblIcon.setForeground(ThemeManager.getColor("textPrimary"));
         lblIcon.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 15));
 

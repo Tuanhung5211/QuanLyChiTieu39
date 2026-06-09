@@ -341,7 +341,7 @@ public class AddTransactionDialog extends JDialog {
                 : EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
 
         JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
+        lblIcon.setFont(EmojiUtil.getEmojiFont(22));
         lblIcon.setOpaque(true);
         lblIcon.setPreferredSize(new Dimension(48, 48));
         lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));

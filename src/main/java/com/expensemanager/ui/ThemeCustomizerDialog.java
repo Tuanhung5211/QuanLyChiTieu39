@@ -6,6 +6,7 @@ import com.expensemanager.service.SessionManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import java.awt.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,7 +31,6 @@ public class ThemeCustomizerDialog extends JDialog {
             "Background", "Surface", "Input", "Primary Text", "Secondary Text", "Accent"
     };
 
-    // Bảng màu nhanh: 30 màu phổ biến
     private static final Color[] QUICK_COLORS = {
             Color.WHITE, Color.LIGHT_GRAY, Color.GRAY, Color.DARK_GRAY, Color.BLACK,
             new Color(255, 235, 238), new Color(255, 205, 210), new Color(239, 154, 154), new Color(229, 115, 115), new Color(198, 40, 40),
@@ -62,14 +62,14 @@ public class ThemeCustomizerDialog extends JDialog {
         setLayout(new BorderLayout(15, 15));
         getContentPane().setBackground(ThemeManager.getColor("bg"));
 
-        // Tiêu đề
+        // === Tiêu đề ===
         JLabel title = new JLabel(isVietnamese ? "Tùy chỉnh giao diện Premium" : "Premium Theme Customization");
         title.setFont(new Font("Segoe UI", Font.BOLD, 18));
         title.setForeground(ThemeManager.getColor("textPrimary"));
         title.setBorder(new EmptyBorder(15, 20, 10, 20));
         add(title, BorderLayout.NORTH);
 
-        // Danh sách màu
+        // === Bảng chọn màu ===
         JPanel colorListPanel = new JPanel(new GridLayout(COLOR_KEYS.length, 1, 10, 10));
         colorListPanel.setBackground(ThemeManager.getColor("bg"));
         colorListPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
@@ -88,16 +88,18 @@ public class ThemeCustomizerDialog extends JDialog {
             lbl.setPreferredSize(new Dimension(120, 30));
             row.add(lbl, BorderLayout.WEST);
 
+            // Nút chọn màu chính – có viền rõ ràng
             JButton colorBtn = new JButton();
             colorBtn.setBackground(selectedColors.get(key));
             colorBtn.setOpaque(true);
-            colorBtn.setBorderPainted(false);
+            colorBtn.setBorderPainted(true);
             colorBtn.setFocusPainted(false);
             colorBtn.setPreferredSize(new Dimension(80, 30));
             colorBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            // Viền đồng bộ theme
+            colorBtn.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 2));
 
             colorBtn.addActionListener(e -> {
-                // Hiển thị popup chọn màu nhanh
                 Color chosen = showQuickColorPicker(colorBtn, labels[index], selectedColors.get(key));
                 if (chosen != null) {
                     selectedColors.put(key, chosen);
@@ -116,7 +118,7 @@ public class ThemeCustomizerDialog extends JDialog {
         scrollPane.setOpaque(false);
         scrollPane.getViewport().setOpaque(false);
 
-        // Preview
+        // === Preview ===
         previewPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -163,7 +165,7 @@ public class ThemeCustomizerDialog extends JDialog {
         centerPanel.add(previewPanel, BorderLayout.SOUTH);
         add(centerPanel, BorderLayout.CENTER);
 
-        // Buttons
+        // === Buttons ===
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
         buttonPanel.setBackground(ThemeManager.getColor("surface"));
         buttonPanel.setBorder(new EmptyBorder(10, 20, 10, 20));
@@ -216,10 +218,11 @@ public class ThemeCustomizerDialog extends JDialog {
         buttonPanel.add(btnSave);
         add(buttonPanel, BorderLayout.SOUTH);
 
+        // Ẩn thanh cuộn & tăng tốc
         ThemeManager.applyThemeRecursively(this);
     }
 
-    // ========== POPUP BẢNG MÀU NHANH ==========
+    // ========== POPUP BẢNG MÀU NHANH (ĐÃ CÓ VIỀN RÕ) ==========
     private Color showQuickColorPicker(Component parent, String label, Color currentColor) {
         JDialog popup = new JDialog(this, label, true);
         popup.setUndecorated(true);
@@ -238,7 +241,8 @@ public class ThemeCustomizerDialog extends JDialog {
             colorItem.setBackground(c);
             colorItem.setPreferredSize(new Dimension(30, 30));
             colorItem.setFocusPainted(false);
-            colorItem.setBorder(BorderFactory.createLineBorder(Color.LIGHT_GRAY));
+            // Viền đồng bộ theme, dễ nhìn
+            colorItem.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 2));
             colorItem.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             colorItem.addActionListener(e -> {
                 selected[0] = c;
@@ -255,7 +259,7 @@ public class ThemeCustomizerDialog extends JDialog {
                 popup.dispose();
             }
         });
-        popup.setVisible(true); // chờ đến khi chọn hoặc click ngoài
+        popup.setVisible(true);
 
         return selected[0];
     }

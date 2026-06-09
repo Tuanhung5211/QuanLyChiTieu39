@@ -4,6 +4,7 @@ import com.expensemanager.entity.User;
 import com.expensemanager.service.SessionManager;
 import com.expensemanager.service.UserService;
 import com.expensemanager.util.ConfigLocalStorage;
+import com.expensemanager.util.EmojiUtil;
 import com.expensemanager.util.InputValidator;
 import com.expensemanager.service.ThemeManager;
 import com.expensemanager.util.ValidationUI;
@@ -75,7 +76,7 @@ public class LoginFrame extends JFrame {
         gbc.gridx = 0;
 
         JLabel lblAvatar = new JLabel("👤", SwingConstants.CENTER);
-        lblAvatar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 45));
+        lblAvatar.setFont(EmojiUtil.getEmojiFont(45));
         lblAvatar.setForeground(ThemeManager.getColor("textPrimary"));
         gbc.gridy = 0; gbc.insets = new Insets(0, 0, 5, 0); pForm.add(lblAvatar, gbc);
 

@@ -225,7 +225,7 @@ public class StatisticsPanel extends JPanel implements Observer {
 
             String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(entry.getKey(), "\uD83D\uDCCD");
             JLabel lblEmoji = new JLabel(emoji);
-            lblEmoji.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
+            lblEmoji.setFont(EmojiUtil.getEmojiFont(15));
             leftGroup.add(lblEmoji);
 
             JLabel lblCatText = new JLabel(entry.getKey() + " " + String.format("%.1f%%", percent));

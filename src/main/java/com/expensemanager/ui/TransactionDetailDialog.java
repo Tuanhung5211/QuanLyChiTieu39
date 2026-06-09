@@ -41,7 +41,7 @@ public class TransactionDetailDialog extends JDialog {
         String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "\uD83D\uDCCD") : "\uD83D\uDCCD";
 
         JLabel lblIcon = new JLabel(emoji);
-        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 44));
+        lblIcon.setFont(EmojiUtil.getEmojiFont(44));
         lblIcon.setForeground(ThemeManager.getColor("bg"));
         headerPanel.add(lblIcon, BorderLayout.WEST);
 

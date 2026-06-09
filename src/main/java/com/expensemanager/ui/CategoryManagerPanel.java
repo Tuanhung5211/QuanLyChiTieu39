@@ -43,7 +43,6 @@ public class CategoryManagerPanel extends JPanel {
     private final int EMOJI_PER_PAGE = 18;
     private int currentFluidWidth = 560;
 
-    // Cache toàn bộ danh mục
     private List<Category> allCategories = new ArrayList<>();
 
     private final String[] EMOJI_LIST = {
@@ -53,10 +52,6 @@ public class CategoryManagerPanel extends JPanel {
             "\uD83D\uDCDA", "\uD83C\uDFE5", "\uD83D\uDC8A", "\uD83D\uDC84", "\u26BD",       "\uD83D\uDC31",
             "\uD83C\uDF81", "\uD83D\uDC96", "\uD83D\uDD27", "\uD83C\uDFE0", "\uD83D\uDEE1", "\uD83D\uDCB0",
             "\uD83D\uDCB5", "\uD83C\uDF93", "\uD83D\uDCBC", "\uD83D\uDCC8", "\uD83D\uDC37", "\uD83E\uDE99"
-    };
-
-    private static final String[] EMOJI_FALLBACK_FONTS = new String[]{
-            "Segoe UI Emoji", "Noto Color Emoji", "Apple Color Emoji", "EmojiOne Color", "Segoe UI Symbol", "Symbola"
     };
 
     public CategoryManagerPanel(MainFrame mainFrame) {
@@ -73,7 +68,6 @@ public class CategoryManagerPanel extends JPanel {
         updateResponsiveLayout(isVietnamese, 560);
         applyTheme();
 
-        // Tải danh mục bất đồng bộ
         loadCategoriesAsync();
     }
 
@@ -308,8 +302,8 @@ public class CategoryManagerPanel extends JPanel {
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
-        Font ef = emojiFont(20);
-        String iconText = canDisplayText(emoji, ef) ? emoji : ((c.getName() != null && c.getName().length() > 0) ? c.getName().substring(0,1).toUpperCase() : "?");
+        Font ef = EmojiUtil.getEmojiFont(20);
+        String iconText = EmojiUtil.canDisplay(emoji, ef) ? emoji : ((c.getName() != null && c.getName().length() > 0) ? c.getName().substring(0,1).toUpperCase() : "?");
         JLabel lblIcon = new JLabel(iconText, SwingConstants.CENTER);
         lblIcon.setFont(ef);
         lblIcon.setOpaque(true);
@@ -389,9 +383,10 @@ public class CategoryManagerPanel extends JPanel {
         cell.setPreferredSize(new Dimension(getEmojiCellWidth(), getEmojiCellHeight()));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        String display = canDisplayText(emoji, emojiFont(20)) ? emoji : "?";
+        Font ef = EmojiUtil.getEmojiFont(20);
+        String display = EmojiUtil.canDisplay(emoji, ef) ? emoji : "?";
         JLabel lbl = new JLabel(display, SwingConstants.CENTER);
-        lbl.setFont(emojiFont(20));
+        lbl.setFont(ef);
         cell.add(lbl, BorderLayout.CENTER);
 
         if (emoji.equals(selectedEmoji)) {
@@ -411,35 +406,6 @@ public class CategoryManagerPanel extends JPanel {
             }
         });
         return cell;
-    }
-
-    private Font emojiFont(int size) {
-        try {
-            GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-            String[] available = ge.getAvailableFontFamilyNames();
-            for (String candidate : EMOJI_FALLBACK_FONTS) {
-                for (String fam : available) {
-                    if (fam.equalsIgnoreCase(candidate)) {
-                        return new Font(fam, Font.PLAIN, size);
-                    }
-                }
-            }
-        } catch (Exception ignored) {}
-        return new Font(Font.SANS_SERIF, Font.PLAIN, size);
-    }
-
-    private boolean canDisplayText(String text, Font font) {
-        if (text == null || text.isEmpty()) return false;
-        try {
-            for (int i = 0; i < text.length(); ) {
-                int cp = text.codePointAt(i);
-                if (!font.canDisplay(cp)) return false;
-                i += Character.charCount(cp);
-            }
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
     }
 
     private void executeAddCategory() {
@@ -484,7 +450,7 @@ public class CategoryManagerPanel extends JPanel {
             listCard.setMinimumSize(new Dimension(fluidWidth, totalListCardH));
         }
 
-        updateLanguageTexts();   // Cập nhật toàn bộ text theo ngôn ngữ mới
+        updateLanguageTexts();
         refreshCategories();
         refreshEmojiGrid();
     }
@@ -574,6 +540,7 @@ public class CategoryManagerPanel extends JPanel {
             btnNextEmojiPage.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         }
         refreshEmojiGrid();
+        ThemeManager.applyThemeRecursively(this);
     }
 
     private JLabel createLabel(String text) {
