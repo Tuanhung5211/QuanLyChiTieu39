@@ -49,6 +49,9 @@ public class MainFrame extends JFrame implements Observer {
     private AdBanner adBanner;
     private boolean isPremium;
 
+    private AdminPanel adminPanel;
+    private JButton btnAdmin;
+
     public MainFrame() {
         this.isVietnamese = ConfigLocalStorage.loadLanguage();
         Dimension savedSize = ConfigLocalStorage.loadWindowSize();
@@ -258,7 +261,17 @@ public class MainFrame extends JFrame implements Observer {
         btnBudget = createNavButton(isVietnamese ? "Ngân sách" : "Budget");
         btnRecurring = createNavButton(isVietnamese ? "Lặp lại" : "Recurring");
         btnSettings = createNavButton(isVietnamese ? "Cài đặt" : "Settings");
-
+        if (SessionManager.isAdmin()) {
+            btnAdmin = createNavButton(isVietnamese ? "Quản trị" : "Admin");
+            btnAdmin.addActionListener(e -> {
+                if (adminPanel == null) {
+                    adminPanel = new AdminPanel(this);
+                    mainPanel.add(adminPanel, "admin");
+                }
+                selectTab(btnAdmin, "admin");
+            });
+            navPanel.add(btnAdmin);
+        }
         btnDashboard.addActionListener(e -> {
             selectTab(btnDashboard, "dashboard");
             dashboardPanel.refreshData();
@@ -353,15 +366,17 @@ public class MainFrame extends JFrame implements Observer {
         cardLayout.show(mainPanel, cardName);
 
         JButton[] navButtons = {btnDashboard, btnStatistics, btnBudget, btnRecurring, btnSettings};
-        for (JButton btn : navButtons) {
-            if (btn != null) {
-                if (btn == activeBtn) {
-                    btn.setForeground(ThemeManager.getColor("accent"));
-                    btn.setBackground(ThemeManager.getColor("surface"));
-                } else {
-                    btn.setForeground(ThemeManager.getColor("textSecondary"));
-                    btn.setBackground(ThemeManager.getColor("surface"));
-                }
+        // Nếu btnAdmin khác null thì thêm vào mảng tạm thời
+        java.util.ArrayList<JButton> list = new java.util.ArrayList<>();
+        for (JButton b : navButtons) if (b != null) list.add(b);
+        if (btnAdmin != null) list.add(btnAdmin);
+        for (JButton btn : list) {
+            if (btn == activeBtn) {
+                btn.setForeground(ThemeManager.getColor("accent"));
+                btn.setBackground(ThemeManager.getColor("surface"));
+            } else {
+                btn.setForeground(ThemeManager.getColor("textSecondary"));
+                btn.setBackground(ThemeManager.getColor("surface"));
             }
         }
     }
@@ -376,6 +391,7 @@ public class MainFrame extends JFrame implements Observer {
         if (btnBudget != null) btnBudget.setText(isVN ? "Ngân sách" : "Budget");
         if (btnRecurring != null) btnRecurring.setText(isVN ? "Lặp lại" : "Recurring");
         if (btnSettings != null) btnSettings.setText(isVN ? "Cài đặt" : "Settings");
+        if (btnAdmin != null) btnAdmin.setText(isVN ? "Quản trị" : "Admin");
 
         if (lblIdLabel != null) {
             lblIdLabel.setText("ID:");
@@ -489,6 +505,7 @@ public class MainFrame extends JFrame implements Observer {
         if (budgetPanel != null) budgetPanel.applyTheme();
         if (recurringPanel != null) recurringPanel.updateLanguageText();
         if (settingsPanel != null) settingsPanel.applyTheme();
+        if (adminPanel != null) adminPanel.applyTheme();
 
         refreshSidebarData();
         this.revalidate();

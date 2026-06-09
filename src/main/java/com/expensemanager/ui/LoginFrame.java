@@ -2,6 +2,7 @@ package com.expensemanager.ui;
 
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
+import com.expensemanager.service.SessionManager;
 import com.expensemanager.service.UserService;
 import com.expensemanager.util.InputValidator;
 import com.expensemanager.util.ThemeManager;
@@ -345,6 +346,8 @@ public class LoginFrame extends JFrame {
             InputValidator.validateLogin(username, password, isVietnamese);
             User user = UserService.login(username.trim(), password.trim());
             if (user != null) {
+                // Lưu thông tin admin vào SessionManager
+                SessionManager.login(user.getId(), user.getUsername(), user.isAdmin());
                 new MainFrame().setVisible(true);
                 dispose();
             } else {
