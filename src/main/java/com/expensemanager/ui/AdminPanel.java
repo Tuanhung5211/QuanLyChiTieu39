@@ -17,7 +17,11 @@ public class AdminPanel extends JPanel {
     private boolean isVietnamese;
     private JTable userTable;
     private DefaultTableModel tableModel;
-    private JButton btnGrantPremium, btnRevokePremium, btnDeleteUser;
+
+    // 👉 Các nút chuyển thành biến instance
+    private JButton btnGrantPremium;
+    private JButton btnRevokePremium;
+    private JButton btnDeleteUser;
 
     public AdminPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -54,6 +58,7 @@ public class AdminPanel extends JPanel {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
         buttonPanel.setOpaque(false);
 
+        // 👉 Gán trực tiếp vào biến instance (bỏ khai báo cục bộ)
         btnGrantPremium = new JButton(isVietnamese ? "🎁 Cấp Premium" : "🎁 Grant Premium");
         btnRevokePremium = new JButton(isVietnamese ? "❌ Hủy Premium" : "❌ Revoke Premium");
         btnDeleteUser = new JButton(isVietnamese ? "🗑️ Xóa người dùng" : "🗑️ Delete User");
@@ -184,9 +189,21 @@ public class AdminPanel extends JPanel {
         }
     }
 
+    // 👉 PHƯƠNG THỨC CẬP NHẬT NGÔN NGỮ ĐẦY ĐỦ
     public void updateLanguageText(boolean isVN) {
         this.isVietnamese = isVN;
-        // Có thể cập nhật tiêu đề cột, nút ở đây nếu cần
-        refreshTable(); // refresh lại bảng sẽ load lại header mới (vì tableModel đã được tạo lại)
+
+        // Cập nhật tiêu đề cột
+        String[] columns = isVN ?
+                new String[]{"ID", "Tên đăng nhập", "Email", "Premium hạn", "Admin"} :
+                new String[]{"ID", "Username", "Email", "Premium Expiry", "Admin"};
+        tableModel.setColumnIdentifiers(columns);
+
+        // Cập nhật văn bản nút
+        if (btnGrantPremium != null) btnGrantPremium.setText(isVN ? "🎁 Cấp Premium" : "🎁 Grant Premium");
+        if (btnRevokePremium != null) btnRevokePremium.setText(isVN ? "❌ Hủy Premium" : "❌ Revoke Premium");
+        if (btnDeleteUser != null) btnDeleteUser.setText(isVN ? "🗑️ Xóa người dùng" : "🗑️ Delete User");
+
+        refreshTable();
     }
 }

@@ -411,6 +411,7 @@ public class MainFrame extends JFrame implements Observer {
         if (statisticsPanel != null) {
             statisticsPanel.updateLanguageText(isVN);
             statisticsPanel.refreshData();
+            dashboardPanel.updateCalendarLanguage(isVN);
         }
         if (budgetPanel != null) {
             budgetPanel.updateLanguageText(isVN);
@@ -418,6 +419,9 @@ public class MainFrame extends JFrame implements Observer {
         }
         if (recurringPanel != null) {
             recurringPanel.updateLanguageText();
+        }
+        if (adminPanel != null) {
+            adminPanel.updateLanguageText(isVN);
         }
 
         this.revalidate();

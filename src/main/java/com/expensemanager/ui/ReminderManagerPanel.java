@@ -18,6 +18,11 @@ public class ReminderManagerPanel extends JPanel {
     private JTable reminderTable;
     private DefaultTableModel tableModel;
 
+    // 👉 Các nút chuyển thành biến instance
+    private JButton btnAdd;
+    private JButton btnEdit;
+    private JButton btnDelete;
+
     public ReminderManagerPanel(ReminderService reminderService, boolean isVietnamese) {
         this.reminderService = reminderService;
         this.isVietnamese = isVietnamese;
@@ -46,9 +51,11 @@ public class ReminderManagerPanel extends JPanel {
 
         JPanel btnPanel = new JPanel(new FlowLayout());
         btnPanel.setOpaque(false);
-        JButton btnAdd = new JButton(isVietnamese ? "Thêm nhắc nhở" : "Add Reminder");
-        JButton btnEdit = new JButton(isVietnamese ? "Sửa" : "Edit");
-        JButton btnDelete = new JButton(isVietnamese ? "Xóa" : "Delete");
+
+        // 👉 Gán trực tiếp vào biến instance (không khai báo lại)
+        btnAdd = new JButton(isVietnamese ? "Thêm nhắc nhở" : "Add Reminder");
+        btnEdit = new JButton(isVietnamese ? "Sửa" : "Edit");
+        btnDelete = new JButton(isVietnamese ? "Xóa" : "Delete");
 
         btnAdd.addActionListener(e -> showReminderDialog(null));
         btnEdit.addActionListener(e -> {
@@ -91,7 +98,6 @@ public class ReminderManagerPanel extends JPanel {
             reminderTable.getTableHeader().setForeground(ThemeManager.getColor("textPrimary"));
             reminderTable.setGridColor(ThemeManager.getColor("border"));
         }
-        // Cập nhật màu cho tiêu đề
         for (Component comp : getComponents()) {
             if (comp instanceof JLabel) {
                 ((JLabel) comp).setForeground(ThemeManager.getColor("accent"));
@@ -272,8 +278,21 @@ public class ReminderManagerPanel extends JPanel {
         combo.setForeground(ThemeManager.getColor("textPrimary"));
     }
 
+    // 👉 PHƯƠNG THỨC CẬP NHẬT NGÔN NGỮ ĐẦY ĐỦ
     public void updateLanguage(boolean isVN) {
         this.isVietnamese = isVN;
+
+        // Cập nhật tiêu đề cột
+        String[] columns = isVN ?
+                new String[]{"ID", "Loại", "Tiêu đề", "Thời gian/Ngày", "Hoạt động"} :
+                new String[]{"ID", "Type", "Title", "Time/Date", "Active"};
+        tableModel.setColumnIdentifiers(columns);
+
+        // Cập nhật văn bản nút
+        if (btnAdd != null) btnAdd.setText(isVN ? "Thêm nhắc nhở" : "Add Reminder");
+        if (btnEdit != null) btnEdit.setText(isVN ? "Sửa" : "Edit");
+        if (btnDelete != null) btnDelete.setText(isVN ? "Xóa" : "Delete");
+
         refreshTable();
     }
 }

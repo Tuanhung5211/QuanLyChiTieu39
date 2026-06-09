@@ -15,11 +15,13 @@ public class TransactionDetailDialog extends JDialog {
 
     private MainFrame mainFrame;
     private Transaction transaction;
+    private boolean isVietnamese;
 
     public TransactionDetailDialog(MainFrame mainFrame, Transaction transaction) {
         super(mainFrame, "Chi tiết giao dịch", true);
         this.mainFrame = mainFrame;
         this.transaction = transaction;
+        this.isVietnamese = (mainFrame != null && mainFrame.isVietnamese());
 
         setSize(420, 420);
         setLocationRelativeTo(mainFrame);
@@ -44,7 +46,7 @@ public class TransactionDetailDialog extends JDialog {
         JPanel textPanel = new JPanel(new GridLayout(2, 1, 0, 4));
         textPanel.setOpaque(false);
         String note = transaction.getNote();
-        JLabel lblNote = new JLabel(note != null && !note.isEmpty() ? note : "Không có ghi chú");
+        JLabel lblNote = new JLabel(note != null && !note.isEmpty() ? note : (isVietnamese ? "Không có ghi chú" : "No note"));
         lblNote.setFont(new Font("Segoe UI", Font.BOLD, 18));
 
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -63,23 +65,23 @@ public class TransactionDetailDialog extends JDialog {
         gbc.insets = new Insets(8, 5, 8, 5);
         gbc.weightx = 1.0;
 
-        addDetailRow(detailPanel, gbc, "Danh mục:", cat != null ? cat.getName() : "Không có", 0);
+        addDetailRow(detailPanel, gbc, isVietnamese ? "Danh mục:" : "Category:", cat != null ? cat.getName() : (isVietnamese ? "Không có" : "None"), 0);
         String amountStr = String.format("%,.0f VND", transaction.getAmount());
-        addDetailRow(detailPanel, gbc, "Số tiền:", amountStr, 1);
-        addDetailRow(detailPanel, gbc, "Loại hành động:", transaction.getType().name(), 2);
-        addDetailRow(detailPanel, gbc, "Thời gian lưu:", transaction.getDateTime().format(dtf), 3);
+        addDetailRow(detailPanel, gbc, isVietnamese ? "Số tiền:" : "Amount:", amountStr, 1);
+        addDetailRow(detailPanel, gbc, isVietnamese ? "Loại hành động:" : "Type:", transaction.getType().name(), 2);
+        addDetailRow(detailPanel, gbc, isVietnamese ? "Thời gian lưu:" : "Recorded at:", transaction.getDateTime().format(dtf), 3);
         add(detailPanel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new GridLayout(1, 3, 12, 0));
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 25, 25, 25));
 
-        JButton btnEdit = createFlatButton("Sửa");
+        JButton btnEdit = createFlatButton(isVietnamese ? "Sửa" : "Edit");
         btnEdit.addActionListener(e -> editTransaction());
 
-        JButton btnDelete = createFlatButton("Xóa");
+        JButton btnDelete = createFlatButton(isVietnamese ? "Xóa" : "Delete");
         btnDelete.addActionListener(e -> deleteTransaction());
 
-        JButton btnClose = createFlatButton("Đóng");
+        JButton btnClose = createFlatButton(isVietnamese ? "Đóng" : "Close");
         btnClose.addActionListener(e -> dispose());
 
         buttonPanel.add(btnEdit);
@@ -90,7 +92,6 @@ public class TransactionDetailDialog extends JDialog {
 
     public void applyTheme() {
         getContentPane().setBackground(ThemeManager.getColor("bg"));
-        // Duyệt tất cả component và set màu
         for (Component comp : getContentPane().getComponents()) {
             if (comp instanceof JPanel) {
                 JPanel panel = (JPanel) comp;
@@ -107,10 +108,10 @@ public class TransactionDetailDialog extends JDialog {
                         }
                     } else if (inner instanceof JButton) {
                         JButton btn = (JButton) inner;
-                        if (btn.getText().equals("Sửa")) {
+                        if (btn.getText().equals("Sửa") || btn.getText().equals("Edit")) {
                             btn.setBackground(ThemeManager.getColor("success"));
                             btn.setForeground(Color.WHITE);
-                        } else if (btn.getText().equals("Xóa")) {
+                        } else if (btn.getText().equals("Xóa") || btn.getText().equals("Delete")) {
                             btn.setBackground(ThemeManager.getColor("danger"));
                             btn.setForeground(Color.WHITE);
                         } else {
@@ -121,7 +122,6 @@ public class TransactionDetailDialog extends JDialog {
                 }
             }
         }
-        // Cập nhật màu cho các label trong detail panel (GridBagLayout) - panel thứ 2
         if (getContentPane().getComponentCount() > 2) {
             Component detailComp = getContentPane().getComponent(2);
             if (detailComp instanceof JPanel) {
@@ -148,17 +148,17 @@ public class TransactionDetailDialog extends JDialog {
         JTextField txtNote = new JTextField(transaction.getNote());
 
         JPanel panel = new JPanel(new GridLayout(4, 1, 5, 5));
-        panel.add(new JLabel("Số tiền mới:"));
+        panel.add(new JLabel(isVietnamese ? "Số tiền mới:" : "New amount:"));
         panel.add(txtAmount);
-        panel.add(new JLabel("Ghi chú mới:"));
+        panel.add(new JLabel(isVietnamese ? "Ghi chú mới:" : "New note:"));
         panel.add(txtNote);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Sửa giao dịch", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        int result = JOptionPane.showConfirmDialog(this, panel, isVietnamese ? "Sửa giao dịch" : "Edit transaction", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
             try {
                 double newAmount = Double.parseDouble(txtAmount.getText().trim());
                 if (newAmount <= 0) {
-                    JOptionPane.showMessageDialog(this, "Số tiền phải lớn hơn 0!");
+                    JOptionPane.showMessageDialog(this, isVietnamese ? "Số tiền phải lớn hơn 0!" : "Amount must be greater than 0!");
                     return;
                 }
                 transaction.setAmount(newAmount);
@@ -169,17 +169,18 @@ public class TransactionDetailDialog extends JDialog {
                 } else {
                     DatabaseUtil.updateTransaction(transaction);
                 }
-                JOptionPane.showMessageDialog(this, "Cập nhật thành công!");
+                JOptionPane.showMessageDialog(this, isVietnamese ? "Cập nhật thành công!" : "Update successful!");
                 dispose();
             } catch (NumberFormatException e) {
-                JOptionPane.showMessageDialog(this, "Số tiền không hợp lệ!");
+                JOptionPane.showMessageDialog(this, isVietnamese ? "Số tiền không hợp lệ!" : "Invalid amount!");
             }
         }
     }
 
     private void deleteTransaction() {
         int confirm = JOptionPane.showConfirmDialog(this,
-                "Bạn có chắc muốn xóa giao dịch này?", "Xác nhận xóa",
+                isVietnamese ? "Bạn có chắc muốn xóa giao dịch này?" : "Are you sure you want to delete this transaction?",
+                isVietnamese ? "Xác nhận xóa" : "Confirm delete",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
             if (mainFrame != null && mainFrame.getFinanceService() != null) {
@@ -187,7 +188,7 @@ public class TransactionDetailDialog extends JDialog {
             } else {
                 DatabaseUtil.deleteTransaction(transaction.getId());
             }
-            JOptionPane.showMessageDialog(this, "Đã xóa giao dịch!");
+            JOptionPane.showMessageDialog(this, isVietnamese ? "Đã xóa giao dịch!" : "Transaction deleted!");
             dispose();
         }
     }

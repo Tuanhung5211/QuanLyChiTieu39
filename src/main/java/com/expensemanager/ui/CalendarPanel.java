@@ -147,7 +147,6 @@ public class CalendarPanel extends JPanel implements Observer {
         cell.setPreferredSize(new Dimension(80, 70));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Màu nền theme
         if (isOver) {
             cell.setBackground(ThemeManager.getColor("danger"));
         } else {
@@ -233,6 +232,12 @@ public class CalendarPanel extends JPanel implements Observer {
             btnNextMonth.setBackground(ThemeManager.getColor("input"));
             btnNextMonth.setForeground(ThemeManager.getColor("textPrimary"));
         }
-        refreshCalendar(); // cập nhật màu từng ô
+        refreshCalendar();
+    }
+
+    // 👉 PHƯƠNG THỨC MỚI THÊM
+    public void updateLanguageText(boolean isVN) {
+        this.isVietnamese = isVN;
+        refreshCalendar();
     }
 }

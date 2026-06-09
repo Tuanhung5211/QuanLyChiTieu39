@@ -4,6 +4,7 @@ import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
 import com.expensemanager.service.SessionManager;
 import com.expensemanager.service.UserService;
+import com.expensemanager.util.ConfigLocalStorage;
 import com.expensemanager.util.InputValidator;
 import com.expensemanager.util.ThemeManager;
 import com.expensemanager.util.ValidationUI;
@@ -30,13 +31,16 @@ public class LoginFrame extends JFrame {
     private JCheckBox chkShowRegPwd;
     private JComboBox<String> comboGender;
 
-    private boolean isVietnamese = true;
+    private boolean isVietnamese;
     private final Font FONT_TITLE = new Font("Segoe UI", Font.BOLD, 26);
     private final Font FONT_LABEL = new Font("Segoe UI", Font.BOLD, 13);
     private final Font FONT_INPUT = new Font("Segoe UI", Font.PLAIN, 15);
     private final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 15);
 
     public LoginFrame() {
+        // 👉 Load ngôn ngữ từ cấu hình đã lưu (mặc định là tiếng Việt)
+        this.isVietnamese = ConfigLocalStorage.loadLanguage();
+
         setTitle("Money Tracker");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(500, 750);
@@ -74,13 +78,13 @@ public class LoginFrame extends JFrame {
         lblAvatar.setForeground(ThemeManager.getColor("textPrimary"));
         gbc.gridy = 0; gbc.insets = new Insets(0, 0, 5, 0); pForm.add(lblAvatar, gbc);
 
-        JLabel lblTitle = new JLabel("ĐĂNG NHẬP", SwingConstants.CENTER);
+        JLabel lblTitle = new JLabel(isVietnamese ? "ĐĂNG NHẬP" : "LOGIN", SwingConstants.CENTER);
         lblTitle.setFont(FONT_TITLE);
         lblTitle.setForeground(ThemeManager.getColor("accent"));
         gbc.gridy = 1; gbc.insets = new Insets(0, 0, 25, 0); pForm.add(lblTitle, gbc);
 
         gbc.insets = new Insets(5, 0, 5, 0);
-        gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
+        gbc.gridy = 2; pForm.add(createLabel(isVietnamese ? "Tên đăng nhập:" : "Username:"), gbc);
         gbc.gridy = 3;
         txtLoginUsername = new JTextField();
         styleTextField(txtLoginUsername);
@@ -89,7 +93,7 @@ public class LoginFrame extends JFrame {
         pForm.add(txtLoginUsername, gbc);
 
         gbc.gridy = 4;
-        pForm.add(createLabel("Mật khẩu:"), gbc);
+        pForm.add(createLabel(isVietnamese ? "Mật khẩu:" : "Password:"), gbc);
         gbc.gridy = 5;
         txtLoginPassword = new JPasswordField();
         styleTextField(txtLoginPassword);
@@ -124,7 +128,7 @@ public class LoginFrame extends JFrame {
 
         gbc.gridy = 8;
         gbc.insets = new Insets(5, 0, 15, 0);
-        JButton btnLogin = new JButton("ĐĂNG NHẬP");
+        JButton btnLogin = new JButton(isVietnamese ? "ĐĂNG NHẬP" : "LOGIN");
         stylePrimaryButton(btnLogin);
         btnLogin.addActionListener(e -> login());
         pForm.add(btnLogin, gbc);
@@ -132,7 +136,7 @@ public class LoginFrame extends JFrame {
 
         gbc.gridy = 9;
         gbc.insets = new Insets(0, 0, 0, 0);
-        pForm.add(createLink("Chưa có tài khoản? Đăng ký ngay", "register"), gbc);
+        pForm.add(createLink(isVietnamese ? "Chưa có tài khoản? Đăng ký ngay" : "Don't have an account? Register now", "register"), gbc);
 
         loginPanel.add(pForm);
     }
@@ -155,20 +159,20 @@ public class LoginFrame extends JFrame {
         lblAvatar.setForeground(ThemeManager.getColor("textPrimary"));
         gbc.gridy = 0; pForm.add(lblAvatar, gbc);
 
-        JLabel lblTitle = new JLabel("ĐĂNG KÝ", SwingConstants.CENTER);
+        JLabel lblTitle = new JLabel(isVietnamese ? "ĐĂNG KÝ" : "REGISTER", SwingConstants.CENTER);
         lblTitle.setFont(FONT_TITLE);
         lblTitle.setForeground(ThemeManager.getColor("accent"));
         gbc.gridy = 1; pForm.add(lblTitle, gbc);
 
         gbc.insets = new Insets(4, 0, 4, 0);
-        gbc.gridy = 2; pForm.add(createLabel("Tên đăng nhập:"), gbc);
+        gbc.gridy = 2; pForm.add(createLabel(isVietnamese ? "Tên đăng nhập:" : "Username:"), gbc);
         gbc.gridy = 3;
         txtRegUsername = new JTextField();
         styleTextField(txtRegUsername);
         ValidationUI.addAutoReset(txtRegUsername);
         pForm.add(txtRegUsername, gbc);
 
-        gbc.gridy = 4; pForm.add(createLabel("Mật khẩu:"), gbc);
+        gbc.gridy = 4; pForm.add(createLabel(isVietnamese ? "Mật khẩu:" : "Password:"), gbc);
         gbc.gridy = 5;
         txtRegPassword = new JPasswordField();
         styleTextField(txtRegPassword);
@@ -186,7 +190,7 @@ public class LoginFrame extends JFrame {
         });
         pForm.add(chkShowRegPwd, gbc);
 
-        gbc.gridy = 7; pForm.add(createLabel("Tên hiển thị:"), gbc);
+        gbc.gridy = 7; pForm.add(createLabel(isVietnamese ? "Tên hiển thị:" : "Nickname:"), gbc);
         gbc.gridy = 8;
         txtRegNickname = new JTextField();
         styleTextField(txtRegNickname);
@@ -200,7 +204,7 @@ public class LoginFrame extends JFrame {
         ValidationUI.addAutoReset(txtRegEmail);
         pForm.add(txtRegEmail, gbc);
 
-        gbc.gridy = 11; pForm.add(createLabel("Giới tính:"), gbc);
+        gbc.gridy = 11; pForm.add(createLabel(isVietnamese ? "Giới tính:" : "Gender:"), gbc);
         gbc.gridy = 12;
         comboGender = new JComboBox<>(new String[]{"Nam", "Nữ"});
         styleComboBox(comboGender);
@@ -208,14 +212,14 @@ public class LoginFrame extends JFrame {
 
         gbc.gridy = 13;
         gbc.insets = new Insets(20, 0, 15, 0);
-        JButton btnRegister = new JButton("ĐĂNG KÝ NGAY");
+        JButton btnRegister = new JButton(isVietnamese ? "ĐĂNG KÝ NGAY" : "REGISTER NOW");
         stylePrimaryButton(btnRegister);
         btnRegister.addActionListener(e -> register());
         pForm.add(btnRegister, gbc);
 
         gbc.gridy = 14;
         gbc.insets = new Insets(0, 0, 0, 0);
-        pForm.add(createLink("Quay lại Đăng nhập", "login"), gbc);
+        pForm.add(createLink(isVietnamese ? "Quay lại Đăng nhập" : "Back to Login", "login"), gbc);
 
         registerPanel.add(pForm);
     }
@@ -346,19 +350,18 @@ public class LoginFrame extends JFrame {
             InputValidator.validateLogin(username, password, isVietnamese);
             User user = UserService.login(username.trim(), password.trim());
             if (user != null) {
-                // Lưu thông tin admin vào SessionManager
                 SessionManager.login(user.getId(), user.getUsername(), user.isAdmin());
                 new MainFrame().setVisible(true);
                 dispose();
             } else {
                 ValidationUI.setErrorBorder(txtLoginUsername);
                 ValidationUI.setErrorBorder(txtLoginPassword);
-                JOptionPane.showMessageDialog(this, "Sai tên đăng nhập hoặc mật khẩu!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, isVietnamese ? "Sai tên đăng nhập hoặc mật khẩu!" : "Incorrect username or password!", isVietnamese ? "Lỗi" : "Error", JOptionPane.ERROR_MESSAGE);
             }
         } catch (IllegalArgumentException ex) {
             if (username.trim().isEmpty()) ValidationUI.setErrorBorder(txtLoginUsername);
             if (password.isEmpty()) ValidationUI.setErrorBorder(txtLoginPassword);
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Lỗi", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, ex.getMessage(), isVietnamese ? "Lỗi" : "Error", JOptionPane.WARNING_MESSAGE);
         }
     }
 
@@ -380,9 +383,9 @@ public class LoginFrame extends JFrame {
 
             if (user == null) {
                 ValidationUI.setErrorBorder(txtRegUsername);
-                JOptionPane.showMessageDialog(this, "Tên đăng nhập đã tồn tại!", "Lỗi", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, isVietnamese ? "Tên đăng nhập đã tồn tại!" : "Username already exists!", isVietnamese ? "Lỗi" : "Error", JOptionPane.ERROR_MESSAGE);
             } else {
-                JOptionPane.showMessageDialog(this, "Đăng ký thành công!", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, isVietnamese ? "Đăng ký thành công!" : "Registration successful!", isVietnamese ? "Thành công" : "Success", JOptionPane.INFORMATION_MESSAGE);
                 txtLoginUsername.setText(username.trim());
                 txtLoginPassword.setText("");
                 if (chkShowLoginPwd != null) chkShowLoginPwd.setSelected(false);
@@ -394,7 +397,7 @@ public class LoginFrame extends JFrame {
             if (msg.contains("Mật khẩu") || msg.contains("Password")) ValidationUI.setErrorBorder(txtRegPassword);
             if (msg.contains("Tên hiển thị") || msg.contains("Nickname")) ValidationUI.setErrorBorder(txtRegNickname);
             if (msg.contains("Email")) ValidationUI.setErrorBorder(txtRegEmail);
-            JOptionPane.showMessageDialog(this, msg, "Lỗi nhập liệu", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, msg, isVietnamese ? "Lỗi nhập liệu" : "Input Error", JOptionPane.WARNING_MESSAGE);
         }
     }
 
@@ -429,7 +432,6 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 1; gbc.gridwidth = 2;
         panel.add(txtEmail, gbc);
 
-        // Auto reset error border
         txtEmail.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             private void reset() { txtEmail.setBorder(defaultBorder); }
             @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { reset(); }
@@ -450,7 +452,6 @@ public class LoginFrame extends JFrame {
         gbc.gridy = 2; gbc.gridwidth = 2;
         panel.add(btnSend, gbc);
 
-        // Enter key
         txtEmail.addKeyListener(new KeyAdapter() {
             @Override public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) btnSend.doClick();

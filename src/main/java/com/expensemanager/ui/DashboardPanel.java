@@ -158,7 +158,6 @@ public class DashboardPanel extends JPanel implements Observer {
 
         btnApplyFilter = new JButton(isVietnamese ? "Áp dụng" : "Apply");
         btnApplyFilter.setBackground(ThemeManager.getColor("accent"));
-        // Use white text so it's visible on dark accent backgrounds
         btnApplyFilter.setForeground(Color.WHITE);
         btnApplyFilter.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnApplyFilter.setFocusPainted(false);
@@ -171,7 +170,6 @@ public class DashboardPanel extends JPanel implements Observer {
         filterBar.add(txtEndDate);
         filterBar.add(btnApplyFilter);
 
-        // Make the calendar button more visible: include label text and larger padding
         btnCalendarPopup = new JButton(isVietnamese ? "📅 Lịch" : "📅 Calendar");
         btnCalendarPopup.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         btnCalendarPopup.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
@@ -390,7 +388,18 @@ public class DashboardPanel extends JPanel implements Observer {
             calendarPanel.update(EventType.DATA_LOADED, null);
         }
         if (btnCalendarPopup != null) btnCalendarPopup.setText(isVN ? "📅 Lịch" : "📅 Calendar");
+
+        // 👉 THÊM DÒNG NÀY
+        updateCalendarLanguage(isVN);
+
         refreshData();
+    }
+
+    // 👉 THÊM PHƯƠNG THỨC NÀY
+    public void updateCalendarLanguage(boolean isVN) {
+        if (calendarPanel != null) {
+            calendarPanel.updateLanguageText(isVN);
+        }
     }
 
     @Override
