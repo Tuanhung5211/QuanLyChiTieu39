@@ -1,6 +1,7 @@
 package com.expensemanager.ui;
 
 import com.expensemanager.entity.RecurringTransaction;
+import com.expensemanager.entity.TransactionType;
 import com.expensemanager.observer.EventType;
 import com.expensemanager.observer.Observer;
 import com.expensemanager.service.RecurringTransactionService;
@@ -37,7 +38,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 10, 15));
         headerPanel.setOpaque(false);
 
-        JLabel titleLabel = new JLabel(isVietnamese ? "⌚ Giao dịch lặp lại" : "⌚ Recurring Transactions");
+        JLabel titleLabel = new JLabel(isVietnamese ? "⏰ Giao dịch lặp lại" : "⏰ Recurring Transactions");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         titleLabel.setForeground(ThemeManager.getColor("textPrimary"));
         headerPanel.add(titleLabel, BorderLayout.WEST);
@@ -94,40 +95,54 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         contentPanel.repaint();
     }
 
+    /**
+     * Tính màu chữ tương phản với màu nền.
+     */
+    private Color getContrastColor(Color background) {
+        double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue()) / 255;
+        return luminance > 0.5 ? Color.BLACK : Color.WHITE;
+    }
+
     private JPanel createRecurringTransactionCard(RecurringTransaction rt) {
-        JPanel card = new JPanel();
-        card.setLayout(new BorderLayout(10, 0));
+        // Xác định màu nền dựa trên loại giao dịch
+        Color bgColor = rt.getType() == TransactionType.EXPENSE ?
+                ThemeManager.getColor("danger") : ThemeManager.getColor("success");
+        Color fgColor = getContrastColor(bgColor);   // chữ trắng hoặc đen dựa trên độ sáng
+
+        JPanel card = new JPanel(new BorderLayout(10, 0));
         card.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15));
-        Color cardBg = rt.getType() == com.expensemanager.entity.TransactionType.EXPENSE ? ThemeManager.getColor("danger") : ThemeManager.getColor("success");
-        card.setBackground(cardBg);
+        card.setBackground(bgColor);
         card.setOpaque(true);
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
 
+        // ---- Thông tin chính (bên trái) ----
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
 
+        // Icon
         String typeEmoji = rt.getType().name().equals("INCOME") ? "📥" : "📤";
-        String title = (rt.getCategory() != null ? rt.getCategory().getName() : (isVietnamese ? "Không xác định" : "N/A"));
-
         JLabel lblIcon = new JLabel(typeEmoji, SwingConstants.CENTER);
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
-        lblIcon.setOpaque(true);
-        lblIcon.setBackground(new Color(0,0,0,0));
+        lblIcon.setForeground(fgColor);
         lblIcon.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 12));
-        lblIcon.setForeground(ThemeManager.getColor("bg"));
         infoPanel.add(lblIcon);
 
+        // Tên danh mục
+        String title = (rt.getCategory() != null) ? rt.getCategory().getName() :
+                (isVietnamese ? "Không xác định" : "N/A");
         JLabel categoryLabel = new JLabel(title);
         categoryLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        categoryLabel.setForeground(ThemeManager.getColor("bg"));
+        categoryLabel.setForeground(fgColor);
         infoPanel.add(categoryLabel);
 
+        // Số tiền
         JLabel amountLabel = new JLabel(String.format("%,.0f VND", rt.getAmount()));
         amountLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        amountLabel.setForeground(ThemeManager.getColor("bg"));
+        amountLabel.setForeground(fgColor);
         infoPanel.add(amountLabel);
 
+        // Thông tin phụ (kiểu lặp + ngày)
         String recurTypeLabel = RecurringTransactionService.getRecurrenceTypeLabel(rt.getRecurrenceType(), isVietnamese);
         String dateText = rt.getStartDate().format(dateFormatter);
         if (rt.getEndDate() != null) {
@@ -135,15 +150,14 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         } else {
             dateText += " → " + (isVietnamese ? "Không hạn" : "No limit");
         }
-        JLabel metaLabel = new JLabel("⌚ " + recurTypeLabel + "   📅 " + dateText);
+        JLabel metaLabel = new JLabel("⏰ " + recurTypeLabel + "   📅 " + dateText);
         metaLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        // SỬA: dùng textPrimary với alpha 200 thay vì new Color(255,255,255,200)
-        Color textPrimary = ThemeManager.getColor("textPrimary");
-        metaLabel.setForeground(new Color(textPrimary.getRed(), textPrimary.getGreen(), textPrimary.getBlue(), 200));
+        metaLabel.setForeground(new Color(fgColor.getRed(), fgColor.getGreen(), fgColor.getBlue(), 200));
         infoPanel.add(metaLabel);
 
         card.add(infoPanel, BorderLayout.CENTER);
 
+        // ---- Nút hành động (bên phải) ----
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
         actionPanel.setOpaque(false);
 
@@ -152,7 +166,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         btnToggle.setFocusPainted(false);
         btnToggle.setPreferredSize(new Dimension(40, 35));
         btnToggle.setBackground(ThemeManager.getColor("surface"));
-        btnToggle.setForeground(ThemeManager.getColor("bg"));
+        btnToggle.setForeground(ThemeManager.getColor("textPrimary"));
         btnToggle.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         btnToggle.setToolTipText(isVietnamese ? (rt.isActive() ? "Tắt" : "Bật") : (rt.isActive() ? "Disable" : "Enable"));
         btnToggle.addActionListener(e -> {
@@ -169,7 +183,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         btnDelete.setFocusPainted(false);
         btnDelete.setPreferredSize(new Dimension(40, 35));
         btnDelete.setBackground(ThemeManager.getColor("surface"));
-        btnDelete.setForeground(ThemeManager.getColor("bg"));
+        btnDelete.setForeground(ThemeManager.getColor("textPrimary"));
         btnDelete.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         btnDelete.setToolTipText(isVietnamese ? "Xóa" : "Delete");
         btnDelete.addActionListener(e -> {
@@ -197,7 +211,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
                         innerComp.setForeground(ThemeManager.getColor("textPrimary"));
                     } else if (innerComp instanceof JButton) {
                         innerComp.setBackground(ThemeManager.getColor("accent"));
-                        innerComp.setForeground(ThemeManager.getColor("bg")); // Nút "Thêm lặp lại" giữ trắng để tương phản, có thể thay bg nếu muốn
+                        innerComp.setForeground(ThemeManager.getColor("bg"));
                     }
                 }
             } else if (comp instanceof JScrollPane) {

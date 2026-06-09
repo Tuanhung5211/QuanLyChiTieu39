@@ -18,7 +18,7 @@ public class SettingsPanel extends JPanel {
     private JPanel subContentPanel;
     private JLabel lblMainTitle;
     private JButton btnAccountTab, btnConfigTab, btnCategoryTab, btnThemeTab;
-    private JButton activeSubBtn; // 👉 Track tab con đang mở để vẽ lại màu
+    private JButton activeSubBtn;
 
     private AccountSettingsPanel accountSettingsPanel;
     private SystemConfigPanel systemConfigPanel;
@@ -42,21 +42,7 @@ public class SettingsPanel extends JPanel {
         applyTheme();
     }
 
-    public void applyTheme() {
-        setBackground(ThemeManager.getColor("bg"));
-        if (lblMainTitle != null) lblMainTitle.setForeground(ThemeManager.getColor("textPrimary"));
-        if (subContentPanel != null) subContentPanel.setBackground(ThemeManager.getColor("bg"));
-
-        // 👉 Cập nhật lại màu cho các nút Menu phụ trong mục Cài đặt
-        updateSubNavButtonsTheme();
-
-        if (accountSettingsPanel != null) accountSettingsPanel.applyTheme();
-        if (systemConfigPanel != null) systemConfigPanel.applyTheme();
-        if (categoryManagerPanel != null) categoryManagerPanel.applyTheme();
-
-        if (themePanel != null) refreshThemeUI(themePanel);
-    }
-
+    // ===================== KHỞI TẠO GIAO DIỆN =====================
     private void initComponents() {
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
@@ -71,6 +57,7 @@ public class SettingsPanel extends JPanel {
         bodyContainer.setOpaque(false);
         bodyContainer.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
 
+        // Sidebar
         JPanel sidebarPanel = new JPanel();
         sidebarPanel.setLayout(new BoxLayout(sidebarPanel, BoxLayout.Y_AXIS));
         sidebarPanel.setBorder(BorderFactory.createCompoundBorder(
@@ -102,6 +89,7 @@ public class SettingsPanel extends JPanel {
 
         bodyContainer.add(sidebarPanel, BorderLayout.WEST);
 
+        // Sub-panels
         accountSettingsPanel = new AccountSettingsPanel(mainFrame);
         systemConfigPanel = new SystemConfigPanel(mainFrame);
         categoryManagerPanel = new CategoryManagerPanel(mainFrame);
@@ -132,10 +120,10 @@ public class SettingsPanel extends JPanel {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-
         return scrollPane;
     }
 
+    // ===================== PANEL GIAO DIỆN (THEME) =====================
     private JPanel createThemePanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
@@ -166,11 +154,12 @@ public class SettingsPanel extends JPanel {
                     case 2: selectedPreset = ThemeManager.ThemePreset.OCEAN; break;
                     case 3: selectedPreset = ThemeManager.ThemePreset.FOREST; break;
                     case 4: selectedPreset = ThemeManager.ThemePreset.DRACULA; break;
+                    case 5: selectedPreset = ThemeManager.ThemePreset.SUNSET; break;
+                    case 6: selectedPreset = ThemeManager.ThemePreset.LAVENDER; break;
+                    case 7: selectedPreset = ThemeManager.ThemePreset.MATERIAL_LIGHT; break;
                 }
                 ThemeManager.setTheme(selectedPreset);
                 ConfigLocalStorage.saveThemePreset(selectedPreset.name());
-
-                // Việc ThemeManager kích hoạt Listener sẽ tự gọi MainFrame.applyThemeToAll() và tự truyền xuống SettingsPanel
             }
         });
 
@@ -181,8 +170,14 @@ public class SettingsPanel extends JPanel {
         btnCustom.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         btnCustom.addActionListener(e -> {
             if (!PremiumManager.isPremium(SessionManager.getCurrentUserId())) {
-                JOptionPane.showMessageDialog(this, isVietnamese ? "Tính năng này yêu cầu Premium!" : "This feature requires Premium!");
-                return;
+                JOptionPane.showMessageDialog(this,
+                        isVietnamese ? "Tính năng này yêu cầu Premium!" : "This feature requires Premium!",
+                        isVietnamese ? "Thông báo" : "Info", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                ThemeCustomizerDialog dialog = new ThemeCustomizerDialog(
+                        (Frame) SwingUtilities.getWindowAncestor(this), isVietnamese);
+                dialog.setVisible(true);
+                refreshThemeUI(themePanel); // cập nhật lại preview sau khi đóng dialog
             }
         });
 
@@ -225,12 +220,30 @@ public class SettingsPanel extends JPanel {
 
     private void refreshThemeUI(JPanel panel) {
         if (panel == null) return;
-        panel.setBackground(ThemeManager.getColor("surface"));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(30, 30, 30, 30)
-        ));
+        // Áp dụng theme đệ quy cho toàn bộ panel theme
+        ThemeManager.applyThemeRecursively(panel);
+        // Sau đó cập nhật lại các ô màu preview để đảm bảo chính xác
+        for (Component comp : panel.getComponents()) {
+            if (comp instanceof JPanel && "previewPanel".equals(comp.getName())) {
+                for (Component colorComp : ((JPanel) comp).getComponents()) {
+                    if (colorComp instanceof JPanel) {
+                        JPanel colorBox = (JPanel) colorComp;
+                        String boxName = colorBox.getName();
+                        if (boxName != null && boxName.startsWith("colorBox_")) {
+                            String colorKey = boxName.substring("colorBox_".length());
+                            colorBox.setBackground(ThemeManager.getColor(colorKey));
+                            for (Component boxChild : colorBox.getComponents()) {
+                                if (boxChild instanceof JLabel) {
+                                    boxChild.setForeground(ThemeManager.getColor("textPrimary"));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
+        // Cập nhật combobox và nút
         if (cmbThemePreset != null) {
             cmbThemePreset.setBackground(ThemeManager.getColor("input"));
             cmbThemePreset.setForeground(ThemeManager.getColor("textPrimary"));
@@ -241,44 +254,11 @@ public class SettingsPanel extends JPanel {
             btnCustom.setForeground(ThemeManager.getColor("bg"));
         }
 
-        for (Component comp : panel.getComponents()) {
-            if (comp instanceof JLabel) {
-                JLabel lbl = (JLabel) comp;
-                String name = lbl.getName();
-                if (name != null && name.equals("themeTitle")) {
-                    lbl.setForeground(ThemeManager.getColor("accent"));
-                } else if (name == null || !name.equals("themeTitle")) {
-                    lbl.setForeground(ThemeManager.getColor("textPrimary"));
-                }
-            } else if (comp instanceof JPanel) {
-                JPanel subPanel = (JPanel) comp;
-                String name = subPanel.getName();
-                if (name != null && name.equals("previewPanel")) {
-                    for (Component colorComp : subPanel.getComponents()) {
-                        if (colorComp instanceof JPanel) {
-                            JPanel colorBox = (JPanel) colorComp;
-                            String boxName = colorBox.getName();
-                            if (boxName != null && boxName.startsWith("colorBox_")) {
-                                String colorKey = boxName.substring("colorBox_".length());
-                                colorBox.setBackground(ThemeManager.getColor(colorKey));
-                                colorBox.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border")));
-                                for (Component boxChild : colorBox.getComponents()) {
-                                    if (boxChild instanceof JLabel) {
-                                        ((JLabel) boxChild).setForeground(ThemeManager.getColor("textPrimary"));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    subPanel.setBackground(ThemeManager.getColor("bg"));
-                }
-            }
-        }
         panel.revalidate();
         panel.repaint();
     }
 
+    // ===================== ĐIỀU HƯỚNG TAB =====================
     private JButton createSubNavButton(String text, boolean isActive) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -300,11 +280,10 @@ public class SettingsPanel extends JPanel {
 
     private void switchSubTab(String targetCard, JButton activeBtn) {
         subCardLayout.show(subContentPanel, targetCard);
-        this.activeSubBtn = activeBtn; // 👉 Lưu lại nút đang Active
+        this.activeSubBtn = activeBtn;
         updateSubNavButtonsTheme();
     }
 
-    // 👉 Hàm mới để đồng bộ màu sắc cho các nút Menu phụ trong mục cài đặt
     private void updateSubNavButtonsTheme() {
         Color secondary = ThemeManager.getColor("textSecondary");
         Color inputBg = ThemeManager.getColor("input");
@@ -324,6 +303,22 @@ public class SettingsPanel extends JPanel {
         }
     }
 
+    // ===================== CẬP NHẬT NGÔN NGỮ & THEME =====================
+    public void applyTheme() {
+        // Áp dụng theme đệ quy cho toàn bộ SettingsPanel
+        ThemeManager.applyThemeRecursively(this);
+
+        // Cập nhật màu cho các phần tử đặc biệt (tab, tiêu đề)
+        if (lblMainTitle != null) lblMainTitle.setForeground(ThemeManager.getColor("textPrimary"));
+        updateSubNavButtonsTheme();
+
+        // Áp dụng cho các panel con
+        if (accountSettingsPanel != null) accountSettingsPanel.applyTheme();
+        if (systemConfigPanel != null) systemConfigPanel.applyTheme();
+        if (categoryManagerPanel != null) categoryManagerPanel.applyTheme();
+        if (themePanel != null) refreshThemeUI(themePanel);
+    }
+
     public void refreshData() {
         if (accountSettingsPanel != null) accountSettingsPanel.refreshData();
         if (categoryManagerPanel != null) categoryManagerPanel.refreshCategories();
@@ -337,6 +332,7 @@ public class SettingsPanel extends JPanel {
         int fluidWidth = panelWidth - 220 - 25 - 70;
         if (fluidWidth < 500) fluidWidth = 560;
 
+        // Đặt lại văn bản cho các thành phần
         if (isVietnamese) {
             lblMainTitle.setText("Cài đặt hệ thống");
             btnAccountTab.setText("Thông tin cá nhân");
@@ -348,15 +344,20 @@ public class SettingsPanel extends JPanel {
             if (lblPreview != null) lblPreview.setText("Xem trước màu sắc:");
             if (btnCustom != null) btnCustom.setText("Tùy chỉnh màu (Premium)");
 
+            // Cập nhật combobox theme
             if (cmbThemePreset != null) {
                 java.awt.event.ItemListener[] listeners = cmbThemePreset.getItemListeners();
                 for (java.awt.event.ItemListener l : listeners) cmbThemePreset.removeItemListener(l);
 
                 int selected = cmbThemePreset.getSelectedIndex();
                 cmbThemePreset.setModel(new DefaultComboBoxModel<>(new String[]{
-                        "Giao diện Tối (Dark)", "Giao diện Sáng (Light)", "Xanh Đại Dương (Ocean)", "Xanh Lục Bảo (Forest)", "Hồng Màn Đêm (Dracula)"
+                        "Giao diện Tối (Dark)", "Giao diện Sáng (Light)", "Xanh Đại Dương (Ocean)",
+                        "Xanh Lục Bảo (Forest)", "Hồng Màn Đêm (Dracula)", "Hoàng hôn (Sunset)",
+                        "Tím oải hương (Lavender)", "Material Light"
                 }));
-                if (selected >= 0) cmbThemePreset.setSelectedIndex(selected);
+                if (selected >= 0 && selected < cmbThemePreset.getItemCount()) {
+                    cmbThemePreset.setSelectedIndex(selected);
+                }
 
                 for (java.awt.event.ItemListener l : listeners) cmbThemePreset.addItemListener(l);
             }
@@ -377,14 +378,18 @@ public class SettingsPanel extends JPanel {
 
                 int selected = cmbThemePreset.getSelectedIndex();
                 cmbThemePreset.setModel(new DefaultComboBoxModel<>(new String[]{
-                        "Dark Theme", "Light Theme", "Ocean Blue", "Emerald Forest", "Dracula Night"
+                        "Dark Theme", "Light Theme", "Ocean Blue", "Emerald Forest",
+                        "Dracula Night", "Sunset", "Lavender", "Material Light"
                 }));
-                if (selected >= 0) cmbThemePreset.setSelectedIndex(selected);
+                if (selected >= 0 && selected < cmbThemePreset.getItemCount()) {
+                    cmbThemePreset.setSelectedIndex(selected);
+                }
 
                 for (java.awt.event.ItemListener l : listeners) cmbThemePreset.addItemListener(l);
             }
         }
 
+        // Cập nhật responsive cho các panel con
         if (accountSettingsPanel != null) accountSettingsPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
         if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
         if (categoryManagerPanel != null) categoryManagerPanel.updateResponsiveLayout(isVietnamese, fluidWidth);

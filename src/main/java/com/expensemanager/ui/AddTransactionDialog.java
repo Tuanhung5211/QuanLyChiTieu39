@@ -54,6 +54,9 @@ public class AddTransactionDialog extends JDialog {
         applyTheme();
 
         loadCategoriesAsync();
+
+        // 🔥 Áp dụng ẩn thanh cuộn & tăng tốc độ cuộn
+        ThemeManager.applyThemeRecursively(this);
     }
 
     private void loadCategoriesAsync() {

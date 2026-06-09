@@ -48,6 +48,8 @@ public class AddRecurringTransactionDialog extends JDialog {
         applyTheme();
 
         loadCategoriesAsync();
+
+        ThemeManager.applyThemeRecursively(this);
     }
 
     private void loadCategoriesAsync() {

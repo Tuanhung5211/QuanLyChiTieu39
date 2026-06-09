@@ -37,7 +37,6 @@ public class LoginFrame extends JFrame {
     private final Font FONT_BUTTON = new Font("Segoe UI", Font.BOLD, 15);
 
     public LoginFrame() {
-        // 👉 Load ngôn ngữ từ cấu hình đã lưu (mặc định là tiếng Việt)
         this.isVietnamese = ConfigLocalStorage.loadLanguage();
 
         setTitle("Money Tracker");
@@ -57,6 +56,9 @@ public class LoginFrame extends JFrame {
         add(cards);
         cardLayout.show(cards, "login");
         applyTheme();
+
+        // 🔥 Đảm bảo mọi JScrollPane (nếu có) được style
+        ThemeManager.applyThemeRecursively(this);
     }
 
     private void createLoginPanel() {
@@ -105,7 +107,7 @@ public class LoginFrame extends JFrame {
         chkShowLoginPwd.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         chkShowLoginPwd.setForeground(ThemeManager.getColor("textSecondary"));
         chkShowLoginPwd.setFocusPainted(false);
-        chkShowLoginPwd.setOpaque(false); // Sửa lỗi lốm đốm màu nền
+        chkShowLoginPwd.setOpaque(false);
         chkShowLoginPwd.addActionListener(e -> {
             if (chkShowLoginPwd.isSelected()) txtLoginPassword.setEchoChar((char) 0);
             else txtLoginPassword.setEchoChar('•');
@@ -184,7 +186,7 @@ public class LoginFrame extends JFrame {
         chkShowRegPwd.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         chkShowRegPwd.setForeground(ThemeManager.getColor("textSecondary"));
         chkShowRegPwd.setFocusPainted(false);
-        chkShowRegPwd.setOpaque(false); // Sửa lỗi lốm đốm màu nền
+        chkShowRegPwd.setOpaque(false);
         chkShowRegPwd.addActionListener(e -> {
             if (chkShowRegPwd.isSelected()) txtRegPassword.setEchoChar((char) 0);
             else txtRegPassword.setEchoChar('•');
@@ -255,19 +257,18 @@ public class LoginFrame extends JFrame {
                         tf.setBackground(ThemeManager.getColor("input"));
                         tf.setForeground(ThemeManager.getColor("textPrimary"));
                         tf.setCaretColor(ThemeManager.getColor("accent"));
-                        // Cập nhật lại viền để đồng bộ màu border mới
                         tf.setBorder(new CompoundBorder(new LineBorder(ThemeManager.getColor("border"), 1, true), new EmptyBorder(0, 12, 0, 12)));
                     } else if (inner instanceof JCheckBox) {
                         JCheckBox cb = (JCheckBox) inner;
                         cb.setForeground(ThemeManager.getColor("textSecondary"));
                         cb.setBackground(ThemeManager.getColor("surface"));
-                        cb.setOpaque(false); // Sửa lỗi viền trắng/đen
+                        cb.setOpaque(false);
                     } else if (inner instanceof JButton) {
                         JButton btn = (JButton) inner;
                         if (btn.getText().contains("ĐĂNG") || btn.getText().contains("LOGIN") || btn.getText().contains("REGISTER")) {
                             btn.setBackground(ThemeManager.getColor("accent"));
                             btn.setForeground(ThemeManager.getColor("bg"));
-                            btn.setBorder(new LineBorder(ThemeManager.getColor("accent"), 1, true)); // Cập nhật viền nút
+                            btn.setBorder(new LineBorder(ThemeManager.getColor("accent"), 1, true));
                         }
                     } else if (inner instanceof JComboBox) {
                         JComboBox<?> combo = (JComboBox<?>) inner;
