@@ -8,7 +8,6 @@ public class PremiumManager {
 
     public static boolean isPremium(String userId) {
         if (userId == null) return false;
-        // Lấy user hiện tại từ username (vì userId có thể không phải là username)
         String username = SessionManager.getCurrentUsername();
         if (username == null) return false;
         User user = DatabaseUtil.getUserByUsername(username);

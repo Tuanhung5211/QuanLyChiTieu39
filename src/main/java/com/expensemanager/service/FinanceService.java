@@ -9,27 +9,17 @@ import com.expensemanager.observer.Subject;
 import com.expensemanager.util.JsonUtil;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class FinanceService extends Subject {
 
-    // =====================================================================
-    // 1. KHAI BÁO BIẾN LOGIC VÀ LƯU TRỮ TRÊN RAM
-    // =====================================================================
-    private List<Transaction> transactionList;
-    private Map<String, Category> categoryMap;
-    private RecurringTransactionService recurringTransactionService;
+    private final List<Transaction> transactionList = Collections.synchronizedList(new ArrayList<>());
+    private final Map<String, Category> categoryMap = new HashMap<>();
+    private final RecurringTransactionService recurringTransactionService;
     private static final String JSON_FILE_PATH = "transactions.json";
 
-    // =====================================================================
-    // 2. CONSTRUCTOR & KHỞI TẠO DỮ LIỆU BAN ĐẦU
-    // =====================================================================
     public FinanceService() {
-        transactionList = new ArrayList<>();
-        categoryMap = new HashMap<>();
         this.recurringTransactionService = new RecurringTransactionService(this);
         loadInitialData();
     }
@@ -46,18 +36,10 @@ public class FinanceService extends Subject {
             System.err.println("Không thể tải danh mục: " + e.getMessage());
         }
 
-        try {
-            List<Transaction> saved = JsonUtil.loadFromJson(JSON_FILE_PATH);
-            transactionList = saved != null ? saved : new ArrayList<>();
-        } catch (DataLoadException e) {
-            System.err.println("Không thể tải file JSON: " + e.getMessage());
-            transactionList = new ArrayList<>();
-        }
+        transactionList.clear();
 
-        // Tải giao dịch lặp lại
         try {
             recurringTransactionService.loadRecurringTransactions();
-            // Kiểm tra và sinh giao dịch thực tế từ các mẫu lặp lại
             recurringTransactionService.checkAndGenerateTransactions();
         } catch (Exception e) {
             System.err.println("Không thể tải giao dịch lặp lại: " + e.getMessage());
@@ -70,18 +52,22 @@ public class FinanceService extends Subject {
 
         List<Transaction> dbTransactions = DatabaseUtil.getAllTransactions(userId);
         if (dbTransactions != null) {
-            this.transactionList = dbTransactions;
-            saveToFile();
+            synchronized (transactionList) {
+                transactionList.clear();
+                transactionList.addAll(dbTransactions);
+            }
+            try {
+                JsonUtil.saveToJson(new ArrayList<>(transactionList), JSON_FILE_PATH);
+            } catch (DataLoadException e) {
+                System.err.println("Lỗi lưu JSON backup: " + e.getMessage());
+            }
             notifyObservers(EventType.DATA_LOADED, null);
         }
 
-        // Reload recurring transactions
         recurringTransactionService.loadRecurringTransactions();
     }
 
-    // =====================================================================
-    // 3. QUẢN LÝ NGHIỆP VỤ DANH MỤC (CATEGORIES)
-    // =====================================================================
+    // ========== CATEGORIES ==========
     public void addCategory(Category category) {
         try {
             DatabaseUtil.insertCategory(category);
@@ -114,16 +100,16 @@ public class FinanceService extends Subject {
         }
     }
 
-    // =====================================================================
-    // 4. QUẢN LÝ NGHIỆP VỤ GIAO DỊCH (TRANSACTIONS)
-    // =====================================================================
+    // ========== TRANSACTIONS ==========
     public void addTransaction(Transaction transaction) {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) return;
 
         try {
             DatabaseUtil.insertTransaction(transaction, userId);
-            transactionList.add(transaction);
+            synchronized (transactionList) {
+                transactionList.add(transaction);
+            }
             saveToFile();
             notifyObservers(EventType.TRANSACTION_ADDED, transaction);
         } catch (Exception e) {
@@ -134,10 +120,12 @@ public class FinanceService extends Subject {
     public void updateTransaction(Transaction transaction) {
         try {
             DatabaseUtil.updateTransaction(transaction);
-            for (int i = 0; i < transactionList.size(); i++) {
-                if (transactionList.get(i).getId().equals(transaction.getId())) {
-                    transactionList.set(i, transaction);
-                    break;
+            synchronized (transactionList) {
+                for (int i = 0; i < transactionList.size(); i++) {
+                    if (transactionList.get(i).getId().equals(transaction.getId())) {
+                        transactionList.set(i, transaction);
+                        break;
+                    }
                 }
             }
             saveToFile();
@@ -150,7 +138,9 @@ public class FinanceService extends Subject {
     public void deleteTransaction(String transactionId) {
         try {
             DatabaseUtil.deleteTransaction(transactionId);
-            transactionList.removeIf(t -> t.getId().equals(transactionId));
+            synchronized (transactionList) {
+                transactionList.removeIf(t -> t.getId().equals(transactionId));
+            }
             saveToFile();
             notifyObservers(EventType.TRANSACTION_DELETED, transactionId);
         } catch (Exception e) {
@@ -158,38 +148,48 @@ public class FinanceService extends Subject {
         }
     }
 
-    // =====================================================================
-    // 5. TRUY XUẤT THÔNG TIN VÀ XỬ LÝ I/O FILE
-    // =====================================================================
     private void saveToFile() {
         try {
-            JsonUtil.saveToJson(transactionList, JSON_FILE_PATH);
+            List<Transaction> snapshot;
+            synchronized (transactionList) {
+                snapshot = new ArrayList<>(transactionList);
+            }
+            JsonUtil.saveToJson(snapshot, JSON_FILE_PATH);
         } catch (DataLoadException e) {
             System.err.println("Lỗi lưu JSON: " + e.getMessage());
         }
     }
 
-    public List<Transaction> getAllTransactions() { return transactionList; }
+    public List<Transaction> getAllTransactions() {
+        synchronized (transactionList) {
+            return new ArrayList<>(transactionList);
+        }
+    }
+
     public Category getCategoryById(String id) { return categoryMap.get(id); }
-    public List<Category> getAllCategories() { return new ArrayList<>(categoryMap.values()); }
+
+    public List<Category> getAllCategories() {
+        return new ArrayList<>(categoryMap.values());
+    }
 
     public LocalDate getEarliestTransactionDate() {
-        if (transactionList == null || transactionList.isEmpty()) return null;
-        return transactionList.stream()
+        List<Transaction> snapshot = getAllTransactions();
+        if (snapshot.isEmpty()) return null;
+        return snapshot.stream()
                 .map(t -> t.getDateTime().toLocalDate())
                 .min(LocalDate::compareTo)
                 .orElse(null);
     }
 
     public LocalDate getLatestTransactionDate() {
-        if (transactionList == null || transactionList.isEmpty()) return null;
-        return transactionList.stream()
+        List<Transaction> snapshot = getAllTransactions();
+        if (snapshot.isEmpty()) return null;
+        return snapshot.stream()
                 .map(t -> t.getDateTime().toLocalDate())
                 .max(LocalDate::compareTo)
                 .orElse(null);
     }
 
-    // Update phân trang
     public List<Transaction> getTransactionsWithPagination(int offset, int limit) {
         String userId = SessionManager.getCurrentUserId();
         if (userId == null) return new ArrayList<>();
@@ -202,9 +202,6 @@ public class FinanceService extends Subject {
         return DatabaseUtil.getTransactionCount(userId);
     }
 
-    // =====================================================================
-    // 6. QUẢN LÝ RECURRING TRANSACTIONS
-    // =====================================================================
     public RecurringTransactionService getRecurringTransactionService() {
         return recurringTransactionService;
     }

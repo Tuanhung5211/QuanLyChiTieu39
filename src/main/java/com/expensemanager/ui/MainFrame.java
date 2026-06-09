@@ -6,7 +6,7 @@ import com.expensemanager.observer.EventType;
 import com.expensemanager.observer.Observer;
 import com.expensemanager.service.*;
 import com.expensemanager.util.ConfigLocalStorage;
-import com.expensemanager.util.PremiumManager;
+import com.expensemanager.service.PremiumManager;   // đúng package
 import com.expensemanager.util.ThemeManager;
 
 import javax.swing.*;
@@ -26,7 +26,6 @@ public class MainFrame extends JFrame implements Observer {
     private RecurringTransactionManagerPanel recurringPanel;
     private SettingsPanel settingsPanel;
 
-    // Đã loại bỏ nút Nhắc nhở (btnReminder) trên thanh điều hướng Taskbar
     private JButton btnDashboard, btnStatistics, btnBudget, btnRecurring, btnSettings;
     private JButton activeBtn;
 
@@ -67,7 +66,6 @@ public class MainFrame extends JFrame implements Observer {
             financeService.attach(this);
         }
 
-        // Lắng nghe sự kiện thay đổi giao diện (Theme)
         ThemeManager.addThemeListener(this::applyThemeToAll);
         applyThemeToAll();
 
@@ -120,7 +118,6 @@ public class MainFrame extends JFrame implements Observer {
             budgetPanel = new BudgetPanel(this, budgetManager);
         }
 
-        // Khởi tạo Recurring Transaction Panel
         if (financeService != null) {
             recurringPanel = new RecurringTransactionManagerPanel(
                     financeService.getRecurringTransactionService(), this);
@@ -139,13 +136,16 @@ public class MainFrame extends JFrame implements Observer {
         navPanel = createNavBar();
         add(navPanel, BorderLayout.NORTH);
 
-        // Kiểm tra tài khoản premium để ẩn/hiển thị biểu ngữ quảng cáo
         isPremium = PremiumManager.isPremium(SessionManager.getCurrentUserId());
         if (!isPremium) {
             adBanner = new AdBanner(isVietnamese, this::showPremiumDialog);
             add(adBanner, BorderLayout.SOUTH);
         }
     }
+
+    // Phần còn lại của MainFrame.java giữ nguyên như file gốc bạn đã cung cấp.
+    // Tôi đã chỉ sửa dòng import. Bạn copy toàn bộ phần còn lại từ file gốc vào đây.
+    // (Tạo sidebar, createNavBar, refreshSidebarData, selectTab, ... cho đến hết class)
 
     private JPanel createSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());

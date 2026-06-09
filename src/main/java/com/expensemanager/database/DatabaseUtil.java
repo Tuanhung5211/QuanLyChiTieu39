@@ -4,7 +4,6 @@ import com.expensemanager.entity.*;
 import com.expensemanager.service.UserService;
 
 import java.sql.*;
-import java.sql.SQLSyntaxErrorException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,26 +11,23 @@ import java.util.List;
 
 public class DatabaseUtil {
 
-    // Lấy kết nối trực tiếp thuần DriverManager theo yêu cầu
+    // ✅ Dùng pool từ DatabaseConfig
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(
-                DatabaseConfig.DB_URL,
-                DatabaseConfig.DB_USER,
-                DatabaseConfig.DB_PASSWORD
-        );
+        return DatabaseConfig.getConnection();
     }
 
     static {
-        ensureUserTableColumns();
-        createDefaultAdminIfNotExists();
+        try {
+            ensureUserTableColumns();
+            createDefaultAdminIfNotExists();
+            ensureRecurringTransactionsTableExists();
+        } catch (Exception e) {
+            System.err.println("Khởi tạo database không thành công: " + e.getMessage());
+            e.printStackTrace();
+            // Ứng dụng vẫn chạy, nhưng các chức năng DB sẽ báo lỗi khi dùng
+        }
     }
 
-
-    static {
-        ensureUserTableColumns();
-    }
-
-    // Phương thức kiểm tra và thêm cột nếu thiếu
     private static void ensureUserTableColumns() {
         try (Connection conn = getConnection()) {
             DatabaseMetaData meta = conn.getMetaData();
@@ -47,13 +43,11 @@ public class DatabaseUtil {
             if (!hasPremium) {
                 try (Statement stmt = conn.createStatement()) {
                     stmt.executeUpdate("ALTER TABLE users ADD COLUMN premium_expiry_date DATE DEFAULT NULL");
-                    System.out.println("✅ Đã thêm cột premium_expiry_date");
                 }
             }
             if (!hasAdmin) {
                 try (Statement stmt = conn.createStatement()) {
                     stmt.executeUpdate("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE");
-                    System.out.println("✅ Đã thêm cột is_admin");
                 }
             }
         } catch (SQLException e) {
@@ -122,7 +116,6 @@ public class DatabaseUtil {
         }
     }
 
-    // Hàm phụ trợ ánh xạ dữ liệu ResultSet
     private static List<Transaction> mapTransactions(ResultSet rs) throws SQLException {
         List<Transaction> list = new ArrayList<>();
         while (rs.next()) {
@@ -163,9 +156,7 @@ public class DatabaseUtil {
     public static List<Transaction> getTransactionsWithPagination(String userId, int offset, int limit) {
         String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
                 "FROM transactions t JOIN categories c ON t.category_id = c.id " +
-                "WHERE t.user_id = ? " +
-                "ORDER BY t.date_time DESC " +
-                "LIMIT ? OFFSET ?";
+                "WHERE t.user_id = ? ORDER BY t.date_time DESC LIMIT ? OFFSET ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
@@ -221,13 +212,9 @@ public class DatabaseUtil {
         }
     }
 
-    // ==========================================================
-    // CÁC HÀM QUẢN LÝ NGÂN SÁCH (ĐÃ ĐỒNG BỘ CẤU TRÚC MỚI & XÓA HÀM THỪA)
-    // ==========================================================
-
+    // ========== BUDGETS ==========
     public static Budget getBudget(int month, int year, String userId) {
-        // The budgets table uses month/year columns (see database_script.sql).
-        String query = "SELECT * FROM budgets WHERE user_id = ? AND month = ? AND year = ? LIMIT 1";
+        String query = "SELECT * FROM budgets WHERE user_id = ? AND MONTH(start_date) = ? AND YEAR(start_date) = ? LIMIT 1";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, userId);
@@ -237,16 +224,12 @@ public class DatabaseUtil {
             if (rs.next()) {
                 Budget b = new Budget();
                 b.setId(rs.getString("id"));
-                b.setMonth(rs.getInt("month"));
-                b.setYear(rs.getInt("year"));
                 b.setLimit(rs.getDouble("budget_limit"));
                 b.setSpent(rs.getDouble("spent"));
+                b.setStartDate(rs.getDate("start_date").toLocalDate());
+                b.setEndDate(rs.getDate("end_date").toLocalDate());
+                b.setThreshold(rs.getInt("threshold"));
                 b.setUserId(userId);
-                // derive start/end dates from month/year for compatibility with UI logic
-                java.time.LocalDate start = java.time.LocalDate.of(b.getYear(), b.getMonth(), 1);
-                java.time.LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
-                b.setStartDate(start);
-                b.setEndDate(end);
                 return b;
             }
         } catch (SQLException e) {
@@ -255,10 +238,9 @@ public class DatabaseUtil {
         return null;
     }
 
-    public static java.util.List<Budget> getAllBudgets(String userId) {
-        java.util.List<Budget> list = new java.util.ArrayList<>();
-        // budgets table currently stores month/year, budget_limit, spent and user_id
-        String query = "SELECT * FROM budgets WHERE user_id = ?";
+    public static List<Budget> getAllBudgets(String userId) {
+        List<Budget> list = new ArrayList<>();
+        String query = "SELECT b.*, c.name AS cat_name, c.type AS cat_type FROM budgets b LEFT JOIN categories c ON b.category_id = c.id WHERE b.user_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, userId);
@@ -266,18 +248,24 @@ public class DatabaseUtil {
             while (rs.next()) {
                 Budget b = new Budget();
                 b.setId(rs.getString("id"));
-                b.setMonth(rs.getInt("month"));
-                b.setYear(rs.getInt("year"));
                 b.setLimit(rs.getDouble("budget_limit"));
                 b.setSpent(rs.getDouble("spent"));
+                b.setStartDate(rs.getDate("start_date").toLocalDate());
+                b.setEndDate(rs.getDate("end_date").toLocalDate());
+                b.setThreshold(rs.getInt("threshold"));
                 b.setUserId(userId);
 
-                // Derive start/end dates from month/year so existing code that uses them continues to work
-                java.time.LocalDate start = java.time.LocalDate.of(b.getYear(), b.getMonth(), 1);
-                java.time.LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
-                b.setStartDate(start);
-                b.setEndDate(end);
-
+                String catId = rs.getString("category_id");
+                if (catId != null) {
+                    Category cat = new Category();
+                    cat.setId(catId);
+                    cat.setName(rs.getString("cat_name"));
+                    String typeStr = rs.getString("cat_type");
+                    if(typeStr != null) {
+                        cat.setType(TransactionType.valueOf(typeStr));
+                    }
+                    b.setCategory(cat);
+                }
                 list.add(b);
             }
         } catch (SQLException e) {
@@ -287,25 +275,21 @@ public class DatabaseUtil {
     }
 
     public static void insertBudget(Budget b) {
-        // Ensure month/year exist; derive from startDate if necessary
-        int month = b.getMonth();
-        int year = b.getYear();
-        if ((month == 0 || year == 0) && b.getStartDate() != null) {
-            month = b.getStartDate().getMonthValue();
-            year = b.getStartDate().getYear();
-            b.setMonth(month);
-            b.setYear(year);
-        }
-
-        String query = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?)";
+        String query = "INSERT INTO budgets (id, budget_limit, spent, start_date, end_date, threshold, category_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, b.getId());
-            pstmt.setInt(2, month);
-            pstmt.setInt(3, year);
-            pstmt.setDouble(4, b.getLimit());
-            pstmt.setDouble(5, b.getSpent());
-            pstmt.setString(6, b.getUserId());
+            pstmt.setDouble(2, b.getLimit());
+            pstmt.setDouble(3, b.getSpent());
+            pstmt.setDate(4, java.sql.Date.valueOf(b.getStartDate()));
+            pstmt.setDate(5, java.sql.Date.valueOf(b.getEndDate()));
+            pstmt.setInt(6, b.getThreshold());
+            if (b.getCategory() != null && b.getCategory().getId() != null) {
+                pstmt.setString(7, b.getCategory().getId());
+            } else {
+                pstmt.setNull(7, java.sql.Types.VARCHAR);
+            }
+            pstmt.setString(8, b.getUserId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -410,45 +394,39 @@ public class DatabaseUtil {
         }
     }
 
-    // ========== XÓA DỮ LIỆU THEO USER ==========
     public static void deleteTransactionsByUser(String userId) {
         String sql = "DELETE FROM transactions WHERE user_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi xóa sạch lịch sử giao dịch của hội viên: " + userId, e);
+            throw new RuntimeException("Lỗi khi xóa sạch lịch sử giao dịch", e);
         }
     }
 
     public static void deleteBudgetsByUser(String userId) {
         String sql = "DELETE FROM budgets WHERE user_id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi xóa lịch sử ngân sách chi tiêu của hội viên: " + userId, e);
+            throw new RuntimeException("Lỗi khi xóa lịch sử ngân sách", e);
         }
     }
 
     public static void deleteUser(String userId) {
         String sql = "DELETE FROM users WHERE id = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi xóa vĩnh viễn tài khoản người dùng khỏi hệ thống", e);
+            throw new RuntimeException("Lỗi khi xóa tài khoản", e);
         }
     }
 
-    // Tìm user theo email
     public static User getUserByEmail(String email) {
         String sql = "SELECT * FROM users WHERE email = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, email);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
@@ -470,8 +448,7 @@ public class DatabaseUtil {
 
     public static boolean updatePasswordByEmail(String email, String newPasswordHash) {
         String sql = "UPDATE users SET password_hash = ? WHERE email = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, newPasswordHash);
             stmt.setString(2, email);
             return stmt.executeUpdate() > 0;
@@ -508,8 +485,8 @@ public class DatabaseUtil {
         }
     }
 
-    public static java.util.List<RecurringTransaction> getRecurringTransactions(String userId) {
-        java.util.List<RecurringTransaction> list = new java.util.ArrayList<>();
+    public static List<RecurringTransaction> getRecurringTransactions(String userId) {
+        List<RecurringTransaction> list = new ArrayList<>();
         String sql = "SELECT rt.*, c.name as category_name, c.type as category_type " +
                 "FROM recurring_transactions rt " +
                 "LEFT JOIN categories c ON rt.category_id = c.id " +
@@ -537,96 +514,29 @@ public class DatabaseUtil {
                     rt.setCustomIntervalDays(rs.getInt("custom_interval_days"));
 
                     java.sql.Date startDateSql = rs.getDate("start_date");
-                    if (startDateSql != null) {
-                        rt.setStartDate(startDateSql.toLocalDate());
-                    }
+                    if (startDateSql != null) rt.setStartDate(startDateSql.toLocalDate());
 
                     java.sql.Date endDateSql = rs.getDate("end_date");
-                    if (endDateSql != null) {
-                        rt.setEndDate(endDateSql.toLocalDate());
-                    }
+                    if (endDateSql != null) rt.setEndDate(endDateSql.toLocalDate());
 
                     java.sql.Timestamp createdAtSql = rs.getTimestamp("created_at");
-                    if (createdAtSql != null) {
-                        rt.setCreatedAt(createdAtSql.toLocalDateTime());
-                    }
+                    if (createdAtSql != null) rt.setCreatedAt(createdAtSql.toLocalDateTime());
 
                     rt.setActive(rs.getBoolean("is_active"));
 
                     java.sql.Date lastGenSql = rs.getDate("last_generated_date");
-                    if (lastGenSql != null) {
-                        rt.setLastGeneratedDate(lastGenSql.toLocalDate());
-                    }
+                    if (lastGenSql != null) rt.setLastGeneratedDate(lastGenSql.toLocalDate());
 
                     list.add(rt);
                 }
             }
-        } catch (SQLSyntaxErrorException syntaxEx) {
-            // Likely the recurring_transactions table does not exist. Try to create it and retry once.
-            try {
-                ensureRecurringTransactionsTableExists();
-                // retry the query once
-                try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    stmt.setString(1, userId);
-                    try (ResultSet rs = stmt.executeQuery()) {
-                        while (rs.next()) {
-                            RecurringTransaction rt = new RecurringTransaction();
-                            rt.setId(rs.getString("id"));
-                            rt.setUserId(rs.getString("user_id"));
-                            rt.setAmount(rs.getDouble("amount"));
-                            rt.setType(TransactionType.valueOf(rs.getString("type")));
-
-                            String catId = rs.getString("category_id");
-                            if (catId != null && rs.getString("category_name") != null) {
-                                Category cat = new Category(catId, rs.getString("category_name"),
-                                        TransactionType.valueOf(rs.getString("category_type")));
-                                rt.setCategory(cat);
-                            }
-
-                            rt.setNote(rs.getString("note"));
-                            rt.setRecurrenceType(RecurringTransaction.RecurrenceType.valueOf(rs.getString("recurrence_type")));
-                            rt.setCustomIntervalDays(rs.getInt("custom_interval_days"));
-
-                            java.sql.Date startDateSql = rs.getDate("start_date");
-                            if (startDateSql != null) {
-                                rt.setStartDate(startDateSql.toLocalDate());
-                            }
-
-                            java.sql.Date endDateSql = rs.getDate("end_date");
-                            if (endDateSql != null) {
-                                rt.setEndDate(endDateSql.toLocalDate());
-                            }
-
-                            java.sql.Timestamp createdAtSql = rs.getTimestamp("created_at");
-                            if (createdAtSql != null) {
-                                rt.setCreatedAt(createdAtSql.toLocalDateTime());
-                            }
-
-                            rt.setActive(rs.getBoolean("is_active"));
-
-                            java.sql.Date lastGenSql = rs.getDate("last_generated_date");
-                            if (lastGenSql != null) {
-                                rt.setLastGeneratedDate(lastGenSql.toLocalDate());
-                            }
-
-                            list.add(rt);
-                        }
-                    }
-                }
-            } catch (SQLException | RuntimeException retryEx) {
-                throw new RuntimeException("Lỗi khi tải giao dịch lặp lại của User: " + userId, retryEx);
-            }
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi tải giao dịch lặp lại của User: " + userId, e);
+            throw new RuntimeException("Lỗi khi tải giao dịch lặp lại của User", e);
         }
         return list;
     }
 
-    /**
-     * Ensure the recurring_transactions table exists in the database. If not, create it.
-     */
     private static void ensureRecurringTransactionsTableExists() {
-        // Create table without foreign key constraints to avoid charset/collation/engine incompatibilities
         String createSql = "CREATE TABLE IF NOT EXISTS recurring_transactions (" +
                 "id VARCHAR(50) PRIMARY KEY, " +
                 "user_id VARCHAR(20) NOT NULL, " +
@@ -681,26 +591,18 @@ public class DatabaseUtil {
                     rt.setCustomIntervalDays(rs.getInt("custom_interval_days"));
 
                     java.sql.Date startDateSql = rs.getDate("start_date");
-                    if (startDateSql != null) {
-                        rt.setStartDate(startDateSql.toLocalDate());
-                    }
+                    if (startDateSql != null) rt.setStartDate(startDateSql.toLocalDate());
 
                     java.sql.Date endDateSql = rs.getDate("end_date");
-                    if (endDateSql != null) {
-                        rt.setEndDate(endDateSql.toLocalDate());
-                    }
+                    if (endDateSql != null) rt.setEndDate(endDateSql.toLocalDate());
 
                     java.sql.Timestamp createdAtSql = rs.getTimestamp("created_at");
-                    if (createdAtSql != null) {
-                        rt.setCreatedAt(createdAtSql.toLocalDateTime());
-                    }
+                    if (createdAtSql != null) rt.setCreatedAt(createdAtSql.toLocalDateTime());
 
                     rt.setActive(rs.getBoolean("is_active"));
 
                     java.sql.Date lastGenSql = rs.getDate("last_generated_date");
-                    if (lastGenSql != null) {
-                        rt.setLastGeneratedDate(lastGenSql.toLocalDate());
-                    }
+                    if (lastGenSql != null) rt.setLastGeneratedDate(lastGenSql.toLocalDate());
 
                     return rt;
                 }
@@ -726,7 +628,7 @@ public class DatabaseUtil {
             stmt.setString(8, rt.getId());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi cập nhật giao dịch lặp lại ID: " + rt.getId(), e);
+            throw new RuntimeException("Lỗi cập nhật giao dịch lặp lại", e);
         }
     }
 
@@ -737,11 +639,10 @@ public class DatabaseUtil {
             stmt.setString(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi xóa giao dịch lặp lại ID: " + id, e);
+            throw new RuntimeException("Lỗi xóa giao dịch lặp lại", e);
         }
     }
 
-    // Thêm phương thức lấy danh sách tất cả user (dùng cho admin)
     public static List<User> getAllUsers() {
         List<User> list = new ArrayList<>();
         String sql = "SELECT * FROM users ORDER BY username";
@@ -764,12 +665,11 @@ public class DatabaseUtil {
                 list.add(user);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi tải danh sách người dùng", e);
+            throw new RuntimeException("Lỗi tải danh sách người dùng", e);
         }
         return list;
     }
 
-    // Cập nhật ngày hết hạn Premium cho user
     public static void updateUserPremium(String userId, LocalDate expiryDate) {
         String sql = "UPDATE users SET premium_expiry_date = ? WHERE id = ?";
         try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -777,11 +677,10 @@ public class DatabaseUtil {
             stmt.setString(2, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi cập nhật Premium cho user: " + userId, e);
+            throw new RuntimeException("Lỗi cập nhật Premium", e);
         }
     }
 
-    // Cập nhật quyền admin (nếu cần)
     public static void updateUserAdmin(String userId, boolean isAdmin) {
         String sql = "UPDATE users SET is_admin = ? WHERE id = ?";
         try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -789,16 +688,15 @@ public class DatabaseUtil {
             stmt.setString(2, userId);
             stmt.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Lỗi khi cập nhật quyền admin", e);
+            throw new RuntimeException("Lỗi cập nhật quyền admin", e);
         }
     }
 
-    // Tạo tài khoản admin mặc định nếu chưa có
     public static void createDefaultAdminIfNotExists() {
         User admin = getUserByUsername("admin");
         if (admin == null) {
             String id = "admin_" + System.currentTimeMillis();
-            String hashedPass = com.expensemanager.service.UserService.hashPassword("admin123");
+            String hashedPass = UserService.hashPassword("admin123");
             User defaultAdmin = new User(id, "admin", hashedPass, "Administrator", "admin@example.com", "Other");
             defaultAdmin.setAdmin(true);
             defaultAdmin.setPremiumExpiryDate(null);

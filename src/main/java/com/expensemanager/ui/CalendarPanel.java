@@ -15,7 +15,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.HashMap;
 import java.util.List;
@@ -148,13 +147,22 @@ public class CalendarPanel extends JPanel implements Observer {
         cell.setPreferredSize(new Dimension(80, 70));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        // Màu nền theme
+        if (isOver) {
+            cell.setBackground(ThemeManager.getColor("danger"));
+        } else {
+            cell.setBackground(ThemeManager.getColor("surface"));
+        }
+
         JLabel lblDay = new JLabel(String.valueOf(day), SwingConstants.LEFT);
         lblDay.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblDay.setBorder(BorderFactory.createEmptyBorder(5,5,0,0));
+        lblDay.setForeground(ThemeManager.getColor("textPrimary"));
+        lblDay.setBorder(BorderFactory.createEmptyBorder(5, 5, 0, 0));
 
         JLabel lblAmount = new JLabel(String.format("%,.0f", expense), SwingConstants.RIGHT);
         lblAmount.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblAmount.setBorder(BorderFactory.createEmptyBorder(0,0,5,5));
+        lblAmount.setForeground(ThemeManager.getColor("textPrimary"));
+        lblAmount.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 5));
 
         cell.add(lblDay, BorderLayout.NORTH);
         cell.add(lblAmount, BorderLayout.SOUTH);
@@ -164,8 +172,6 @@ public class CalendarPanel extends JPanel implements Observer {
                 showTransactionsForDay(day);
             }
         });
-
-        // Màu sẽ được set trong applyTheme() thông qua refreshCalendar
         return cell;
     }
 
@@ -173,6 +179,7 @@ public class CalendarPanel extends JPanel implements Observer {
         JPanel empty = new JPanel();
         empty.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         empty.setPreferredSize(new Dimension(80, 70));
+        empty.setBackground(ThemeManager.getColor("surface"));
         return empty;
     }
 
@@ -228,25 +235,4 @@ public class CalendarPanel extends JPanel implements Observer {
         }
         refreshCalendar(); // cập nhật màu từng ô
     }
-
-    // Khi refreshCalendar được gọi từ applyTheme, ta cần set màu cho các ô dựa trên theme
-    // Sửa lại phương thức refreshCalendar để set màu theme, hoặc duyệt lại components sau refresh.
-    // Tôi sẽ thêm phần set màu động ngay trong createDayCell bằng cách dùng ThemeManager.
-    // Để đơn giản, tôi sửa createDayCell và createEmptyDayCell để dùng màu theme.
-    private Color getDayCellBackground(boolean isOver) {
-        if (isOver) {
-            return ThemeManager.getColor("danger"); // vượt chi
-        }
-        return ThemeManager.getColor("surface");
-    }
-
-    private Color getDayAmountColor(boolean isOver) {
-        return isOver ? ThemeManager.getColor("textPrimary") : ThemeManager.getColor("textPrimary");
-    }
-
-    // Do đã khai báo createDayCell ở trên, ta sửa lại phần set màu trong đó:
-    // cell.setBackground(getDayCellBackground(isOver));
-    // lblDay.setForeground(ThemeManager.getColor("textPrimary"));
-    // lblAmount.setForeground(...);
-    // Và createEmptyDayCell: empty.setBackground(ThemeManager.getColor("surface"));
 }

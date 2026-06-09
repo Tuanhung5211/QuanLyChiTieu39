@@ -72,6 +72,9 @@ public class AddTransactionDialog extends JDialog {
         CATEGORY_EMOJI.put("Thu khác", "\uD83E\uDE99");
     }
 
+    // Cache toàn bộ danh mục sau lần tải đầu tiên
+    private List<Category> allCategories = new ArrayList<>();
+
     public AddTransactionDialog(MainFrame parent) {
         super(parent, parent != null && parent.isVietnamese() ? "Thêm giao dịch mới" : "Add New Transaction", true);
         this.mainFrame = parent;
@@ -84,8 +87,43 @@ public class AddTransactionDialog extends JDialog {
         setLayout(new BorderLayout());
 
         initComponents();
-        refreshCategories();
         applyTheme();
+
+        // Tải danh mục bất đồng bộ
+        loadCategoriesAsync();
+    }
+
+    private void loadCategoriesAsync() {
+        categoryPanel.removeAll();
+        JLabel loadingLabel = new JLabel(isVietnamese ? "Đang tải danh mục..." : "Loading categories...", SwingConstants.CENTER);
+        loadingLabel.setForeground(ThemeManager.getColor("textSecondary"));
+        categoryPanel.add(loadingLabel);
+        categoryPanel.revalidate();
+        categoryPanel.repaint();
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                List<Category> cats = DatabaseUtil.getAllCategories();
+                checkAndSeedCategories(cats);
+                allCategories = cats;
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    refreshCategories();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(AddTransactionDialog.this,
+                            isVietnamese ? "Không thể tải danh mục!" : "Cannot load categories!",
+                            isVietnamese ? "Lỗi" : "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void initComponents() {
@@ -206,7 +244,6 @@ public class AddTransactionDialog extends JDialog {
 
     public void applyTheme() {
         getContentPane().setBackground(ThemeManager.getColor("bg"));
-        // Cập nhật header buttons
         if (btnExpense != null) {
             btnExpense.setBackground(selectedType == TransactionType.EXPENSE ? ThemeManager.getColor("danger") : ThemeManager.getColor("surface"));
             btnExpense.setForeground(Color.WHITE);
@@ -215,7 +252,6 @@ public class AddTransactionDialog extends JDialog {
             btnIncome.setBackground(selectedType == TransactionType.INCOME ? ThemeManager.getColor("success") : ThemeManager.getColor("surface"));
             btnIncome.setForeground(Color.WHITE);
         }
-        // Text fields
         if (txtAmount != null) {
             txtAmount.setBackground(ThemeManager.getColor("input"));
             txtAmount.setForeground(ThemeManager.getColor("textPrimary"));
@@ -226,10 +262,8 @@ public class AddTransactionDialog extends JDialog {
             txtNote.setForeground(ThemeManager.getColor("textPrimary"));
             txtNote.setCaretColor(ThemeManager.getColor("accent"));
         }
-        // Category panel và scroll
         if (categoryPanel != null) categoryPanel.setBackground(ThemeManager.getColor("bg"));
         if (categoryScrollPane != null) categoryScrollPane.getViewport().setBackground(ThemeManager.getColor("bg"));
-        // Pagination
         if (btnPrevPage != null) {
             btnPrevPage.setBackground(ThemeManager.getColor("surface"));
             btnPrevPage.setForeground(ThemeManager.getColor("textPrimary"));
@@ -239,7 +273,6 @@ public class AddTransactionDialog extends JDialog {
             btnNextPage.setForeground(ThemeManager.getColor("textPrimary"));
         }
         if (lblPageIndicator != null) lblPageIndicator.setForeground(ThemeManager.getColor("textPrimary"));
-        // Footer buttons
         for (Component comp : getContentPane().getComponents()) {
             if (comp instanceof JPanel) {
                 JPanel panel = (JPanel) comp;
@@ -252,7 +285,6 @@ public class AddTransactionDialog extends JDialog {
                                 btn.setForeground(ThemeManager.getColor("textPrimary"));
                             } else {
                                 btn.setBackground(ThemeManager.getColor("accent"));
-                                // Make non-cancel footer buttons use the light text color (like the Cancel button)
                                 btn.setForeground(ThemeManager.getColor("textPrimary"));
                             }
                         }
@@ -260,7 +292,10 @@ public class AddTransactionDialog extends JDialog {
                 }
             }
         }
-        refreshCategories(); // Cập nhật màu category cells
+        // Nếu cache đã có, hiển thị luôn
+        if (!allCategories.isEmpty()) {
+            refreshCategories();
+        }
     }
 
     private void switchType(TransactionType type) {
@@ -273,12 +308,11 @@ public class AddTransactionDialog extends JDialog {
 
     private void refreshCategories() {
         categoryPanel.removeAll();
-        List<Category> allList = new ArrayList<>();
-        try { allList = DatabaseUtil.getAllCategories(); } catch (Exception e) { e.printStackTrace(); }
-
-        checkAndSeedCategories(allList);
+        // Lọc từ cache
         List<Category> filteredList = new ArrayList<>();
-        for (Category c : allList) { if (c.getType() == selectedType) filteredList.add(c); }
+        for (Category c : allCategories) {
+            if (c.getType() == selectedType) filteredList.add(c);
+        }
 
         int totalItems = filteredList.size();
         int totalPages = (int) Math.ceil((double) totalItems / ITEMS_PER_PAGE);

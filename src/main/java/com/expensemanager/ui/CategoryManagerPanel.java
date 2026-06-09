@@ -10,6 +10,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -42,6 +43,9 @@ public class CategoryManagerPanel extends JPanel {
     private final int EMOJI_PER_PAGE = 18;
     private int currentFluidWidth = 560;
 
+    // Cache toàn bộ danh mục
+    private List<Category> allCategories = new ArrayList<>();
+
     private final String[] EMOJI_LIST = {
             "\uD83D\uDCCD", "\uD83C\uDF54", "\uD83D\uDED2", "\uD83D\uDECD", "\uD83C\uDF7F", "\uD83C\uDF4E",
             "\uD83D\uDC57", "\uD83D\uDCBB", "\u26FD",       "\uD83C\uDFCD", "\uD83D\uDE97", "\u26A1",
@@ -68,6 +72,27 @@ public class CategoryManagerPanel extends JPanel {
 
         updateResponsiveLayout(isVietnamese, 560);
         applyTheme();
+
+        // Tải danh mục bất đồng bộ
+        loadCategoriesAsync();
+    }
+
+    private void loadCategoriesAsync() {
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                allCategories = DatabaseUtil.getAllCategories();
+                if (allCategories == null) allCategories = new ArrayList<>();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                refreshCategories();
+                refreshEmojiGrid();
+            }
+        };
+        worker.execute();
     }
 
     private void initComponentsListCard() {
@@ -227,9 +252,9 @@ public class CategoryManagerPanel extends JPanel {
         if (listGridPanel == null) return;
         listGridPanel.removeAll();
 
-        List<Category> categories = DatabaseUtil.getAllCategories();
-        List<Category> filteredCategories = new java.util.ArrayList<>();
-        for (Category c : categories) {
+        // Lọc từ cache
+        List<Category> filteredCategories = new ArrayList<>();
+        for (Category c : allCategories) {
             if (c != null && c.getType() == currentListType) {
                 filteredCategories.add(c);
             }
@@ -312,6 +337,7 @@ public class CategoryManagerPanel extends JPanel {
                     (isVietnamese ? "Xác nhận" : "Confirm"), JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 DatabaseUtil.deleteCategory(selectedCategoryForDelete.getId());
+                allCategories.removeIf(cat -> cat.getId().equals(selectedCategoryForDelete.getId()));
                 selectedCategoryForDelete = null;
                 refreshCategories();
                 if (mainFrame != null) mainFrame.refreshAllPanels();
@@ -413,6 +439,7 @@ public class CategoryManagerPanel extends JPanel {
         Category newCat = new Category(generatedId, name, type);
         try {
             DatabaseUtil.insertCategory(newCat);
+            allCategories.add(newCat);
             AddTransactionDialog.addCustomEmoji(name, selectedEmoji);
             JOptionPane.showMessageDialog(this, isVietnamese ? "Đã thêm danh mục '" + name + "' thành công!" : "Category '" + name + "' added successfully!");
             txtCategoryName.setText("");
@@ -441,7 +468,6 @@ public class CategoryManagerPanel extends JPanel {
             listCard.setMaximumSize(new Dimension(fluidWidth, totalListCardH));
             listCard.setMinimumSize(new Dimension(fluidWidth, totalListCardH));
         }
-        // ... (còn lại giữ nguyên)
     }
 
     private void selectListTypeTab(JButton target) {
@@ -508,7 +534,6 @@ public class CategoryManagerPanel extends JPanel {
             btnDeleteCategory.setBackground(ThemeManager.getColor("input"));
             btnDeleteCategory.setForeground(ThemeManager.getColor("danger"));
         }
-        // Cập nhật lại pagination buttons màu
         if (btnPrevListPage != null) {
             btnPrevListPage.setBackground(ThemeManager.getColor("input"));
             btnPrevListPage.setForeground(ThemeManager.getColor("textPrimary"));
@@ -529,8 +554,6 @@ public class CategoryManagerPanel extends JPanel {
             btnNextEmojiPage.setForeground(ThemeManager.getColor("textPrimary"));
             btnNextEmojiPage.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         }
-        // Cập nhật lại icon cho cell
-        refreshCategories();
         refreshEmojiGrid();
     }
 

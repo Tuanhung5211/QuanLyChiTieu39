@@ -7,7 +7,8 @@ public class MainApp {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+                // 🌟 FIX LỖI GIAO DIỆN TRẮNG: Sử dụng CrossPlatform thay vì SystemLook
+                javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getCrossPlatformLookAndFeelClassName());
             } catch (Exception e) {
                 e.printStackTrace();
             }

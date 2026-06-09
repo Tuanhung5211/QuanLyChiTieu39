@@ -2,10 +2,8 @@ package com.expensemanager.service;
 
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
-import com.expensemanager.util.EmailService;
+import org.mindrot.jbcrypt.BCrypt;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 public class UserService {
@@ -24,32 +22,51 @@ public class UserService {
     public static User login(String username, String password) {
         User user = DatabaseUtil.getUserByUsername(username);
         if (user == null) return null;
-        String passwordHash = hashPassword(password);
-        if (passwordHash.equals(user.getPasswordHash())) {
-            // ✅ Sửa: truyền thêm tham số isAdmin
+
+        String storedHash = user.getPasswordHash();
+
+        // 1. Thử dùng BCrypt
+        try {
+            if (BCrypt.checkpw(password, storedHash)) {
+                SessionManager.login(user.getId(), user.getUsername(), user.isAdmin());
+                return user;
+            }
+        } catch (IllegalArgumentException e) {
+            // Hash không đúng định dạng BCrypt, xử lý tiếp bên dưới
+        }
+
+        // 2. Nếu thất bại, thử so sánh plain text (mật khẩu cũ chưa hash)
+        if (storedHash.equals(password)) {
+            // Nâng cấp mật khẩu lên BCrypt
+            String newHash = hashPassword(password);
+            DatabaseUtil.updateUserPassword(user.getId(), newHash);
+            user.setPasswordHash(newHash);
             SessionManager.login(user.getId(), user.getUsername(), user.isAdmin());
             return user;
         }
+
         return null;
     }
 
     public static String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes());
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Lỗi mã hóa", e);
-        }
+        return BCrypt.hashpw(password, BCrypt.gensalt(12));
     }
 
-    // ========== PHƯƠNG THỨC CHO QUÊN MẬT KHẨU ==========
+    public static boolean resetPasswordByEmail(String email) {
+        User user = DatabaseUtil.getUserByEmail(email);
+        if (user == null) return false;
+
+        String newPlainPassword = generateRandomPassword(8);
+        String newHashed = hashPassword(newPlainPassword);
+
+        boolean updated = DatabaseUtil.updatePasswordByEmail(email, newHashed);
+        if (updated) {
+            EmailService.sendNewPassword(email, newPlainPassword);
+            return true;
+        }
+        return false;
+    }
+
     private static String generateRandomPassword(int length) {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
         StringBuilder sb = new StringBuilder();
@@ -58,18 +75,5 @@ public class UserService {
             sb.append(chars.charAt(random.nextInt(chars.length())));
         }
         return sb.toString();
-    }
-
-    public static boolean resetPasswordByEmail(String email) {
-        User user = DatabaseUtil.getUserByEmail(email);
-        if (user == null) return false;
-        String newPlainPassword = generateRandomPassword(8);
-        String newHashed = hashPassword(newPlainPassword);
-        boolean updated = DatabaseUtil.updatePasswordByEmail(email, newHashed);
-        if (updated) {
-            EmailService.sendNewPassword(email, newPlainPassword);
-            return true;
-        }
-        return false;
     }
 }

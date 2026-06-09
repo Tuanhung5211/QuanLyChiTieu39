@@ -8,14 +8,10 @@ import com.expensemanager.util.ThemeManager;
 import javax.swing.*;
 import java.awt.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Dialog để tạo và chỉnh sửa giao dịch lặp lại
- */
 public class AddRecurringTransactionDialog extends JDialog {
 
     private MainFrame mainFrame;
@@ -34,7 +30,8 @@ public class AddRecurringTransactionDialog extends JDialog {
     private JCheckBox chkEndDate;
     private boolean isVietnamese = true;
 
-    private RecurringTransaction recurringTransaction;  // null = tạo mới, otherwise = chỉnh sửa
+    // Cache toàn bộ danh mục sau lần tải đầu tiên
+    private List<Category> allCategories = new ArrayList<>();
 
     public AddRecurringTransactionDialog(MainFrame parent, RecurringTransactionService recurringTransactionService) {
         super(parent, parent != null && parent.isVietnamese() ? "Thêm giao dịch lặp lại" : "Add Recurring Transaction", true);
@@ -50,10 +47,45 @@ public class AddRecurringTransactionDialog extends JDialog {
 
         initComponents();
         applyTheme();
+
+        // Tải danh mục bất đồng bộ
+        loadCategoriesAsync();
+    }
+
+    private void loadCategoriesAsync() {
+        categoryPanel.removeAll();
+        JLabel loadingLabel = new JLabel(isVietnamese ? "Đang tải danh mục..." : "Loading categories...", SwingConstants.CENTER);
+        loadingLabel.setForeground(ThemeManager.getColor("textSecondary"));
+        categoryPanel.add(loadingLabel);
+        categoryPanel.revalidate();
+        categoryPanel.repaint();
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                allCategories = DatabaseUtil.getAllCategories();
+                if (allCategories == null) allCategories = new ArrayList<>();
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    refreshCategoryGrid();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(AddRecurringTransactionDialog.this,
+                            isVietnamese ? "Không thể tải danh mục!" : "Cannot load categories!",
+                            isVietnamese ? "Lỗi" : "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void initComponents() {
-        // Header
+        // Header (loại giao dịch)
         JPanel header = new JPanel(new GridLayout(1, 2, 10, 0));
         header.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
         header.setOpaque(false);
@@ -68,7 +100,7 @@ public class AddRecurringTransactionDialog extends JDialog {
         header.add(btnIncome);
         add(header, BorderLayout.NORTH);
 
-        // Center - Scrollable
+        // Center - Scrollable form
         JScrollPane scrollPane = new JScrollPane();
         scrollPane.setBorder(null);
         scrollPane.setOpaque(false);
@@ -79,16 +111,16 @@ public class AddRecurringTransactionDialog extends JDialog {
         centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         centerPanel.setOpaque(false);
 
-        // Amount
+        // Số tiền
         centerPanel.add(createLabel(isVietnamese ? "Số tiền (VND)" : "Amount (VND)"));
         txtAmount = new JTextField();
-        styleTextField(txtAmount, "0");
+        styleTextField(txtAmount);
         txtAmount.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         centerPanel.add(txtAmount);
 
         centerPanel.add(Box.createVerticalStrut(12));
 
-        // Category selection
+        // Chọn danh mục
         centerPanel.add(createLabel(isVietnamese ? "Chọn danh mục" : "Select Category"));
         centerPanel.add(Box.createVerticalStrut(4));
         categoryPanel = new JPanel(new GridLayout(0, 4, 8, 8));
@@ -102,38 +134,35 @@ public class AddRecurringTransactionDialog extends JDialog {
         centerPanel.add(catScroll);
         centerPanel.add(Box.createVerticalStrut(12));
 
-        // Recurrence Type
+        // Loại lặp lại
         centerPanel.add(createLabel(isVietnamese ? "Loại lặp lại" : "Recurrence Type"));
         String[] recurrenceTypes = isVietnamese ?
                 new String[]{"Hàng ngày", "Hàng tuần", "Hàng tháng", "Hàng năm", "Tùy chỉnh"} :
                 new String[]{"Daily", "Weekly", "Monthly", "Yearly", "Custom"};
         cmbRecurrenceType = new JComboBox<>(recurrenceTypes);
-        cmbRecurrenceType.setSelectedIndex(2); // Default: Monthly
+        cmbRecurrenceType.setSelectedIndex(2); // Mặc định hàng tháng
         cmbRecurrenceType.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         cmbRecurrenceType.addActionListener(e -> updateRecurrenceUI());
         centerPanel.add(cmbRecurrenceType);
-
         centerPanel.add(Box.createVerticalStrut(8));
 
-        // Custom days (visible only for CUSTOM type)
+        // Khoảng cách ngày (chỉ hiện khi chọn Tùy chỉnh)
         centerPanel.add(createLabel(isVietnamese ? "Khoảng cách (ngày)" : "Interval (days)"));
         spnCustomDays = new JSpinner(new SpinnerNumberModel(1, 1, 365, 1));
         spnCustomDays.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         spnCustomDays.setVisible(false);
         centerPanel.add(spnCustomDays);
-
         centerPanel.add(Box.createVerticalStrut(12));
 
-        // Start date
+        // Ngày bắt đầu
         centerPanel.add(createLabel(isVietnamese ? "Ngày bắt đầu" : "Start Date"));
         spnStartDate = new JSpinner(new SpinnerDateModel(new java.util.Date(), null, null, java.util.Calendar.DAY_OF_MONTH));
         spnStartDate.setEditor(new JSpinner.DateEditor(spnStartDate, "dd/MM/yyyy"));
         spnStartDate.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         centerPanel.add(spnStartDate);
-
         centerPanel.add(Box.createVerticalStrut(8));
 
-        // End date
+        // Ngày kết thúc
         chkEndDate = new JCheckBox(isVietnamese ? "Đặt ngày kết thúc" : "Set End Date");
         chkEndDate.setOpaque(false);
         chkEndDate.addActionListener(e -> spnEndDate.setEnabled(chkEndDate.isSelected()));
@@ -144,10 +173,9 @@ public class AddRecurringTransactionDialog extends JDialog {
         spnEndDate.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         spnEndDate.setEnabled(false);
         centerPanel.add(spnEndDate);
-
         centerPanel.add(Box.createVerticalStrut(12));
 
-        // Note
+        // Ghi chú
         centerPanel.add(createLabel(isVietnamese ? "Ghi chú" : "Transaction Note"));
         txtNote = new JTextArea(2, 20);
         txtNote.setLineWrap(true);
@@ -164,7 +192,7 @@ public class AddRecurringTransactionDialog extends JDialog {
         scrollPane.setViewportView(centerPanel);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Footer
+        // Footer (nút)
         JPanel footer = new JPanel(new GridLayout(1, 2, 10, 0));
         footer.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
         footer.setOpaque(false);
@@ -184,49 +212,43 @@ public class AddRecurringTransactionDialog extends JDialog {
         footer.add(btnCancel);
         footer.add(btnSave);
         add(footer, BorderLayout.SOUTH);
-
-        // Tải danh mục
-        refreshCategories();
     }
 
-    private void refreshCategories() {
+    private void refreshCategoryGrid() {
         categoryPanel.removeAll();
-        List<Category> categories = new ArrayList<>();
-
-        try {
-            List<Category> allCats = DatabaseUtil.getAllCategories();
-            for (Category cat : allCats) {
+        if (allCategories.isEmpty()) {
+            categoryPanel.add(new JLabel(isVietnamese ? "Không có danh mục" : "No categories", SwingConstants.CENTER));
+        } else {
+            for (Category cat : allCategories) {
                 if (cat.getType() == selectedType) {
-                    categories.add(cat);
+                    JButton btnCategory = new JButton("[" + cat.getName() + "]");
+                    btnCategory.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+                    btnCategory.setFocusPainted(false);
+                    btnCategory.setPreferredSize(new Dimension(80, 50));
+                    btnCategory.addActionListener(e -> {
+                        selectedCategory = cat;
+                        refreshCategoryGrid(); // highlight
+                    });
+                    if (selectedCategory != null && selectedCategory.getId().equals(cat.getId())) {
+                        btnCategory.setBackground(ThemeManager.getColor("accent"));
+                        btnCategory.setForeground(Color.WHITE);
+                    } else {
+                        btnCategory.setBackground(ThemeManager.getColor("inputBg"));
+                        btnCategory.setForeground(ThemeManager.getColor("textPrimary"));
+                    }
+                    categoryPanel.add(btnCategory);
                 }
             }
-        } catch (Exception e) {
-            System.err.println("Lỗi tải danh mục: " + e.getMessage());
         }
-
-        for (Category cat : categories) {
-            JButton btnCategory = new JButton("[" + cat.getName() + "]");
-            btnCategory.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-            btnCategory.setFocusPainted(false);
-            btnCategory.setPreferredSize(new Dimension(80, 50));
-            btnCategory.addActionListener(e -> selectCategory(cat));
-            categoryPanel.add(btnCategory);
-        }
-
         categoryPanel.revalidate();
         categoryPanel.repaint();
-    }
-
-    private void selectCategory(Category category) {
-        selectedCategory = category;
-        refreshCategories();
     }
 
     private void switchType(TransactionType type) {
         selectedType = type;
         selectedCategory = null;
         updateTypeButtons();
-        refreshCategories();
+        refreshCategoryGrid();
     }
 
     private void updateTypeButtons() {
@@ -251,7 +273,6 @@ public class AddRecurringTransactionDialog extends JDialog {
     }
 
     private void saveRecurringTransaction() {
-        // Validation
         if (selectedCategory == null) {
             JOptionPane.showMessageDialog(this,
                     isVietnamese ? "Vui lòng chọn danh mục!" : "Please select a category!",
@@ -269,9 +290,7 @@ public class AddRecurringTransactionDialog extends JDialog {
 
         try {
             double amount = Double.parseDouble(amountStr);
-            if (amount <= 0) {
-                throw new NumberFormatException();
-            }
+            if (amount <= 0) throw new NumberFormatException();
 
             LocalDate startDate = ((java.util.Date) spnStartDate.getValue()).toInstant()
                     .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
@@ -307,7 +326,6 @@ public class AddRecurringTransactionDialog extends JDialog {
             JOptionPane.showMessageDialog(this,
                     isVietnamese ? "Giao dịch lặp lại đã được lưu!" : "Recurring transaction saved!",
                     isVietnamese ? "Thông báo" : "Info", JOptionPane.INFORMATION_MESSAGE);
-
             dispose();
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
@@ -330,7 +348,6 @@ public class AddRecurringTransactionDialog extends JDialog {
         btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         btn.setOpaque(true);
-
         if (isExpense) {
             btn.setBackground(ThemeManager.getColor("accent"));
             btn.setForeground(Color.WHITE);
@@ -338,11 +355,10 @@ public class AddRecurringTransactionDialog extends JDialog {
             btn.setBackground(ThemeManager.getColor("cardBg"));
             btn.setForeground(ThemeManager.getColor("textPrimary"));
         }
-
         return btn;
     }
 
-    private void styleTextField(JTextField txt, String placeholder) {
+    private void styleTextField(JTextField txt) {
         txt.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         txt.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
         txt.setBackground(ThemeManager.getColor("inputBg"));
@@ -353,7 +369,6 @@ public class AddRecurringTransactionDialog extends JDialog {
     private void applyTheme() {
         setBackground(ThemeManager.getColor("bg"));
         setForeground(ThemeManager.getColor("textPrimary"));
-
         for (Component comp : getContentPane().getComponents()) {
             applyThemeRecursive(comp);
         }
@@ -362,7 +377,6 @@ public class AddRecurringTransactionDialog extends JDialog {
     private void applyThemeRecursive(Component comp) {
         comp.setBackground(ThemeManager.getColor("bg"));
         comp.setForeground(ThemeManager.getColor("textPrimary"));
-
         if (comp instanceof Container) {
             for (Component child : ((Container) comp).getComponents()) {
                 applyThemeRecursive(child);
@@ -370,4 +384,3 @@ public class AddRecurringTransactionDialog extends JDialog {
         }
     }
 }
-
