@@ -5,7 +5,7 @@ import com.expensemanager.entity.User;
 import com.expensemanager.observer.EventType;
 import com.expensemanager.observer.Observer;
 import com.expensemanager.service.SessionManager;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -86,7 +86,7 @@ public class AccountPanel extends JPanel implements Observer {
             @Override
             public void mouseEntered(MouseEvent e) {
                 btnLogout.setBackground(ThemeManager.getColor("danger"));
-                btnLogout.setForeground(Color.WHITE);
+                btnLogout.setForeground(ThemeManager.getColor("bg"));
             }
             @Override
             public void mouseExited(MouseEvent e) {

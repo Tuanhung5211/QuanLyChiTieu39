@@ -3,7 +3,7 @@ package com.expensemanager.ui;
 import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.User;
 import com.expensemanager.service.SessionManager;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 import com.expensemanager.service.PremiumManager;
 
 import javax.swing.*;
@@ -18,7 +18,10 @@ public class AdminPanel extends JPanel {
     private JTable userTable;
     private DefaultTableModel tableModel;
 
-    // 👉 Các nút chuyển thành biến instance
+    // ĐÃ THÊM: Khai báo JScrollPane làm biến instance để lát nữa đổi màu
+    private JScrollPane scrollPane;
+
+    // Các nút chuyển thành biến instance
     private JButton btnGrantPremium;
     private JButton btnRevokePremium;
     private JButton btnDeleteUser;
@@ -52,13 +55,14 @@ public class AdminPanel extends JPanel {
         userTable = new JTable(tableModel);
         userTable.setRowHeight(28);
         userTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        JScrollPane scrollPane = new JScrollPane(userTable);
+
+        // ĐÃ SỬA: Sử dụng biến instance scrollPane ở trên (bỏ chữ JScrollPane đi)
+        scrollPane = new JScrollPane(userTable);
         add(scrollPane, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 10));
         buttonPanel.setOpaque(false);
 
-        // 👉 Gán trực tiếp vào biến instance (bỏ khai báo cục bộ)
         btnGrantPremium = new JButton(isVietnamese ? "🎁 Cấp Premium" : "🎁 Grant Premium");
         btnRevokePremium = new JButton(isVietnamese ? "❌ Hủy Premium" : "❌ Revoke Premium");
         btnDeleteUser = new JButton(isVietnamese ? "🗑️ Xóa người dùng" : "🗑️ Delete User");
@@ -82,7 +86,8 @@ public class AdminPanel extends JPanel {
         List<User> users = DatabaseUtil.getAllUsers();
         DateTimeFormatter df = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         for (User u : users) {
-            String expiry = u.getPremiumExpiryDate() != null ? u.getPremiumExpiryDate().format(df) : "---";
+            String expiry = u.getPremiumExpiryDate() != null ?
+                    u.getPremiumExpiryDate().format(df) : "---";
             String admin = u.isAdmin() ? "✓" : "";
             tableModel.addRow(new Object[]{
                     u.getId(),
@@ -135,6 +140,7 @@ public class AdminPanel extends JPanel {
         }
         String userId = (String) tableModel.getValueAt(selectedRow, 0);
         String username = (String) tableModel.getValueAt(selectedRow, 1);
+
         int confirm = JOptionPane.showConfirmDialog(this,
                 isVietnamese ? "Xóa Premium của " + username + "?" : "Revoke Premium from " + username + "?",
                 isVietnamese ? "Xác nhận" : "Confirm", JOptionPane.YES_NO_OPTION);
@@ -153,6 +159,7 @@ public class AdminPanel extends JPanel {
         }
         String userId = (String) tableModel.getValueAt(selectedRow, 0);
         String username = (String) tableModel.getValueAt(selectedRow, 1);
+
         if (username.equals(SessionManager.getCurrentUsername())) {
             JOptionPane.showMessageDialog(this,
                     isVietnamese ? "Bạn không thể tự xóa chính mình!" : "You cannot delete yourself!");
@@ -171,7 +178,7 @@ public class AdminPanel extends JPanel {
 
     private void styleButton(JButton btn, Color bg) {
         btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
+        btn.setForeground(ThemeManager.getColor("bg"));
         btn.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -187,9 +194,16 @@ public class AdminPanel extends JPanel {
             userTable.getTableHeader().setForeground(ThemeManager.getColor("textPrimary"));
             userTable.setGridColor(ThemeManager.getColor("border"));
         }
+
+        // ĐÃ THÊM: Sửa lỗi màu trắng nền Viewport
+        if (scrollPane != null) {
+            scrollPane.setBackground(ThemeManager.getColor("surface"));
+            scrollPane.getViewport().setBackground(ThemeManager.getColor("surface"));
+            scrollPane.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border")));
+        }
     }
 
-    // 👉 PHƯƠNG THỨC CẬP NHẬT NGÔN NGỮ ĐẦY ĐỦ
+    // PHƯƠNG THỨC CẬP NHẬT NGÔN NGỮ ĐẦY ĐỦ
     public void updateLanguageText(boolean isVN) {
         this.isVietnamese = isVN;
 

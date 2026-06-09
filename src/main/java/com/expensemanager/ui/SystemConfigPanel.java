@@ -1,6 +1,6 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -111,7 +111,7 @@ public class SystemConfigPanel extends JPanel {
         if (btnSaveLanguage != null) {
             btnSaveLanguage.setBackground(ThemeManager.getColor("accent"));
             // Ensure high contrast text on accent button
-            btnSaveLanguage.setForeground(Color.WHITE);
+            btnSaveLanguage.setForeground(ThemeManager.getColor("bg"));
         }
         if (lblSizeTitle != null) lblSizeTitle.setForeground(ThemeManager.getColor("accent"));
         if (lblSizeHint != null) lblSizeHint.setForeground(ThemeManager.getColor("textPrimary"));
@@ -122,7 +122,7 @@ public class SystemConfigPanel extends JPanel {
         if (btnSaveSize != null) {
             btnSaveSize.setBackground(ThemeManager.getColor("accent"));
             // Ensure high contrast text on accent button
-            btnSaveSize.setForeground(Color.WHITE);
+            btnSaveSize.setForeground(ThemeManager.getColor("bg"));
         }
         if (separator != null) separator.setForeground(ThemeManager.getColor("border"));
     }

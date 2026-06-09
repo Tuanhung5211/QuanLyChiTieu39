@@ -1,7 +1,7 @@
 package com.expensemanager.ui;
 
 import com.expensemanager.service.PremiumManager;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 import com.expensemanager.service.SessionManager;
 
 import javax.swing.*;

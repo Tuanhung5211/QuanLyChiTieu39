@@ -5,9 +5,9 @@ import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.service.SessionManager;
-import com.expensemanager.util.EmojiUtil;                 // thêm import
+import com.expensemanager.util.EmojiUtil;
 import com.expensemanager.util.InputValidator;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -35,10 +35,8 @@ public class AddTransactionDialog extends JDialog {
     private JLabel lblPageIndicator;
     private boolean isVietnamese = true;
 
-    // Map emoji tùy chỉnh do người dùng thêm
     public static Map<String, String> customEmojiMap = new HashMap<>();
 
-    // Cache toàn bộ danh mục sau lần tải đầu tiên
     private List<Category> allCategories = new ArrayList<>();
 
     public AddTransactionDialog(MainFrame parent) {
@@ -55,7 +53,6 @@ public class AddTransactionDialog extends JDialog {
         initComponents();
         applyTheme();
 
-        // Tải danh mục bất đồng bộ
         loadCategoriesAsync();
     }
 
@@ -93,7 +90,6 @@ public class AddTransactionDialog extends JDialog {
     }
 
     private void initComponents() {
-        // Header
         JPanel header = new JPanel(new GridLayout(1, 2, 10, 0));
         header.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
         header.setOpaque(false);
@@ -108,7 +104,6 @@ public class AddTransactionDialog extends JDialog {
         header.add(btnIncome);
         add(header, BorderLayout.NORTH);
 
-        // Center
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
         centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 5, 20));
@@ -133,7 +128,6 @@ public class AddTransactionDialog extends JDialog {
         categoryScrollPane.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(categoryScrollPane);
 
-        // Pagination
         JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 4));
         paginationPanel.setOpaque(false);
         paginationPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -186,7 +180,6 @@ public class AddTransactionDialog extends JDialog {
         centerPanel.add(Box.createVerticalGlue());
         add(centerPanel, BorderLayout.CENTER);
 
-        // Footer
         JPanel footer = new JPanel(new GridLayout(1, 2, 10, 0));
         footer.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
         footer.setOpaque(false);
@@ -212,11 +205,11 @@ public class AddTransactionDialog extends JDialog {
         getContentPane().setBackground(ThemeManager.getColor("bg"));
         if (btnExpense != null) {
             btnExpense.setBackground(selectedType == TransactionType.EXPENSE ? ThemeManager.getColor("danger") : ThemeManager.getColor("surface"));
-            btnExpense.setForeground(Color.WHITE);
+            btnExpense.setForeground(ThemeManager.getColor("bg"));
         }
         if (btnIncome != null) {
             btnIncome.setBackground(selectedType == TransactionType.INCOME ? ThemeManager.getColor("success") : ThemeManager.getColor("surface"));
-            btnIncome.setForeground(Color.WHITE);
+            btnIncome.setForeground(ThemeManager.getColor("bg"));
         }
         if (txtAmount != null) {
             txtAmount.setBackground(ThemeManager.getColor("input"));
@@ -258,7 +251,6 @@ public class AddTransactionDialog extends JDialog {
                 }
             }
         }
-        // Nếu cache đã có, hiển thị luôn
         if (!allCategories.isEmpty()) {
             refreshCategories();
         }
@@ -274,7 +266,6 @@ public class AddTransactionDialog extends JDialog {
 
     private void refreshCategories() {
         categoryPanel.removeAll();
-        // Lọc từ cache
         List<Category> filteredList = new ArrayList<>();
         for (Category c : allCategories) {
             if (c.getType() == selectedType) filteredList.add(c);
@@ -312,7 +303,6 @@ public class AddTransactionDialog extends JDialog {
 
     private void checkAndSeedCategories(List<Category> currentList) {
         if (currentList == null) currentList = new ArrayList<>();
-        // Dùng map từ EmojiUtil (không còn map riêng)
         for (Map.Entry<String, String> entry : EmojiUtil.CATEGORY_EMOJI.entrySet()) {
             String name = entry.getKey();
             boolean isExisted = false;
@@ -323,7 +313,6 @@ public class AddTransactionDialog extends JDialog {
                 }
             }
             if (!isExisted) {
-                // Phân loại thu/chi dựa trên tên (logic cũ giữ nguyên)
                 TransactionType type = (name.equals("Lương") || name.equals("Thưởng") ||
                         name.equals("Học bổng") || name.equals("Được cho") ||
                         name.equals("Làm thêm") || name.equals("Đầu tư") ||
@@ -344,7 +333,6 @@ public class AddTransactionDialog extends JDialog {
         item.setPreferredSize(new Dimension(85, 78));
         item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        // Lấy emoji từ custom map hoặc từ EmojiUtil
         String emoji = customEmojiMap.containsKey(c.getName())
                 ? customEmojiMap.get(c.getName())
                 : EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
@@ -360,7 +348,7 @@ public class AddTransactionDialog extends JDialog {
             lblIcon.setForeground(ThemeManager.getColor("bg"));
         } else {
             lblIcon.setBackground(ThemeManager.getColor("input"));
-            lblIcon.setForeground(Color.WHITE);
+            lblIcon.setForeground(ThemeManager.getColor("bg"));
         }
 
         JLabel lblName = new JLabel(c.getName(), SwingConstants.CENTER);
@@ -421,7 +409,7 @@ public class AddTransactionDialog extends JDialog {
         JButton b = new JButton(text);
         b.setFont(new Font("Segoe UI", Font.BOLD, 14));
         b.setFocusPainted(false);
-        b.setForeground(Color.WHITE);
+        b.setForeground(ThemeManager.getColor("bg"));
         b.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
         return b;
     }

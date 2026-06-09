@@ -1,5 +1,7 @@
 package com.expensemanager.util;
 
+import com.expensemanager.service.ThemeManager;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;

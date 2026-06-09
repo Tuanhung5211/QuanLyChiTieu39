@@ -5,7 +5,7 @@ import com.expensemanager.entity.User;
 import com.expensemanager.service.SessionManager;
 import com.expensemanager.service.UserService;
 import com.expensemanager.util.InputValidator;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -159,7 +159,7 @@ public class AccountSettingsPanel extends JPanel {
         if (btnUpdateProfile != null) {
             btnUpdateProfile.setBackground(ThemeManager.getColor("accent"));
             // Use white text to improve contrast on dark accent
-            btnUpdateProfile.setForeground(Color.WHITE);
+            btnUpdateProfile.setForeground(ThemeManager.getColor("bg"));
         }
         if (btnOpenChangePass != null) {
             btnOpenChangePass.setBackground(ThemeManager.getColor("input"));

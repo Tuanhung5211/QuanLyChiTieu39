@@ -5,7 +5,7 @@ import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.util.EmojiUtil;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -40,7 +40,7 @@ public class TransactionDetailDialog extends JDialog {
 
         JLabel lblIcon = new JLabel(emoji);
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 44));
-        lblIcon.setForeground(Color.WHITE);
+        lblIcon.setForeground(ThemeManager.getColor("bg"));
         headerPanel.add(lblIcon, BorderLayout.WEST);
 
         JPanel textPanel = new JPanel(new GridLayout(2, 1, 0, 4));
@@ -110,10 +110,10 @@ public class TransactionDetailDialog extends JDialog {
                         JButton btn = (JButton) inner;
                         if (btn.getText().equals("Sửa") || btn.getText().equals("Edit")) {
                             btn.setBackground(ThemeManager.getColor("success"));
-                            btn.setForeground(Color.WHITE);
+                            btn.setForeground(ThemeManager.getColor("bg"));
                         } else if (btn.getText().equals("Xóa") || btn.getText().equals("Delete")) {
                             btn.setBackground(ThemeManager.getColor("danger"));
-                            btn.setForeground(Color.WHITE);
+                            btn.setForeground(ThemeManager.getColor("bg"));
                         } else {
                             btn.setBackground(ThemeManager.getColor("surface"));
                             btn.setForeground(ThemeManager.getColor("textPrimary"));

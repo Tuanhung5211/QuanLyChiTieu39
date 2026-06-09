@@ -7,8 +7,7 @@ import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.service.StatisticsService;
-import com.expensemanager.util.EmojiUtil;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -41,6 +40,7 @@ public class StatisticsPanel extends JPanel implements Observer {
 
     private JTable rankingTable;
     private DefaultTableModel rankingModel;
+    private JScrollPane rankingScroll;   // <-- đưa ra biến toàn cục để dễ truy cập trong applyTheme()
 
     private boolean isVietnamese = true;
 
@@ -58,7 +58,7 @@ public class StatisticsPanel extends JPanel implements Observer {
     }
 
     private void initComponents() {
-        // Header
+        // ... giữ nguyên phần header, chartToggle, mainGrid ...
         JPanel topHeaderPanel = new JPanel(new BorderLayout());
         topHeaderPanel.setOpaque(false);
 
@@ -79,14 +79,12 @@ public class StatisticsPanel extends JPanel implements Observer {
         topHeaderPanel.add(chartToggleWrapper, BorderLayout.EAST);
         add(topHeaderPanel, BorderLayout.NORTH);
 
-        // Main grid
         JPanel mainGrid = new JPanel(new GridBagLayout());
         mainGrid.setOpaque(false);
         GridBagConstraints mainGbc = new GridBagConstraints();
         mainGbc.fill = GridBagConstraints.BOTH;
         mainGbc.weighty = 1.0;
 
-        // Left: Chart
         JPanel leftChartCard = new JPanel(new BorderLayout(0, 10));
         leftChartCard.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         leftChartCard.setPreferredSize(new Dimension(0, 0));
@@ -120,7 +118,6 @@ public class StatisticsPanel extends JPanel implements Observer {
         mainGbc.weightx = 0.6;
         mainGrid.add(leftChartCard, mainGbc);
 
-        // Right: Ranking Table
         JPanel rightCard = new JPanel(new BorderLayout(0, 10));
         rightCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
@@ -154,7 +151,7 @@ public class StatisticsPanel extends JPanel implements Observer {
         rankingTable.setRowHeight(28);
         rankingTable.setShowGrid(true);
 
-        JScrollPane rankingScroll = new JScrollPane(rankingTable);
+        rankingScroll = new JScrollPane(rankingTable);   // <-- lưu vào biến instance
         rankingScroll.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("accent")),
                 isVietnamese ? "Xếp hạng danh mục chi tiêu" : "Category Ranking",
@@ -210,6 +207,8 @@ public class StatisticsPanel extends JPanel implements Observer {
     }
 
     // ========== CHART PAINTING ==========
+    // ... (giữ nguyên tất cả các hàm paintPieChart, paintLineChart, getChartColor như bản trước) ...
+
     private void paintCustomChart(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -319,10 +318,14 @@ public class StatisticsPanel extends JPanel implements Observer {
         int paddingLeft = 75, paddingRight = 25, paddingTop = 35, paddingBottom = 40;
         int chartW = w - paddingLeft - paddingRight, chartH = h - paddingTop - paddingBottom;
         g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+
+        Color gridColor = ThemeManager.getColor("textSecondary");
+        Color semiTransparentGrid = new Color(gridColor.getRed(), gridColor.getGreen(), gridColor.getBlue(), 35);
+
         for (int i = 0; i <= 2; i++) {
             int yGrid = paddingTop + (i * chartH / 2);
             g2.setStroke(new BasicStroke(1f));
-            g2.setColor(new Color(255, 255, 255, 35)); // đường lưới mờ giữ nguyên
+            g2.setColor(semiTransparentGrid);
             g2.drawLine(paddingLeft, yGrid, w - paddingRight, yGrid);
             double currentTickValue = ceilMaxValue - (i * step);
             String tickLabel = isVietnamese ? String.format("%,.0f đ", currentTickValue) : String.format("%,.0f", currentTickValue);
@@ -336,10 +339,12 @@ public class StatisticsPanel extends JPanel implements Observer {
             pointsX[i] = paddingLeft + (i * stepX);
             pointsY[i] = (h - paddingBottom) - (int) ((timeValues[i] / ceilMaxValue) * chartH);
         }
+        Color accent = ThemeManager.getColor("accent");
+        Color semiTransparentAccent = new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 25);
         for (int i = 0; i < numPoints - 1; i++) {
             int[] polyX = {pointsX[i], pointsX[i + 1], pointsX[i + 1], pointsX[i]};
             int[] polyY = {pointsY[i], pointsY[i + 1], h - paddingBottom, h - paddingBottom};
-            g2.setColor(new Color(255, 193, 7, 25)); // giữ màu vàng nhạt
+            g2.setColor(semiTransparentAccent);
             g2.fillPolygon(polyX, polyY, 4);
         }
         g2.setColor(ThemeManager.getColor("accent"));
@@ -490,6 +495,8 @@ public class StatisticsPanel extends JPanel implements Observer {
             chartDrawPanel.setBackground(ThemeManager.getColor("surface"));
             chartDrawPanel.repaint();
         }
+
+        // Cập nhật bảng và viewport
         if (rankingTable != null) {
             rankingTable.setBackground(ThemeManager.getColor("surface"));
             rankingTable.setForeground(ThemeManager.getColor("textPrimary"));
@@ -497,6 +504,18 @@ public class StatisticsPanel extends JPanel implements Observer {
             rankingTable.getTableHeader().setForeground(ThemeManager.getColor("textPrimary"));
             rankingTable.setGridColor(ThemeManager.getColor("border"));
         }
+        if (rankingScroll != null) {
+            rankingScroll.setBackground(ThemeManager.getColor("surface"));
+            rankingScroll.getViewport().setBackground(ThemeManager.getColor("surface"));   // <-- FIX: viewport không còn trắng
+            rankingScroll.setBorder(BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(ThemeManager.getColor("accent")),
+                    isVietnamese ? "Xếp hạng danh mục chi tiêu" : "Category Ranking",
+                    TitledBorder.LEFT, TitledBorder.TOP,
+                    new Font("Segoe UI", Font.BOLD, 14),
+                    ThemeManager.getColor("accent")
+            ));
+        }
+
         if (lblMainTitle != null) lblMainTitle.setForeground(ThemeManager.getColor("textPrimary"));
         if (lblTimeRange != null) lblTimeRange.setForeground(ThemeManager.getColor("accent"));
 

@@ -2,11 +2,14 @@ package com.expensemanager.ui;
 
 import com.expensemanager.service.PremiumManager;
 import com.expensemanager.service.SessionManager;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
+import com.expensemanager.util.ConfigLocalStorage;
+
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ItemEvent;
 
-public class SettingsPanel extends JPanel implements Themable {
+public class SettingsPanel extends JPanel {
 
     private MainFrame mainFrame;
     private boolean isVietnamese = true;
@@ -15,11 +18,17 @@ public class SettingsPanel extends JPanel implements Themable {
     private JPanel subContentPanel;
     private JLabel lblMainTitle;
     private JButton btnAccountTab, btnConfigTab, btnCategoryTab, btnThemeTab;
+    private JButton activeSubBtn; // 👉 Track tab con đang mở để vẽ lại màu
 
     private AccountSettingsPanel accountSettingsPanel;
     private SystemConfigPanel systemConfigPanel;
     private CategoryManagerPanel categoryManagerPanel;
     private JPanel themePanel;
+
+    private JComboBox<String> cmbThemePreset;
+    private JButton btnCustom;
+    private JLabel lblThemeTitle;
+    private JLabel lblPreview;
 
     public SettingsPanel(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
@@ -37,10 +46,14 @@ public class SettingsPanel extends JPanel implements Themable {
         setBackground(ThemeManager.getColor("bg"));
         if (lblMainTitle != null) lblMainTitle.setForeground(ThemeManager.getColor("textPrimary"));
         if (subContentPanel != null) subContentPanel.setBackground(ThemeManager.getColor("bg"));
-        // Áp dụng theme cho các panel con
+
+        // 👉 Cập nhật lại màu cho các nút Menu phụ trong mục Cài đặt
+        updateSubNavButtonsTheme();
+
         if (accountSettingsPanel != null) accountSettingsPanel.applyTheme();
         if (systemConfigPanel != null) systemConfigPanel.applyTheme();
         if (categoryManagerPanel != null) categoryManagerPanel.applyTheme();
+
         if (themePanel != null) refreshThemeUI(themePanel);
     }
 
@@ -71,6 +84,8 @@ public class SettingsPanel extends JPanel implements Themable {
         btnCategoryTab = createSubNavButton("", false);
         btnThemeTab = createSubNavButton("", false);
 
+        activeSubBtn = btnAccountTab;
+
         btnAccountTab.addActionListener(e -> switchSubTab("account", btnAccountTab));
         btnConfigTab.addActionListener(e -> switchSubTab("config", btnConfigTab));
         btnCategoryTab.addActionListener(e -> switchSubTab("category", btnCategoryTab));
@@ -84,6 +99,7 @@ public class SettingsPanel extends JPanel implements Themable {
         sidebarPanel.add(Box.createVerticalStrut(10));
         sidebarPanel.add(btnThemeTab);
         sidebarPanel.add(Box.createVerticalGlue());
+
         bodyContainer.add(sidebarPanel, BorderLayout.WEST);
 
         accountSettingsPanel = new AccountSettingsPanel(mainFrame);
@@ -116,6 +132,7 @@ public class SettingsPanel extends JPanel implements Themable {
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.getVerticalScrollBar().setPreferredSize(new Dimension(0, 0));
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+
         return scrollPane;
     }
 
@@ -123,45 +140,71 @@ public class SettingsPanel extends JPanel implements Themable {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(30, 30, 30, 30));
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(15,15,15,15);
+        gbc.insets = new Insets(15, 15, 15, 15);
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.gridx = 0;
 
-        JLabel lblThemeTitle = new JLabel(isVietnamese ? "Tùy chỉnh giao diện" : "Theme Customization");
+        lblThemeTitle = new JLabel();
         lblThemeTitle.setFont(new Font("Segoe UI", Font.BOLD, 20));
         lblThemeTitle.setName("themeTitle");
         panel.add(lblThemeTitle, gbc);
 
         JPanel btnThemePreset = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         btnThemePreset.setOpaque(false);
-        JButton btnDark = new JButton(isVietnamese ? "Tối" : "Dark");
-        JButton btnCustom = new JButton(isVietnamese ? "Tùy chỉnh màu" : "Custom Colors");
-        btnDark.addActionListener(e -> ThemeManager.setTheme(ThemeManager.ThemePreset.DARK));
+
+        cmbThemePreset = new JComboBox<>();
+        cmbThemePreset.setFont(new Font("Segoe UI", Font.PLAIN, 15));
+        cmbThemePreset.setPreferredSize(new Dimension(230, 38));
+
+        cmbThemePreset.addItemListener(e -> {
+            if (e.getStateChange() == ItemEvent.SELECTED) {
+                int index = cmbThemePreset.getSelectedIndex();
+                ThemeManager.ThemePreset selectedPreset = ThemeManager.ThemePreset.DARK;
+                switch (index) {
+                    case 0: selectedPreset = ThemeManager.ThemePreset.DARK; break;
+                    case 1: selectedPreset = ThemeManager.ThemePreset.LIGHT; break;
+                    case 2: selectedPreset = ThemeManager.ThemePreset.OCEAN; break;
+                    case 3: selectedPreset = ThemeManager.ThemePreset.FOREST; break;
+                    case 4: selectedPreset = ThemeManager.ThemePreset.DRACULA; break;
+                }
+                ThemeManager.setTheme(selectedPreset);
+                ConfigLocalStorage.saveThemePreset(selectedPreset.name());
+
+                // Việc ThemeManager kích hoạt Listener sẽ tự gọi MainFrame.applyThemeToAll() và tự truyền xuống SettingsPanel
+            }
+        });
+
+        btnCustom = new JButton();
+        btnCustom.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btnCustom.setFocusPainted(false);
+        btnCustom.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCustom.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         btnCustom.addActionListener(e -> {
             if (!PremiumManager.isPremium(SessionManager.getCurrentUserId())) {
                 JOptionPane.showMessageDialog(this, isVietnamese ? "Tính năng này yêu cầu Premium!" : "This feature requires Premium!");
                 return;
             }
-            new ThemeCustomizerDialog(mainFrame, isVietnamese).setVisible(true);
         });
-        // Remove Light theme button per user request (force dark-only UI)
-        btnThemePreset.add(btnDark);
+
+        btnThemePreset.add(cmbThemePreset);
         btnThemePreset.add(btnCustom);
         panel.add(btnThemePreset, gbc);
 
-        JLabel lblPreview = new JLabel(isVietnamese ? "Xem trước màu sắc:" : "Color preview:");
+        lblPreview = new JLabel();
         lblPreview.setName("previewLabel");
         panel.add(lblPreview, gbc);
 
-        JPanel previewPanel = new JPanel(new GridLayout(2,3,10,10));
+        JPanel previewPanel = new JPanel(new GridLayout(2, 3, 10, 10));
         previewPanel.setOpaque(false);
         previewPanel.setName("previewPanel");
+
         previewPanel.add(createColorBox("bg", "Background"));
         previewPanel.add(createColorBox("surface", "Surface"));
         previewPanel.add(createColorBox("input", "Input"));
         previewPanel.add(createColorBox("textPrimary", "Text Primary"));
         previewPanel.add(createColorBox("textSecondary", "Text Secondary"));
         previewPanel.add(createColorBox("accent", "Accent"));
+
         panel.add(previewPanel, gbc);
 
         return panel;
@@ -172,27 +215,45 @@ public class SettingsPanel extends JPanel implements Themable {
         box.setBackground(ThemeManager.getColor(key));
         box.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border")));
         box.setName("colorBox_" + key);
+
         JLabel lbl = new JLabel(name, SwingConstants.CENTER);
         lbl.setForeground(ThemeManager.getColor("textPrimary"));
         box.add(lbl, BorderLayout.CENTER);
+
         return box;
     }
 
     private void refreshThemeUI(JPanel panel) {
-        panel.setBackground(ThemeManager.getColor("bg"));
+        if (panel == null) return;
+        panel.setBackground(ThemeManager.getColor("surface"));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
+                BorderFactory.createEmptyBorder(30, 30, 30, 30)
+        ));
+
+        if (cmbThemePreset != null) {
+            cmbThemePreset.setBackground(ThemeManager.getColor("input"));
+            cmbThemePreset.setForeground(ThemeManager.getColor("textPrimary"));
+            cmbThemePreset.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border")));
+        }
+        if (btnCustom != null) {
+            btnCustom.setBackground(ThemeManager.getColor("accent"));
+            btnCustom.setForeground(ThemeManager.getColor("bg"));
+        }
 
         for (Component comp : panel.getComponents()) {
             if (comp instanceof JLabel) {
                 JLabel lbl = (JLabel) comp;
                 String name = lbl.getName();
-                if (name == null || !name.equals("themeTitle")) {
+                if (name != null && name.equals("themeTitle")) {
+                    lbl.setForeground(ThemeManager.getColor("accent"));
+                } else if (name == null || !name.equals("themeTitle")) {
                     lbl.setForeground(ThemeManager.getColor("textPrimary"));
                 }
             } else if (comp instanceof JPanel) {
                 JPanel subPanel = (JPanel) comp;
                 String name = subPanel.getName();
                 if (name != null && name.equals("previewPanel")) {
-                    // Update color boxes
                     for (Component colorComp : subPanel.getComponents()) {
                         if (colorComp instanceof JPanel) {
                             JPanel colorBox = (JPanel) colorComp;
@@ -201,8 +262,6 @@ public class SettingsPanel extends JPanel implements Themable {
                                 String colorKey = boxName.substring("colorBox_".length());
                                 colorBox.setBackground(ThemeManager.getColor(colorKey));
                                 colorBox.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border")));
-
-                                // Update text color in the label
                                 for (Component boxChild : colorBox.getComponents()) {
                                     if (boxChild instanceof JLabel) {
                                         ((JLabel) boxChild).setForeground(ThemeManager.getColor("textPrimary"));
@@ -228,6 +287,7 @@ public class SettingsPanel extends JPanel implements Themable {
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btn.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+
         if (isActive) {
             btn.setBackground(ThemeManager.getColor("accent"));
             btn.setForeground(ThemeManager.getColor("bg"));
@@ -240,16 +300,28 @@ public class SettingsPanel extends JPanel implements Themable {
 
     private void switchSubTab(String targetCard, JButton activeBtn) {
         subCardLayout.show(subContentPanel, targetCard);
+        this.activeSubBtn = activeBtn; // 👉 Lưu lại nút đang Active
+        updateSubNavButtonsTheme();
+    }
+
+    // 👉 Hàm mới để đồng bộ màu sắc cho các nút Menu phụ trong mục cài đặt
+    private void updateSubNavButtonsTheme() {
         Color secondary = ThemeManager.getColor("textSecondary");
         Color inputBg = ThemeManager.getColor("input");
 
-        btnAccountTab.setBackground(inputBg); btnAccountTab.setForeground(secondary);
-        btnConfigTab.setBackground(inputBg); btnConfigTab.setForeground(secondary);
-        btnCategoryTab.setBackground(inputBg); btnCategoryTab.setForeground(secondary);
-        btnThemeTab.setBackground(inputBg); btnThemeTab.setForeground(secondary);
+        btnAccountTab.setBackground(inputBg);
+        btnAccountTab.setForeground(secondary);
+        btnConfigTab.setBackground(inputBg);
+        btnConfigTab.setForeground(secondary);
+        btnCategoryTab.setBackground(inputBg);
+        btnCategoryTab.setForeground(secondary);
+        btnThemeTab.setBackground(inputBg);
+        btnThemeTab.setForeground(secondary);
 
-        activeBtn.setBackground(ThemeManager.getColor("accent"));
-        activeBtn.setForeground(ThemeManager.getColor("bg"));
+        if (activeSubBtn != null) {
+            activeSubBtn.setBackground(ThemeManager.getColor("accent"));
+            activeSubBtn.setForeground(ThemeManager.getColor("bg"));
+        }
     }
 
     public void refreshData() {
@@ -271,12 +343,46 @@ public class SettingsPanel extends JPanel implements Themable {
             btnConfigTab.setText("Cấu hình hệ thống");
             btnCategoryTab.setText("Quản lý danh mục");
             btnThemeTab.setText("Giao diện");
+
+            if (lblThemeTitle != null) lblThemeTitle.setText("Tùy chỉnh giao diện");
+            if (lblPreview != null) lblPreview.setText("Xem trước màu sắc:");
+            if (btnCustom != null) btnCustom.setText("Tùy chỉnh màu (Premium)");
+
+            if (cmbThemePreset != null) {
+                java.awt.event.ItemListener[] listeners = cmbThemePreset.getItemListeners();
+                for (java.awt.event.ItemListener l : listeners) cmbThemePreset.removeItemListener(l);
+
+                int selected = cmbThemePreset.getSelectedIndex();
+                cmbThemePreset.setModel(new DefaultComboBoxModel<>(new String[]{
+                        "Giao diện Tối (Dark)", "Giao diện Sáng (Light)", "Xanh Đại Dương (Ocean)", "Xanh Lục Bảo (Forest)", "Hồng Màn Đêm (Dracula)"
+                }));
+                if (selected >= 0) cmbThemePreset.setSelectedIndex(selected);
+
+                for (java.awt.event.ItemListener l : listeners) cmbThemePreset.addItemListener(l);
+            }
         } else {
             lblMainTitle.setText("System Settings");
             btnAccountTab.setText("Account Settings");
             btnConfigTab.setText("System Configuration");
             btnCategoryTab.setText("Category Manager");
             btnThemeTab.setText("Theme");
+
+            if (lblThemeTitle != null) lblThemeTitle.setText("Theme Customization");
+            if (lblPreview != null) lblPreview.setText("Color preview:");
+            if (btnCustom != null) btnCustom.setText("Custom Colors (Premium)");
+
+            if (cmbThemePreset != null) {
+                java.awt.event.ItemListener[] listeners = cmbThemePreset.getItemListeners();
+                for (java.awt.event.ItemListener l : listeners) cmbThemePreset.removeItemListener(l);
+
+                int selected = cmbThemePreset.getSelectedIndex();
+                cmbThemePreset.setModel(new DefaultComboBoxModel<>(new String[]{
+                        "Dark Theme", "Light Theme", "Ocean Blue", "Emerald Forest", "Dracula Night"
+                }));
+                if (selected >= 0) cmbThemePreset.setSelectedIndex(selected);
+
+                for (java.awt.event.ItemListener l : listeners) cmbThemePreset.addItemListener(l);
+            }
         }
 
         if (accountSettingsPanel != null) accountSettingsPanel.updateResponsiveLayout(isVietnamese, fluidWidth);
@@ -290,19 +396,7 @@ public class SettingsPanel extends JPanel implements Themable {
         int fluidWidth = panelWidth - 220 - 25 - 70;
         if (fluidWidth < 500) fluidWidth = 560;
 
-        if (isVN) {
-            lblMainTitle.setText("Cài đặt hệ thống");
-            btnAccountTab.setText("Thông tin cá nhân");
-            btnConfigTab.setText("Cấu hình hệ thống");
-            btnCategoryTab.setText("Quản lý danh mục");
-            btnThemeTab.setText("Giao diện");
-        } else {
-            lblMainTitle.setText("System Settings");
-            btnAccountTab.setText("Account Settings");
-            btnConfigTab.setText("System Configuration");
-            btnCategoryTab.setText("Category Manager");
-            btnThemeTab.setText("Theme");
-        }
+        updateLanguageText();
 
         if (accountSettingsPanel != null) {
             accountSettingsPanel.updateResponsiveLayout(isVN, fluidWidth);

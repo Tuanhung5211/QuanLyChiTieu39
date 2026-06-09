@@ -4,16 +4,13 @@ import com.expensemanager.entity.RecurringTransaction;
 import com.expensemanager.observer.EventType;
 import com.expensemanager.observer.Observer;
 import com.expensemanager.service.RecurringTransactionService;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import java.awt.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-/**
- * Panel để quản lý giao dịch lặp lại
- */
 public class RecurringTransactionManagerPanel extends JPanel implements Observer {
 
     private RecurringTransactionService recurringTransactionService;
@@ -36,7 +33,6 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
     }
 
     private void initComponents() {
-        // Header
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 10, 15));
         headerPanel.setOpaque(false);
@@ -50,7 +46,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnAdd.setFocusPainted(false);
         btnAdd.setBackground(ThemeManager.getColor("accent"));
-        btnAdd.setForeground(Color.WHITE);
+        btnAdd.setForeground(ThemeManager.getColor("bg"));
         btnAdd.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         btnAdd.addActionListener(e -> {
             AddRecurringTransactionDialog dialog = new AddRecurringTransactionDialog(mainFrame, recurringTransactionService);
@@ -60,7 +56,6 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
 
         add(headerPanel, BorderLayout.NORTH);
 
-        // Content
         contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setOpaque(false);
@@ -103,13 +98,11 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         JPanel card = new JPanel();
         card.setLayout(new BorderLayout(10, 0));
         card.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15));
-        // Color the whole card similar to dashboard tags: use danger for expense, success for income
         Color cardBg = rt.getType() == com.expensemanager.entity.TransactionType.EXPENSE ? ThemeManager.getColor("danger") : ThemeManager.getColor("success");
         card.setBackground(cardBg);
         card.setOpaque(true);
         card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 100));
 
-        // Left side - Info
         JPanel infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
@@ -117,28 +110,24 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         String typeEmoji = rt.getType().name().equals("INCOME") ? "📥" : "📤";
         String title = (rt.getCategory() != null ? rt.getCategory().getName() : (isVietnamese ? "Không xác định" : "N/A"));
 
-        // Left: emoji badge
         JLabel lblIcon = new JLabel(typeEmoji, SwingConstants.CENTER);
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
         lblIcon.setOpaque(true);
-        lblIcon.setBackground(new Color(0,0,0,0)); // transparent over colored card
+        lblIcon.setBackground(new Color(0,0,0,0));
         lblIcon.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 12));
-        lblIcon.setForeground(Color.WHITE);
+        lblIcon.setForeground(ThemeManager.getColor("bg"));
         infoPanel.add(lblIcon);
 
-        // Title (category) on top
         JLabel categoryLabel = new JLabel(title);
         categoryLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        categoryLabel.setForeground(Color.WHITE);
+        categoryLabel.setForeground(ThemeManager.getColor("bg"));
         infoPanel.add(categoryLabel);
 
-        // Amount
         JLabel amountLabel = new JLabel(String.format("%,.0f VND", rt.getAmount()));
         amountLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        amountLabel.setForeground(Color.WHITE);
+        amountLabel.setForeground(ThemeManager.getColor("bg"));
         infoPanel.add(amountLabel);
 
-        // Recurrence type and dates as secondary, use semi-transparent white
         String recurTypeLabel = RecurringTransactionService.getRecurrenceTypeLabel(rt.getRecurrenceType(), isVietnamese);
         String dateText = rt.getStartDate().format(dateFormatter);
         if (rt.getEndDate() != null) {
@@ -148,12 +137,13 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         }
         JLabel metaLabel = new JLabel("⌚ " + recurTypeLabel + "   📅 " + dateText);
         metaLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        metaLabel.setForeground(new Color(255,255,255,200));
+        // SỬA: dùng textPrimary với alpha 200 thay vì new Color(255,255,255,200)
+        Color textPrimary = ThemeManager.getColor("textPrimary");
+        metaLabel.setForeground(new Color(textPrimary.getRed(), textPrimary.getGreen(), textPrimary.getBlue(), 200));
         infoPanel.add(metaLabel);
 
         card.add(infoPanel, BorderLayout.CENTER);
 
-        // Right side - Actions
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
         actionPanel.setOpaque(false);
 
@@ -162,7 +152,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         btnToggle.setFocusPainted(false);
         btnToggle.setPreferredSize(new Dimension(40, 35));
         btnToggle.setBackground(ThemeManager.getColor("surface"));
-        btnToggle.setForeground(Color.WHITE);
+        btnToggle.setForeground(ThemeManager.getColor("bg"));
         btnToggle.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         btnToggle.setToolTipText(isVietnamese ? (rt.isActive() ? "Tắt" : "Bật") : (rt.isActive() ? "Disable" : "Enable"));
         btnToggle.addActionListener(e -> {
@@ -179,7 +169,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         btnDelete.setFocusPainted(false);
         btnDelete.setPreferredSize(new Dimension(40, 35));
         btnDelete.setBackground(ThemeManager.getColor("surface"));
-        btnDelete.setForeground(Color.WHITE);
+        btnDelete.setForeground(ThemeManager.getColor("bg"));
         btnDelete.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
         btnDelete.setToolTipText(isVietnamese ? "Xóa" : "Delete");
         btnDelete.addActionListener(e -> {
@@ -197,6 +187,32 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         return card;
     }
 
+    public void applyTheme() {
+        setBackground(ThemeManager.getColor("bg"));
+
+        for (Component comp : getComponents()) {
+            if (comp instanceof JPanel) {
+                for (Component innerComp : ((JPanel) comp).getComponents()) {
+                    if (innerComp instanceof JLabel) {
+                        innerComp.setForeground(ThemeManager.getColor("textPrimary"));
+                    } else if (innerComp instanceof JButton) {
+                        innerComp.setBackground(ThemeManager.getColor("accent"));
+                        innerComp.setForeground(Color.WHITE); // Nút "Thêm lặp lại" giữ trắng để tương phản, có thể thay bg nếu muốn
+                    }
+                }
+            } else if (comp instanceof JScrollPane) {
+                comp.setBackground(ThemeManager.getColor("bg"));
+                ((JScrollPane) comp).getViewport().setBackground(ThemeManager.getColor("bg"));
+            }
+        }
+
+        if (contentPanel != null) {
+            contentPanel.setBackground(ThemeManager.getColor("bg"));
+        }
+
+        refreshUI();
+    }
+
     @Override
     public void update(EventType eventType, Object data) {
         if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.TRANSACTION_UPDATED ||
@@ -210,4 +226,3 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         refreshUI();
     }
 }
-

@@ -8,7 +8,7 @@ import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.util.EmojiUtil;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -89,7 +89,7 @@ public class DashboardPanel extends JPanel implements Observer {
         add(scrollPane, BorderLayout.CENTER);
 
         btnAdd = new JButton(isVietnamese ? "+ Thêm giao dịch mới" : "+ Add Transaction");
-        styleButton(btnAdd, ThemeManager.getColor("success"), Color.WHITE, 16, true);
+        styleButton(btnAdd, ThemeManager.getColor("success"), ThemeManager.getColor("bg"), 16, true);
         btnAdd.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) { btnAdd.setBackground(ThemeManager.getColor("success").darker()); }
             public void mouseExited(MouseEvent e) { btnAdd.setBackground(ThemeManager.getColor("success")); }
@@ -158,7 +158,7 @@ public class DashboardPanel extends JPanel implements Observer {
 
         btnApplyFilter = new JButton(isVietnamese ? "Áp dụng" : "Apply");
         btnApplyFilter.setBackground(ThemeManager.getColor("accent"));
-        btnApplyFilter.setForeground(Color.WHITE);
+        btnApplyFilter.setForeground(ThemeManager.getColor("bg"));
         btnApplyFilter.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnApplyFilter.setFocusPainted(false);
         btnApplyFilter.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -247,7 +247,7 @@ public class DashboardPanel extends JPanel implements Observer {
 
         lblIncome.setText(String.format("%,.0f đ", totalIncome));
         lblExpense.setText(String.format("%,.0f đ", totalExpense));
-        lblBalance.setText(String.format("%,.0f đ", totalIncome - totalExpense));
+        lblBalance.setText(String.format("%,.0f đ", totalIncome - totalExpense));   // SỬA LỖI DÒNG BỊ NGẮT
     }
 
     private void renderTransactionList(List<Transaction> transactions) {
@@ -295,7 +295,7 @@ public class DashboardPanel extends JPanel implements Observer {
         row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
         Category cat = t.getCategory();
-        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "📌") : "📌";
+        String emoji = (cat != null) ? EmojiUtil.CATEGORY_EMOJI.getOrDefault(cat.getName(), "📍") : "📍";
 
         JLabel lblIcon = new JLabel(emoji);
         lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
@@ -389,13 +389,10 @@ public class DashboardPanel extends JPanel implements Observer {
         }
         if (btnCalendarPopup != null) btnCalendarPopup.setText(isVN ? "📅 Lịch" : "📅 Calendar");
 
-        // 👉 THÊM DÒNG NÀY
         updateCalendarLanguage(isVN);
-
         refreshData();
     }
 
-    // 👉 THÊM PHƯƠNG THỨC NÀY
     public void updateCalendarLanguage(boolean isVN) {
         if (calendarPanel != null) {
             calendarPanel.updateLanguageText(isVN);
@@ -442,11 +439,11 @@ public class DashboardPanel extends JPanel implements Observer {
         }
         if (btnApplyFilter != null) {
             btnApplyFilter.setBackground(ThemeManager.getColor("accent"));
-            btnApplyFilter.setForeground(Color.WHITE);
+            btnApplyFilter.setForeground(ThemeManager.getColor("bg"));
         }
         if (btnAdd != null) {
             btnAdd.setBackground(ThemeManager.getColor("success"));
-            btnAdd.setForeground(Color.WHITE);
+            btnAdd.setForeground(ThemeManager.getColor("bg"));
         }
         if (calendarPanel != null) calendarPanel.applyTheme();
         if (btnCalendarPopup != null) {

@@ -1,6 +1,6 @@
 package com.expensemanager.ui;
 
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 import javax.swing.*;
 import java.awt.*;
 

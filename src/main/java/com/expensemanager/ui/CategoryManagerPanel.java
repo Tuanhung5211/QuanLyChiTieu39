@@ -4,7 +4,7 @@ import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.Category;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.util.EmojiUtil;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import java.awt.*;
@@ -106,7 +106,7 @@ public class CategoryManagerPanel extends JPanel {
         JPanel listHeaderPanel = new JPanel(new BorderLayout());
         listHeaderPanel.setOpaque(false);
 
-        lblListTitle = new JLabel();
+        lblListTitle = new JLabel(isVietnamese ? "Danh sách danh mục" : "Category List");
         lblListTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
         listHeaderPanel.add(lblListTitle, BorderLayout.WEST);
 
@@ -168,7 +168,7 @@ public class CategoryManagerPanel extends JPanel {
         listCenterContainer.add(listPaginationPanel);
         listCard.add(listCenterContainer, BorderLayout.CENTER);
 
-        btnDeleteCategory = new JButton();
+        btnDeleteCategory = new JButton(isVietnamese ? "Xóa danh mục đã chọn" : "Delete Selected Category");
         btnDeleteCategory.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnDeleteCategory.setFocusPainted(false);
         btnDeleteCategory.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -194,15 +194,17 @@ public class CategoryManagerPanel extends JPanel {
         gbc.weightx = 1.0;
         gbc.insets = new Insets(4, 0, 4, 0);
 
-        lblCategoryTitle = new JLabel();
+        lblCategoryTitle = new JLabel(isVietnamese ? "Thêm danh mục mới" : "Add New Category");
         lblCategoryTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
         lblCategoryTitle.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
         gbc.gridx = 0; gbc.gridy = 0; pForm.add(lblCategoryTitle, gbc);
 
-        lblCatNameHint = createLabel(); gbc.gridy = 1; pForm.add(lblCatNameHint, gbc);
+        lblCatNameHint = createLabel(isVietnamese ? "Tên danh mục:" : "Category Name:");
+        gbc.gridy = 1; pForm.add(lblCatNameHint, gbc);
         txtCategoryName = new JTextField(); styleTextField(txtCategoryName); gbc.gridy = 2; pForm.add(txtCategoryName, gbc);
 
-        lblCatIconHint = createLabel(); gbc.gridy = 3; pForm.add(lblCatIconHint, gbc);
+        lblCatIconHint = createLabel(isVietnamese ? "Chọn biểu tượng:" : "Choose Icon:");
+        gbc.gridy = 3; pForm.add(lblCatIconHint, gbc);
 
         emojiGridPanel = new JPanel(new GridLayout(2, 9, 8, 8));
         gridWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -229,14 +231,15 @@ public class CategoryManagerPanel extends JPanel {
         emojiPagination.add(btnNextEmojiPage);
         gbc.gridy = 5; pForm.add(emojiPagination, gbc);
 
-        lblCatTypeHint = createLabel(); gbc.gridy = 6; pForm.add(lblCatTypeHint, gbc);
+        lblCatTypeHint = createLabel(isVietnamese ? "Loại danh mục:" : "Category Type:");
+        gbc.gridy = 6; pForm.add(lblCatTypeHint, gbc);
 
-        comboCategoryType = new JComboBox<>();
+        comboCategoryType = new JComboBox<>(isVietnamese ? new String[]{"Chi tiêu", "Thu nhập"} : new String[]{"Expense", "Income"});
         comboCategoryType.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         comboCategoryType.setAlignmentX(Component.LEFT_ALIGNMENT);
         gbc.gridy = 7; pForm.add(comboCategoryType, gbc);
 
-        btnSaveCategory = new JButton();
+        btnSaveCategory = new JButton(isVietnamese ? "Lưu danh mục" : "Save Category");
         btnSaveCategory.setFont(new Font("Segoe UI", Font.BOLD, 15));
         btnSaveCategory.setFocusPainted(false);
         btnSaveCategory.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -248,11 +251,23 @@ public class CategoryManagerPanel extends JPanel {
         add(addCard);
     }
 
+    private void updateLanguageTexts() {
+        lblListTitle.setText(isVietnamese ? "Danh sách danh mục" : "Category List");
+        btnListExpense.setText(isVietnamese ? "Khoản chi" : "Expenses");
+        btnListIncome.setText(isVietnamese ? "Khoản thu" : "Incomes");
+        btnDeleteCategory.setText(isVietnamese ? "Xóa danh mục đã chọn" : "Delete Selected Category");
+        lblCategoryTitle.setText(isVietnamese ? "Thêm danh mục mới" : "Add New Category");
+        lblCatNameHint.setText(isVietnamese ? "Tên danh mục:" : "Category Name:");
+        lblCatIconHint.setText(isVietnamese ? "Chọn biểu tượng:" : "Choose Icon:");
+        lblCatTypeHint.setText(isVietnamese ? "Loại danh mục:" : "Category Type:");
+        comboCategoryType.setModel(new DefaultComboBoxModel<>(isVietnamese ? new String[]{"Chi tiêu", "Thu nhập"} : new String[]{"Expense", "Income"}));
+        btnSaveCategory.setText(isVietnamese ? "Lưu danh mục" : "Save Category");
+    }
+
     public void refreshCategories() {
         if (listGridPanel == null) return;
         listGridPanel.removeAll();
 
-        // Lọc từ cache
         List<Category> filteredCategories = new ArrayList<>();
         for (Category c : allCategories) {
             if (c != null && c.getType() == currentListType) {
@@ -468,6 +483,10 @@ public class CategoryManagerPanel extends JPanel {
             listCard.setMaximumSize(new Dimension(fluidWidth, totalListCardH));
             listCard.setMinimumSize(new Dimension(fluidWidth, totalListCardH));
         }
+
+        updateLanguageTexts();   // Cập nhật toàn bộ text theo ngôn ngữ mới
+        refreshCategories();
+        refreshEmojiGrid();
     }
 
     private void selectListTypeTab(JButton target) {
@@ -557,8 +576,8 @@ public class CategoryManagerPanel extends JPanel {
         refreshEmojiGrid();
     }
 
-    private JLabel createLabel() {
-        JLabel lbl = new JLabel();
+    private JLabel createLabel(String text) {
+        JLabel lbl = new JLabel(text);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lbl.setForeground(ThemeManager.getColor("textSecondary"));
         lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 6, 0));

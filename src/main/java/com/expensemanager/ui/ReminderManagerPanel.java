@@ -3,7 +3,7 @@ package com.expensemanager.ui;
 import com.expensemanager.entity.Reminder;
 import com.expensemanager.service.ReminderService;
 import com.expensemanager.service.SessionManager;
-import com.expensemanager.util.ThemeManager;
+import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
