@@ -26,7 +26,8 @@ public class UserService {
         if (user == null) return null;
         String passwordHash = hashPassword(password);
         if (passwordHash.equals(user.getPasswordHash())) {
-            SessionManager.login(user.getId(), user.getUsername());
+            // ✅ Sửa: truyền thêm tham số isAdmin
+            SessionManager.login(user.getId(), user.getUsername(), user.isAdmin());
             return user;
         }
         return null;
@@ -48,7 +49,7 @@ public class UserService {
         }
     }
 
-    // ========== THÊM CÁC PHƯƠNG THỨC CHO QUÊN MẬT KHẨU ==========
+    // ========== PHƯƠNG THỨC CHO QUÊN MẬT KHẨU ==========
     private static String generateRandomPassword(int length) {
         String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%";
         StringBuilder sb = new StringBuilder();
