@@ -135,14 +135,8 @@ public class SettingsPanel extends JPanel implements Themable {
         JPanel btnThemePreset = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         btnThemePreset.setOpaque(false);
         JButton btnDark = new JButton(isVietnamese ? "Tối" : "Dark");
-        JButton btnLight = new JButton(isVietnamese ? "Sáng" : "Light");
         JButton btnCustom = new JButton(isVietnamese ? "Tùy chỉnh màu" : "Custom Colors");
-        btnDark.addActionListener(e -> {
-            ThemeManager.setTheme(ThemeManager.ThemePreset.DARK);
-        });
-        btnLight.addActionListener(e -> {
-            ThemeManager.setTheme(ThemeManager.ThemePreset.LIGHT);
-        });
+        btnDark.addActionListener(e -> ThemeManager.setTheme(ThemeManager.ThemePreset.DARK));
         btnCustom.addActionListener(e -> {
             if (!PremiumManager.isPremium(SessionManager.getCurrentUserId())) {
                 JOptionPane.showMessageDialog(this, isVietnamese ? "Tính năng này yêu cầu Premium!" : "This feature requires Premium!");
@@ -150,8 +144,8 @@ public class SettingsPanel extends JPanel implements Themable {
             }
             new ThemeCustomizerDialog(mainFrame, isVietnamese).setVisible(true);
         });
+        // Remove Light theme button per user request (force dark-only UI)
         btnThemePreset.add(btnDark);
-        btnThemePreset.add(btnLight);
         btnThemePreset.add(btnCustom);
         panel.add(btnThemePreset, gbc);
 

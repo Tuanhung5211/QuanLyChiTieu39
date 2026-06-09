@@ -110,7 +110,8 @@ public class SystemConfigPanel extends JPanel {
         if (rbEnglish != null) rbEnglish.setForeground(ThemeManager.getColor("textPrimary"));
         if (btnSaveLanguage != null) {
             btnSaveLanguage.setBackground(ThemeManager.getColor("accent"));
-            btnSaveLanguage.setForeground(ThemeManager.getColor("bg"));
+            // Ensure high contrast text on accent button
+            btnSaveLanguage.setForeground(Color.WHITE);
         }
         if (lblSizeTitle != null) lblSizeTitle.setForeground(ThemeManager.getColor("accent"));
         if (lblSizeHint != null) lblSizeHint.setForeground(ThemeManager.getColor("textPrimary"));
@@ -120,7 +121,8 @@ public class SystemConfigPanel extends JPanel {
         }
         if (btnSaveSize != null) {
             btnSaveSize.setBackground(ThemeManager.getColor("accent"));
-            btnSaveSize.setForeground(ThemeManager.getColor("bg"));
+            // Ensure high contrast text on accent button
+            btnSaveSize.setForeground(Color.WHITE);
         }
         if (separator != null) separator.setForeground(ThemeManager.getColor("border"));
     }

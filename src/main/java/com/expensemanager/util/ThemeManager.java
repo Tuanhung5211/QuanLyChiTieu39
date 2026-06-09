@@ -62,46 +62,19 @@ public class ThemeManager {
 
     // ===================== LIGHT =====================
     public static void applyLightTheme() {
-        isDarkMode = false;
-        currentPreset = ThemePreset.LIGHT;
-        currentTheme.clear();
-
-        currentTheme.put("bg", new Color(245, 245, 245));
-        currentTheme.put("surface", new Color(255, 255, 255));
-        currentTheme.put("input", new Color(230, 230, 230));
-        currentTheme.put("inputBg", new Color(230, 230, 230));
-        currentTheme.put("border", new Color(200, 200, 200));
-
-        currentTheme.put("textPrimary", new Color(30, 30, 30));
-        currentTheme.put("textSecondary", new Color(100, 100, 100));
-
-        currentTheme.put("accent", new Color(0, 120, 215));
-
-        currentTheme.put("success", new Color(56, 142, 60));
-        currentTheme.put("danger", new Color(211, 47, 47));
-        currentTheme.put("warning", new Color(255, 140, 0));
-        currentTheme.put("progressTrack", new Color(210, 210, 210));
-
-        currentTheme.put("chart0", new Color(39, 174, 96));
-        currentTheme.put("chart1", new Color(41, 128, 185));
-        currentTheme.put("chart2", new Color(142, 68, 173));
-        currentTheme.put("chart3", new Color(211, 84, 0));
-        currentTheme.put("chart4", new Color(243, 156, 18));
-        currentTheme.put("chart5", new Color(192, 57, 43));
-        currentTheme.put("chart6", new Color(22, 160, 133));
-        currentTheme.put("chart7", new Color(127, 140, 141));
-        currentTheme.put("chart8", new Color(230, 126, 34));
-
-        notifyListeners();
+        // Light theme is intentionally disabled in this build — always keep dark appearance.
+        // To avoid any accidental switch to light, applying light will just re-apply dark theme.
+        applyDarkTheme();
     }
 
     public static void setTheme(ThemePreset preset) {
+        // Only dark and custom are supported. If LIGHT requested, fall back to DARK to "bỏ giao diện sáng".
         switch (preset) {
-            case DARK: applyDarkTheme(); break;
-            case LIGHT: applyLightTheme(); break;
-            default: break;
+            case DARK: applyDarkTheme(); currentPreset = ThemePreset.DARK; break;
+            case LIGHT: applyDarkTheme(); currentPreset = ThemePreset.DARK; break;
+            case CUSTOM: currentPreset = ThemePreset.CUSTOM; break;
+            default: applyDarkTheme(); currentPreset = ThemePreset.DARK; break;
         }
-        currentPreset = preset;
     }
 
     public static void setCustomColor(String key, Color color) {
@@ -115,8 +88,8 @@ public class ThemeManager {
     }
 
     public static void toggleTheme() {
-        if (isDarkMode) applyLightTheme();
-        else applyDarkTheme();
+        // Theme toggle is disabled to enforce dark-only appearance.
+        applyDarkTheme();
     }
 
     public static boolean isDark() {

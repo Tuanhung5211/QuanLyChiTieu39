@@ -158,7 +158,8 @@ public class AccountSettingsPanel extends JPanel {
         }
         if (btnUpdateProfile != null) {
             btnUpdateProfile.setBackground(ThemeManager.getColor("accent"));
-            btnUpdateProfile.setForeground(ThemeManager.getColor("bg"));
+            // Use white text to improve contrast on dark accent
+            btnUpdateProfile.setForeground(Color.WHITE);
         }
         if (btnOpenChangePass != null) {
             btnOpenChangePass.setBackground(ThemeManager.getColor("input"));

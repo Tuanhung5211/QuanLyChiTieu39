@@ -182,7 +182,8 @@ public class DatabaseUtil {
     // ==========================================================
 
     public static Budget getBudget(int month, int year, String userId) {
-        String query = "SELECT * FROM budgets WHERE user_id = ? AND MONTH(start_date) = ? AND YEAR(start_date) = ? LIMIT 1";
+        // The budgets table uses month/year columns (see database_script.sql).
+        String query = "SELECT * FROM budgets WHERE user_id = ? AND month = ? AND year = ? LIMIT 1";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, userId);
@@ -192,12 +193,16 @@ public class DatabaseUtil {
             if (rs.next()) {
                 Budget b = new Budget();
                 b.setId(rs.getString("id"));
+                b.setMonth(rs.getInt("month"));
+                b.setYear(rs.getInt("year"));
                 b.setLimit(rs.getDouble("budget_limit"));
                 b.setSpent(rs.getDouble("spent"));
-                b.setStartDate(rs.getDate("start_date").toLocalDate());
-                b.setEndDate(rs.getDate("end_date").toLocalDate());
-                b.setThreshold(rs.getInt("threshold"));
                 b.setUserId(userId);
+                // derive start/end dates from month/year for compatibility with UI logic
+                java.time.LocalDate start = java.time.LocalDate.of(b.getYear(), b.getMonth(), 1);
+                java.time.LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+                b.setStartDate(start);
+                b.setEndDate(end);
                 return b;
             }
         } catch (SQLException e) {
@@ -208,7 +213,8 @@ public class DatabaseUtil {
 
     public static java.util.List<Budget> getAllBudgets(String userId) {
         java.util.List<Budget> list = new java.util.ArrayList<>();
-        String query = "SELECT b.*, c.name AS cat_name FROM budgets b LEFT JOIN categories c ON b.category_id = c.id WHERE b.user_id = ?";
+        // budgets table currently stores month/year, budget_limit, spent and user_id
+        String query = "SELECT * FROM budgets WHERE user_id = ?";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, userId);
@@ -216,20 +222,18 @@ public class DatabaseUtil {
             while (rs.next()) {
                 Budget b = new Budget();
                 b.setId(rs.getString("id"));
+                b.setMonth(rs.getInt("month"));
+                b.setYear(rs.getInt("year"));
                 b.setLimit(rs.getDouble("budget_limit"));
                 b.setSpent(rs.getDouble("spent"));
-                b.setStartDate(rs.getDate("start_date").toLocalDate());
-                b.setEndDate(rs.getDate("end_date").toLocalDate());
-                b.setThreshold(rs.getInt("threshold"));
                 b.setUserId(userId);
 
-                String catId = rs.getString("category_id");
-                if (catId != null) {
-                    Category cat = new Category();
-                    cat.setId(catId);
-                    cat.setName(rs.getString("cat_name"));
-                    b.setCategory(cat);
-                }
+                // Derive start/end dates from month/year so existing code that uses them continues to work
+                java.time.LocalDate start = java.time.LocalDate.of(b.getYear(), b.getMonth(), 1);
+                java.time.LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+                b.setStartDate(start);
+                b.setEndDate(end);
+
                 list.add(b);
             }
         } catch (SQLException e) {
@@ -239,22 +243,25 @@ public class DatabaseUtil {
     }
 
     public static void insertBudget(Budget b) {
-        String query = "INSERT INTO budgets (id, budget_limit, spent, start_date, end_date, threshold, category_id, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        // Ensure month/year exist; derive from startDate if necessary
+        int month = b.getMonth();
+        int year = b.getYear();
+        if ((month == 0 || year == 0) && b.getStartDate() != null) {
+            month = b.getStartDate().getMonthValue();
+            year = b.getStartDate().getYear();
+            b.setMonth(month);
+            b.setYear(year);
+        }
+
+        String query = "INSERT INTO budgets (id, month, year, budget_limit, spent, user_id) VALUES (?, ?, ?, ?, ?, ?)";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, b.getId());
-            pstmt.setDouble(2, b.getLimit());
-            pstmt.setDouble(3, b.getSpent());
-            pstmt.setDate(4, java.sql.Date.valueOf(b.getStartDate()));
-            pstmt.setDate(5, java.sql.Date.valueOf(b.getEndDate()));
-            pstmt.setInt(6, b.getThreshold());
-
-            if (b.getCategory() != null && b.getCategory().getId() != null) {
-                pstmt.setString(7, b.getCategory().getId());
-            } else {
-                pstmt.setNull(7, java.sql.Types.VARCHAR);
-            }
-            pstmt.setString(8, b.getUserId());
+            pstmt.setInt(2, month);
+            pstmt.setInt(3, year);
+            pstmt.setDouble(4, b.getLimit());
+            pstmt.setDouble(5, b.getSpent());
+            pstmt.setString(6, b.getUserId());
             pstmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();

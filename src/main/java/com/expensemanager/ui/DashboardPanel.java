@@ -158,7 +158,8 @@ public class DashboardPanel extends JPanel implements Observer {
 
         btnApplyFilter = new JButton(isVietnamese ? "Áp dụng" : "Apply");
         btnApplyFilter.setBackground(ThemeManager.getColor("accent"));
-        btnApplyFilter.setForeground(ThemeManager.getColor("bg"));
+        // Use white text so it's visible on dark accent backgrounds
+        btnApplyFilter.setForeground(Color.WHITE);
         btnApplyFilter.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnApplyFilter.setFocusPainted(false);
         btnApplyFilter.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -170,9 +171,10 @@ public class DashboardPanel extends JPanel implements Observer {
         filterBar.add(txtEndDate);
         filterBar.add(btnApplyFilter);
 
-        btnCalendarPopup = new JButton("📅");
-        btnCalendarPopup.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 18));
-        btnCalendarPopup.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+        // Make the calendar button more visible: include label text and larger padding
+        btnCalendarPopup = new JButton(isVietnamese ? "📅 Lịch" : "📅 Calendar");
+        btnCalendarPopup.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        btnCalendarPopup.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
         btnCalendarPopup.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         btnCalendarPopup.setFocusPainted(false);
         btnCalendarPopup.addActionListener(e -> showCalendarDialog());
@@ -387,6 +389,7 @@ public class DashboardPanel extends JPanel implements Observer {
         if (calendarPanel != null) {
             calendarPanel.update(EventType.DATA_LOADED, null);
         }
+        if (btnCalendarPopup != null) btnCalendarPopup.setText(isVN ? "📅 Lịch" : "📅 Calendar");
         refreshData();
     }
 
@@ -430,7 +433,7 @@ public class DashboardPanel extends JPanel implements Observer {
         }
         if (btnApplyFilter != null) {
             btnApplyFilter.setBackground(ThemeManager.getColor("accent"));
-            btnApplyFilter.setForeground(ThemeManager.getColor("bg"));
+            btnApplyFilter.setForeground(Color.WHITE);
         }
         if (btnAdd != null) {
             btnAdd.setBackground(ThemeManager.getColor("success"));
