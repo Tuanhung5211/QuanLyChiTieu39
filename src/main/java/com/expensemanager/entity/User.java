@@ -1,5 +1,7 @@
 package com.expensemanager.entity;
 
+import java.time.LocalDate;
+
 public class User {
     private String id;
     private String username;
@@ -7,11 +9,11 @@ public class User {
     private String nickname;
     private String email;
     private String gender;
-
-    // 🌟 ĐÃ THÊM: Thuộc tính avatar để lưu trữ icon/ảnh đại diện của người dùng
     private String avatar;
+    private LocalDate premiumExpiryDate;
+    private boolean isAdmin;
 
-    // Constructor 6 tham số (Dùng cho Đăng ký mới)
+    // Constructor 6 tham số (dùng cho đăng ký mới)
     public User(String id, String username, String passwordHash, String nickname, String email, String gender) {
         this.id = id;
         this.username = username;
@@ -19,22 +21,17 @@ public class User {
         this.nickname = nickname;
         this.email = email;
         this.gender = gender;
-        this.avatar = "👤"; // Giá trị mặc định khi mới tạo tài khoản
-    }
-
-    // Constructor 4 tham số cũ (Giữ lại để tương thích với luồng DB cũ)
-    public User(String id, String username, String passwordHash, String nickname) {
-        this.id = id;
-        this.username = username;
-        this.passwordHash = passwordHash;
-        this.nickname = nickname;
-        this.email = "";
-        this.gender = "Other";
         this.avatar = "👤";
+        this.premiumExpiryDate = null;
+        this.isAdmin = false;
     }
 
-    // --- Các hàm Getters và Setters ---
+    // Constructor 4 tham số cũ (giữ lại tương thích)
+    public User(String id, String username, String passwordHash, String nickname) {
+        this(id, username, passwordHash, nickname, "", "Other");
+    }
 
+    // Getters & Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -53,7 +50,12 @@ public class User {
     public String getGender() { return gender; }
     public void setGender(String gender) { this.gender = gender; }
 
-    // 🌟 ĐÃ THÊM: Getter và Setter cho Avatar
     public String getAvatar() { return avatar; }
     public void setAvatar(String avatar) { this.avatar = avatar; }
+
+    public LocalDate getPremiumExpiryDate() { return premiumExpiryDate; }
+    public void setPremiumExpiryDate(LocalDate premiumExpiryDate) { this.premiumExpiryDate = premiumExpiryDate; }
+
+    public boolean isAdmin() { return isAdmin; }
+    public void setAdmin(boolean admin) { isAdmin = admin; }
 }
