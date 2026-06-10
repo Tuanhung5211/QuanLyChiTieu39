@@ -1,7 +1,9 @@
 package com.expensemanager.service;
 
 import javax.swing.*;
+import javax.swing.plaf.basic.BasicComboBoxUI;
 import java.awt.Color;
+import java.awt.Component;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -25,21 +27,13 @@ public class ThemeManager {
     public static Color getColor(String key) {
         return currentTheme.getOrDefault(key, Color.RED);
     }
-    // =========================================================================
-    // HÀM LẤY MÀU TƯƠNG PHẢN (Hỗ trợ các class khác gọi đến)
-    // =========================================================================
+
     public static Color getContrastColor(Color bg) {
         if (bg == null) return Color.BLACK;
-        // Tính toán độ sáng của màu nền được truyền vào
         double luminance = (0.299 * bg.getRed() + 0.587 * bg.getGreen() + 0.114 * bg.getBlue()) / 255.0;
-
-        // Nếu nền tối (< 0.5) -> Trả về chữ trắng/sáng. Ngược lại trả về chữ xám đen (Material)
         return luminance < 0.5 ? new Color(245, 245, 245) : new Color(32, 33, 36);
     }
 
-    // =========================================================================
-    // HÀM TỰ ĐỘNG TÍNH TOÁN VÀ ĐIỀU CHỈNH MÀU SẮC (CÂN BẰNG TƯƠNG PHẢN)
-    // =========================================================================
     private static void finalizeThemeColors(Color bg, Color surface, Color accent) {
         currentTheme.put("bg", bg);
         currentTheme.put("surface", surface);
@@ -56,10 +50,10 @@ public class ThemeManager {
             currentTheme.put("input", bg.brighter());
             currentTheme.put("progressTrack", new Color(65, 65, 65));
         } else {
-            currentTheme.put("textPrimary", new Color(32, 33, 36)); // Màu đen xám chuẩn Google
-            currentTheme.put("textSecondary", new Color(95, 99, 104)); // Màu xám chuẩn Google
-            currentTheme.put("border", new Color(218, 220, 224)); // Viền xám nhạt Google
-            currentTheme.put("inputBg", new Color(241, 243, 244)); // Nền ô input Google
+            currentTheme.put("textPrimary", new Color(32, 33, 36));
+            currentTheme.put("textSecondary", new Color(95, 99, 104));
+            currentTheme.put("border", new Color(218, 220, 224));
+            currentTheme.put("inputBg", new Color(241, 243, 244));
             currentTheme.put("input", new Color(241, 243, 244));
             currentTheme.put("progressTrack", new Color(232, 234, 237));
         }
@@ -75,7 +69,7 @@ public class ThemeManager {
 
     public static void applyLightTheme() {
         currentPreset = ThemePreset.LIGHT;
-        finalizeThemeColors(new Color(250, 250, 250), new Color(255, 255, 255), new Color(26, 115, 232)); // Xanh Google
+        finalizeThemeColors(new Color(250, 250, 250), new Color(255, 255, 255), new Color(26, 115, 232));
     }
 
     public static void applyOceanTheme() {
@@ -109,14 +103,14 @@ public class ThemeManager {
     }
 
     private static void putCommonColors() {
-        currentTheme.put("success", new Color(52, 168, 83)); // Xanh lá Google
-        currentTheme.put("danger", new Color(234, 67, 53)); // Đỏ Google
-        currentTheme.put("warning", new Color(251, 188, 5)); // Vàng Google
+        currentTheme.put("success", new Color(52, 168, 83));
+        currentTheme.put("danger", new Color(234, 67, 53));
+        currentTheme.put("warning", new Color(251, 188, 5));
 
-        currentTheme.put("chart0", new Color(66, 133, 244)); // Xanh lam Google
-        currentTheme.put("chart1", new Color(234, 67, 53));  // Đỏ Google
-        currentTheme.put("chart2", new Color(251, 188, 5));  // Vàng Google
-        currentTheme.put("chart3", new Color(52, 168, 83));  // Xanh lá Google
+        currentTheme.put("chart0", new Color(66, 133, 244));
+        currentTheme.put("chart1", new Color(234, 67, 53));
+        currentTheme.put("chart2", new Color(251, 188, 5));
+        currentTheme.put("chart3", new Color(52, 168, 83));
         currentTheme.put("chart4", new Color(255, 112, 67));
         currentTheme.put("chart5", new Color(171, 71, 188));
         currentTheme.put("chart6", new Color(38, 166, 154));
@@ -155,11 +149,44 @@ public class ThemeManager {
     public static void addThemeListener(Runnable listener) { listeners.add(listener); }
     private static void notifyListeners() { for (Runnable listener : listeners) { listener.run(); } }
 
+    // ------------------ UI TUỲ CHỈNH CHO COMBOBOX ------------------
+    public static class ThemeComboBoxUI extends BasicComboBoxUI {
+        @Override
+        protected void installDefaults() {
+            super.installDefaults();
+            // Loại bỏ viền mặc định và áp dụng viền theme
+            comboBox.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+            comboBox.setBackground(ThemeManager.getColor("input"));
+            comboBox.setForeground(ThemeManager.getColor("textPrimary"));
+            // Đảm bảo renderer dùng để vẽ item cũng đúng màu
+            comboBox.setRenderer(new ThemeComboBoxRenderer());
+        }
+    }
+
+    // Renderer cho popup (giữ nguyên từ trước, đảm bảo đồng bộ)
+    public static class ThemeComboBoxRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value,
+                                                      int index, boolean isSelected,
+                                                      boolean cellHasFocus) {
+            JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            label.setBackground(isSelected ? ThemeManager.getColor("accent") : ThemeManager.getColor("input"));
+            label.setForeground(isSelected ?
+                    ThemeManager.getContrastColor(ThemeManager.getColor("accent")) :
+                    ThemeManager.getColor("textPrimary"));
+            label.setBorder(BorderFactory.createEmptyBorder(2, 8, 2, 8));
+            return label;
+        }
+    }
+
     public static void forceThemeUI() {
+        // Đăng ký UI class cho tất cả JComboBox
+        UIManager.put("ComboBoxUI", ThemeComboBoxUI.class.getName());
+
+        // Các thiết lập khác giữ nguyên
         UIManager.put("Panel.background", getColor("bg"));
         UIManager.put("Label.foreground", getColor("textPrimary"));
 
-        // Tắt viền focus (nét đứt) cực xấu của Java Swing mặc định
         UIManager.put("Button.focus", new Color(0, 0, 0, 0));
         UIManager.put("ToggleButton.focus", new Color(0, 0, 0, 0));
         UIManager.put("CheckBox.focus", new Color(0, 0, 0, 0));
@@ -169,15 +196,15 @@ public class ThemeManager {
         UIManager.put("Button.foreground", getColor("textPrimary"));
         UIManager.put("TextField.background", getColor("inputBg"));
         UIManager.put("TextField.foreground", getColor("textPrimary"));
+        // ComboBox background và foreground vẫn được giữ lại để các phần khác tham chiếu
         UIManager.put("ComboBox.background", getColor("inputBg"));
         UIManager.put("ComboBox.foreground", getColor("textPrimary"));
 
-        // Thiết kế phẳng cho Table
         UIManager.put("Table.background", getColor("surface"));
         UIManager.put("Table.foreground", getColor("textPrimary"));
         UIManager.put("Table.gridColor", getColor("border"));
-        UIManager.put("Table.showVerticalLines", false); // Tắt kẻ dọc cho thoáng giống Google
-        UIManager.put("TableHeader.background", getColor("bg")); // Header phẳng với nền
+        UIManager.put("Table.showVerticalLines", false);
+        UIManager.put("TableHeader.background", getColor("bg"));
         UIManager.put("TableHeader.foreground", getColor("textSecondary"));
 
         UIManager.put("CheckBox.background", getColor("bg"));
@@ -202,8 +229,10 @@ public class ThemeManager {
             comp.setForeground(getColor("textPrimary"));
             ((javax.swing.text.JTextComponent) comp).setCaretColor(getColor("accent"));
         } else if (comp instanceof javax.swing.JComboBox) {
+            // Với UI mới, không cần set border ở đây nữa vì UI sẽ lo, nhưng cứ set lại cho chắc
             comp.setBackground(getColor("inputBg"));
             comp.setForeground(getColor("textPrimary"));
+            ((JComboBox<?>) comp).setRenderer(new ThemeComboBoxRenderer());
         }
 
         if (comp instanceof javax.swing.JTable) {
@@ -211,8 +240,8 @@ public class ThemeManager {
             table.setBackground(getColor("surface"));
             table.setForeground(getColor("textPrimary"));
             table.setGridColor(getColor("border"));
-            table.setIntercellSpacing(new java.awt.Dimension(0, 0)); // Bỏ khoảng cách ô mặc định
-            table.setRowHeight(40); // Tăng chiều cao hàng cho thoáng
+            table.setIntercellSpacing(new java.awt.Dimension(0, 0));
+            table.setRowHeight(40);
             if (table.getTableHeader() != null) {
                 table.getTableHeader().setBackground(getColor("bg"));
                 table.getTableHeader().setForeground(getColor("textSecondary"));

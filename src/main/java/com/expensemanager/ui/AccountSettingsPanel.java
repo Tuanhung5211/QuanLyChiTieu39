@@ -120,7 +120,8 @@ public class AccountSettingsPanel extends JPanel {
             }
             @Override
             public void mouseExited(MouseEvent e) {
-                applyTheme();
+                btnDeleteAccount.setBackground(ThemeManager.getColor("surface"));
+                btnDeleteAccount.setForeground(ThemeManager.getColor("danger"));
             }
         });
         pForm.add(btnDeleteAccount, gbc);
@@ -323,7 +324,7 @@ public class AccountSettingsPanel extends JPanel {
 
     private void deleteAccount() {
         int confirm = JOptionPane.showConfirmDialog(this,
-                isVietnamese ? "Bạn có chắc muốn xóa tài khoản? Toàn bộ giao dịch và ngân sách sẽ bị mất và không thể hoàn tác!" : "Are you sure you want to delete your account? All transaction and budget data will be permanently lost!",
+                isVietnamese ? "Bạn có chắc muốn xóa tài khoản? Toàn bộ giao dịch, ngân sách và giao dịch định kì sẽ bị mất và không thể hoàn tác!" : "Are you sure you want to delete your account? All transactions, budgets and scheduled transactions will be permanently lost!",
                 "Warning", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
 
         if (confirm == JOptionPane.YES_OPTION) {
@@ -331,6 +332,7 @@ public class AccountSettingsPanel extends JPanel {
             if (userId != null) {
                 DatabaseUtil.deleteTransactionsByUser(userId);
                 DatabaseUtil.deleteBudgetsByUser(userId);
+                DatabaseUtil.deleteRecurringTransactionsByUser(userId); // Thêm dòng này
                 DatabaseUtil.deleteUser(userId);
                 logout();
             }

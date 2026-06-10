@@ -38,7 +38,8 @@ public class SettingsPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(20, 35, 20, 35));
 
         initComponents();
-        updateLanguageText();
+        updateLanguageText();          // chỉ văn bản
+        updateLayoutForAllChildren();  // áp dụng ngôn ngữ cho các panel con (responsive)
         applyTheme();
     }
 
@@ -98,7 +99,6 @@ public class SettingsPanel extends JPanel {
         subContentPanel = new JPanel(subCardLayout);
         subContentPanel.setOpaque(false);
 
-        // Đặt panel vào NORTH để không bị giãn dọc
         subContentPanel.add(wrapInNorthPanel(accountSettingsPanel), "account");
         subContentPanel.add(wrapInNorthPanel(systemConfigPanel), "config");
         subContentPanel.add(wrapInNorthPanel(categoryManagerPanel), "category");
@@ -115,7 +115,6 @@ public class SettingsPanel extends JPanel {
         add(bodyContainer, BorderLayout.CENTER);
     }
 
-    // Panel nằm ở NORTH -> không bị giãn
     private JPanel wrapInNorthPanel(JPanel panel) {
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
@@ -313,6 +312,7 @@ public class SettingsPanel extends JPanel {
         if (categoryManagerPanel != null) categoryManagerPanel.refreshCategories();
     }
 
+    // Chỉ cập nhật văn bản, không can thiệp layout
     public void updateLanguageText() {
         if (mainFrame != null) this.isVietnamese = mainFrame.isVietnamese();
 
@@ -370,7 +370,10 @@ public class SettingsPanel extends JPanel {
                 for (java.awt.event.ItemListener l : listeners) cmbThemePreset.addItemListener(l);
             }
         }
+    }
 
+    // Cập nhật layout/ngôn ngữ cho các panel con (dùng khi đổi ngôn ngữ hoặc kích thước)
+    private void updateLayoutForAllChildren() {
         if (accountSettingsPanel != null) accountSettingsPanel.updateResponsiveLayout(isVietnamese);
         if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVietnamese);
         if (categoryManagerPanel != null) categoryManagerPanel.updateResponsiveLayout(isVietnamese);
@@ -378,17 +381,9 @@ public class SettingsPanel extends JPanel {
 
     public void updateLanguageAndResponsive(boolean isVN, int targetFrameWidth) {
         this.isVietnamese = isVN;
-        updateLanguageText();
+        updateLanguageText();          // cập nhật văn bản cho SettingsPanel
+        updateLayoutForAllChildren();  // cập nhật văn bản/layout cho các panel con
 
-        if (accountSettingsPanel != null) {
-            accountSettingsPanel.updateResponsiveLayout(isVN);
-            accountSettingsPanel.refreshData();
-        }
-        if (systemConfigPanel != null) systemConfigPanel.updateResponsiveLayout(isVN);
-        if (categoryManagerPanel != null) {
-            categoryManagerPanel.updateResponsiveLayout(isVN);
-            categoryManagerPanel.refreshCategories();
-        }
         if (themePanel != null) refreshThemeUI(themePanel);
 
         this.revalidate();

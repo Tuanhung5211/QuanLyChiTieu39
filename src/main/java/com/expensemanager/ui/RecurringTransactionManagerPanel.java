@@ -21,6 +21,9 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
     private boolean isVietnamese = true;
     private DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    private JLabel titleLabel;
+    private JButton btnAdd;
+
     public RecurringTransactionManagerPanel(RecurringTransactionService recurringTransactionService, MainFrame mainFrame) {
         this.recurringTransactionService = recurringTransactionService;
         this.mainFrame = mainFrame;
@@ -39,16 +42,16 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         headerPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 10, 15));
         headerPanel.setOpaque(false);
 
-        JLabel titleLabel = new JLabel(isVietnamese ? "⏰ Giao dịch lặp lại" : "⏰ Recurring Transactions");
+        titleLabel = new JLabel(isVietnamese ? "Giao dịch định kì" : "Scheduled Transactions");
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 18));
         titleLabel.setForeground(ThemeManager.getColor("textPrimary"));
         headerPanel.add(titleLabel, BorderLayout.WEST);
 
-        JButton btnAdd = new JButton(isVietnamese ? "➕ Thêm lặp lại" : "➕ Add Recurring");
+        btnAdd = new JButton(isVietnamese ? "Thêm định kì" : "Add Scheduled");
         btnAdd.setFont(new Font("Segoe UI", Font.BOLD, 13));
         btnAdd.setFocusPainted(false);
         btnAdd.setBackground(ThemeManager.getColor("accent"));
-        btnAdd.setForeground(ThemeManager.getColor("bg"));
+        btnAdd.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         btnAdd.setBorder(BorderFactory.createEmptyBorder(8, 15, 8, 15));
         btnAdd.addActionListener(e -> {
             AddRecurringTransactionDialog dialog = new AddRecurringTransactionDialog(mainFrame, recurringTransactionService);
@@ -77,7 +80,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         List<RecurringTransaction> items = recurringTransactionService.getAllRecurringTransactions();
 
         if (items.isEmpty()) {
-            JLabel emptyLabel = new JLabel(isVietnamese ? "Chưa có giao dịch lặp lại nào" : "No recurring transactions yet");
+            JLabel emptyLabel = new JLabel(isVietnamese ? "Chưa có giao dịch định kì nào" : "No scheduled transactions yet");
             emptyLabel.setFont(new Font("Segoe UI", Font.ITALIC, 14));
             emptyLabel.setForeground(ThemeManager.getColor("textSecondary"));
             emptyLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -96,15 +99,12 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         contentPanel.repaint();
     }
 
-    private Color getContrastColor(Color background) {
-        double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue()) / 255;
-        return luminance > 0.5 ? Color.BLACK : Color.WHITE;
-    }
-
     private JPanel createRecurringTransactionCard(RecurringTransaction rt) {
-        Color bgColor = rt.getType() == TransactionType.EXPENSE ?
-                ThemeManager.getColor("danger") : ThemeManager.getColor("success");
-        Color fgColor = getContrastColor(bgColor);
+        // Màu nền dựa trên trạng thái hoạt động
+        Color bgColor = rt.isActive()
+                ? ThemeManager.getColor("success")   // Xanh lá
+                : ThemeManager.getColor("danger");   // Đỏ
+        Color fgColor = ThemeManager.getContrastColor(bgColor);
 
         JPanel card = new JPanel(new BorderLayout(10, 0));
         card.setBorder(BorderFactory.createEmptyBorder(12, 15, 12, 15));
@@ -116,14 +116,15 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setOpaque(false);
 
-        // Icon thu nhập/chi tiêu
-        String typeEmoji = rt.getType().name().equals("INCOME") ? "📥" : "📤";
-        JLabel lblIcon = new JLabel(typeEmoji, SwingConstants.CENTER);
+        // Icon trạng thái
+        String statusEmoji = rt.isActive() ? "✅" : "⏸️";
+        JLabel lblIcon = new JLabel(statusEmoji, SwingConstants.CENTER);
         lblIcon.setFont(EmojiUtil.getEmojiFont(20));
         lblIcon.setForeground(fgColor);
         lblIcon.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 12));
         infoPanel.add(lblIcon);
 
+        // Tên danh mục
         String title = (rt.getCategory() != null) ? rt.getCategory().getName() :
                 (isVietnamese ? "Không xác định" : "N/A");
         JLabel categoryLabel = new JLabel(title);
@@ -131,37 +132,37 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         categoryLabel.setForeground(fgColor);
         infoPanel.add(categoryLabel);
 
+        // Số tiền
         JLabel amountLabel = new JLabel(String.format("%,.0f VND", rt.getAmount()));
         amountLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
         amountLabel.setForeground(fgColor);
         infoPanel.add(amountLabel);
 
+        // Loại định kì và trạng thái
         String recurTypeLabel = RecurringTransactionService.getRecurrenceTypeLabel(rt.getRecurrenceType(), isVietnamese);
-        String dateText = rt.getStartDate().format(dateFormatter);
-        if (rt.getEndDate() != null) {
-            dateText += " → " + rt.getEndDate().format(dateFormatter);
-        } else {
-            dateText += " → " + (isVietnamese ? "Không hạn" : "No limit");
-        }
-        JLabel metaLabel = new JLabel("⏰ " + recurTypeLabel + "   📅 " + dateText);
+        String statusText = rt.isActive()
+                ? (isVietnamese ? "Đang hoạt động" : "Active")
+                : (isVietnamese ? "Đã dừng" : "Inactive");
+        JLabel metaLabel = new JLabel("⏰ " + recurTypeLabel + "   " + statusText);
         metaLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         metaLabel.setForeground(new Color(fgColor.getRed(), fgColor.getGreen(), fgColor.getBlue(), 200));
         infoPanel.add(metaLabel);
 
         card.add(infoPanel, BorderLayout.CENTER);
 
+        // Panel chứa nút hành động
         JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
         actionPanel.setOpaque(false);
 
-        // Nút toggle (✓ / ✗)
-        JButton btnToggle = new JButton(rt.isActive() ? "✓" : "✗");
+        // Nút toggle (Bật/Tắt)
+        JButton btnToggle = new JButton(rt.isActive() ? "⏸️" : "▶️");
         btnToggle.setFont(EmojiUtil.getEmojiFont(14));
         btnToggle.setFocusPainted(false);
         btnToggle.setPreferredSize(new Dimension(40, 35));
         btnToggle.setBackground(ThemeManager.getColor("surface"));
         btnToggle.setForeground(ThemeManager.getColor("textPrimary"));
         btnToggle.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
-        btnToggle.setToolTipText(isVietnamese ? (rt.isActive() ? "Tắt" : "Bật") : (rt.isActive() ? "Disable" : "Enable"));
+        btnToggle.setToolTipText(isVietnamese ? (rt.isActive() ? "Dừng" : "Kích hoạt") : (rt.isActive() ? "Disable" : "Enable"));
         btnToggle.addActionListener(e -> {
             if (rt.isActive()) {
                 recurringTransactionService.deactivateRecurringTransaction(rt.getId());
@@ -171,7 +172,7 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         });
         actionPanel.add(btnToggle);
 
-        // Nút xóa (🗑️)
+        // Nút xóa
         JButton btnDelete = new JButton("🗑️");
         btnDelete.setFont(EmojiUtil.getEmojiFont(14));
         btnDelete.setFocusPainted(false);
@@ -201,6 +202,13 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
         if (contentPanel != null) {
             contentPanel.setBackground(ThemeManager.getColor("bg"));
         }
+        if (titleLabel != null) {
+            titleLabel.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnAdd != null) {
+            btnAdd.setBackground(ThemeManager.getColor("accent"));
+            btnAdd.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
+        }
         refreshUI();
     }
 
@@ -214,6 +222,8 @@ public class RecurringTransactionManagerPanel extends JPanel implements Observer
 
     public void updateLanguageText() {
         isVietnamese = mainFrame != null && mainFrame.isVietnamese();
+        if (titleLabel != null) titleLabel.setText(isVietnamese ? "Giao dịch định kì" : "Scheduled Transactions");
+        if (btnAdd != null) btnAdd.setText(isVietnamese ? "Thêm định kì" : "Add Scheduled");
         refreshUI();
     }
 }

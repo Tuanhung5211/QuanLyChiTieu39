@@ -5,6 +5,7 @@ import com.expensemanager.entity.Category;
 import com.expensemanager.entity.Transaction;
 import com.expensemanager.entity.TransactionType;
 import com.expensemanager.service.SessionManager;
+import com.expensemanager.util.CategoryTranslator;
 import com.expensemanager.util.EmojiUtil;
 import com.expensemanager.util.InputValidator;
 import com.expensemanager.service.ThemeManager;
@@ -51,6 +52,7 @@ public class AddTransactionDialog extends JDialog {
         setLayout(new BorderLayout());
 
         initComponents();
+        updateTypeButtons(); // Đảm bảo trạng thái ban đầu đúng
         applyTheme();
 
         loadCategoriesAsync();
@@ -96,8 +98,8 @@ public class AddTransactionDialog extends JDialog {
         header.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
         header.setOpaque(false);
 
-        btnExpense = createTypeButton(isVietnamese ? "CHI TIÊU" : "EXPENSE", true);
-        btnIncome = createTypeButton(isVietnamese ? "THU NHẬP" : "INCOME", false);
+        btnExpense = createTypeButton(isVietnamese ? "CHI TIÊU" : "EXPENSE");
+        btnIncome = createTypeButton(isVietnamese ? "THU NHẬP" : "INCOME");
 
         btnExpense.addActionListener(e -> switchType(TransactionType.EXPENSE));
         btnIncome.addActionListener(e -> switchType(TransactionType.INCOME));
@@ -164,7 +166,7 @@ public class AddTransactionDialog extends JDialog {
         centerPanel.add(createLabel(isVietnamese ? "Ghi chú" : "Transaction Note"));
         centerPanel.add(Box.createVerticalStrut(4));
 
-        txtNote = new JTextArea(2, 20);
+        txtNote = new JTextArea(3, 20);
         txtNote.setLineWrap(true);
         txtNote.setWrapStyleWord(true);
         txtNote.setFont(new Font("Segoe UI", Font.PLAIN, 15));
@@ -187,7 +189,8 @@ public class AddTransactionDialog extends JDialog {
 
         JScrollPane scrollNote = new JScrollPane(txtNote);
         scrollNote.setBorder(new javax.swing.border.LineBorder(ThemeManager.getColor("border"), 1, true));
-        scrollNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 58));
+        scrollNote.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+        scrollNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 75));
         scrollNote.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(scrollNote);
 
@@ -213,18 +216,16 @@ public class AddTransactionDialog extends JDialog {
         footer.add(btnCancel);
         footer.add(btnSave);
         add(footer, BorderLayout.SOUTH);
+
+        // Gọi sau khi tạo xong các nút để set màu ban đầu
+        updateTypeButtons();
     }
 
     public void applyTheme() {
         getContentPane().setBackground(ThemeManager.getColor("bg"));
-        if (btnExpense != null) {
-            btnExpense.setBackground(selectedType == TransactionType.EXPENSE ? ThemeManager.getColor("danger") : ThemeManager.getColor("surface"));
-            btnExpense.setForeground(ThemeManager.getColor("bg"));
-        }
-        if (btnIncome != null) {
-            btnIncome.setBackground(selectedType == TransactionType.INCOME ? ThemeManager.getColor("success") : ThemeManager.getColor("surface"));
-            btnIncome.setForeground(ThemeManager.getColor("bg"));
-        }
+
+        updateTypeButtons(); // đồng bộ khi theme thay đổi
+
         if (txtAmount != null) {
             txtAmount.setBackground(ThemeManager.getColor("input"));
             txtAmount.setForeground(ThemeManager.getColor("textPrimary"));
@@ -246,6 +247,7 @@ public class AddTransactionDialog extends JDialog {
             btnNextPage.setForeground(ThemeManager.getColor("textPrimary"));
         }
         if (lblPageIndicator != null) lblPageIndicator.setForeground(ThemeManager.getColor("textPrimary"));
+
         for (Component comp : getContentPane().getComponents()) {
             if (comp instanceof JPanel) {
                 JPanel panel = (JPanel) comp;
@@ -258,15 +260,29 @@ public class AddTransactionDialog extends JDialog {
                                 btn.setForeground(ThemeManager.getColor("textPrimary"));
                             } else {
                                 btn.setBackground(ThemeManager.getColor("accent"));
-                                btn.setForeground(ThemeManager.getColor("textPrimary"));
+                                btn.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
                             }
                         }
                     }
                 }
             }
         }
+
         if (!allCategories.isEmpty()) {
             refreshCategories();
+        }
+    }
+
+    private void updateTypeButtons() {
+        if (btnExpense != null) {
+            boolean isActive = selectedType == TransactionType.EXPENSE;
+            btnExpense.setBackground(isActive ? ThemeManager.getColor("danger") : ThemeManager.getColor("surface"));
+            btnExpense.setForeground(isActive ? ThemeManager.getColor("bg") : ThemeManager.getColor("textPrimary"));
+        }
+        if (btnIncome != null) {
+            boolean isActive = selectedType == TransactionType.INCOME;
+            btnIncome.setBackground(isActive ? ThemeManager.getColor("success") : ThemeManager.getColor("surface"));
+            btnIncome.setForeground(isActive ? ThemeManager.getColor("bg") : ThemeManager.getColor("textPrimary"));
         }
     }
 
@@ -274,7 +290,7 @@ public class AddTransactionDialog extends JDialog {
         this.selectedType = type;
         this.currentPage = 1;
         this.selectedCategory = null;
-        applyTheme();
+        updateTypeButtons();
         refreshCategories();
     }
 
@@ -357,16 +373,17 @@ public class AddTransactionDialog extends JDialog {
         lblIcon.setPreferredSize(new Dimension(48, 48));
         lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
 
-        // SỬA MÀU CHỮ EMOJI
         if (selectedCategory != null && selectedCategory.getId().equals(c.getId())) {
             lblIcon.setBackground(ThemeManager.getColor("accent"));
             lblIcon.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         } else {
             lblIcon.setBackground(ThemeManager.getColor("input"));
-            lblIcon.setForeground(ThemeManager.getColor("textPrimary"));  // đổi từ "bg" sang "textPrimary"
+            lblIcon.setForeground(ThemeManager.getColor("textPrimary"));
         }
 
-        JLabel lblName = new JLabel(c.getName(), SwingConstants.CENTER);
+        // Sử dụng CategoryTranslator để dịch tên danh mục
+        String displayName = CategoryTranslator.translate(c.getName(), isVietnamese);
+        JLabel lblName = new JLabel(displayName, SwingConstants.CENTER);
         lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         lblName.setForeground(ThemeManager.getColor("textPrimary"));
 
@@ -420,12 +437,12 @@ public class AddTransactionDialog extends JDialog {
         customEmojiMap.put(categoryName, emoji);
     }
 
-    private JButton createTypeButton(String text, boolean active) {
+    private JButton createTypeButton(String text) {
         JButton b = new JButton(text);
         b.setFont(new Font("Segoe UI", Font.BOLD, 14));
         b.setFocusPainted(false);
-        b.setForeground(ThemeManager.getColor("bg"));
         b.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+        b.setOpaque(true);
         return b;
     }
 

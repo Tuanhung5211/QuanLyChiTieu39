@@ -61,7 +61,7 @@ public class CategoryManagerPanel extends JPanel {
         setOpaque(false);
 
         initComponentsListCard();
-        add(Box.createVerticalStrut(12));  // giảm khoảng cách giữa hai card
+        add(Box.createVerticalStrut(12));
         initComponentsAddCard();
 
         updateResponsiveLayout(isVietnamese);
@@ -92,7 +92,7 @@ public class CategoryManagerPanel extends JPanel {
         listCard = new JPanel(new BorderLayout(0, 8));
         listCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(12, 15, 12, 15)  // giảm padding
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)
         ));
         listCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -157,7 +157,7 @@ public class CategoryManagerPanel extends JPanel {
         listCenterContainer.setLayout(new BoxLayout(listCenterContainer, BoxLayout.Y_AXIS));
         listCenterContainer.setOpaque(false);
         listCenterContainer.add(listGridWrapper);
-        listCenterContainer.add(Box.createVerticalStrut(6));   // giảm khoảng cách
+        listCenterContainer.add(Box.createVerticalStrut(6));
         listCenterContainer.add(listPaginationPanel);
         listCard.add(listCenterContainer, BorderLayout.CENTER);
 
@@ -176,7 +176,7 @@ public class CategoryManagerPanel extends JPanel {
         addCard = new JPanel(new BorderLayout());
         addCard.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true),
-                BorderFactory.createEmptyBorder(12, 15, 12, 15)  // giảm padding
+                BorderFactory.createEmptyBorder(12, 15, 12, 15)
         ));
         addCard.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -185,7 +185,7 @@ public class CategoryManagerPanel extends JPanel {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weightx = 1.0;
-        gbc.insets = new Insets(2, 0, 2, 0);   // giảm insets
+        gbc.insets = new Insets(2, 0, 2, 0);
 
         lblCategoryTitle = new JLabel(isVietnamese ? "Thêm danh mục mới" : "Add New Category");
         lblCategoryTitle.setFont(new Font("Segoe UI", Font.BOLD, 17));
@@ -302,25 +302,45 @@ public class CategoryManagerPanel extends JPanel {
         cell.setPreferredSize(new Dimension(cellWidth, cellHeight));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
+        // Xác định emoji: ưu tiên custom map của AddTransactionDialog, sau đó đến danh sách mặc định
+        String emoji;
+        if (AddTransactionDialog.customEmojiMap.containsKey(c.getName())) {
+            emoji = AddTransactionDialog.customEmojiMap.get(c.getName());
+        } else {
+            emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
+        }
+
         Font ef = EmojiUtil.getEmojiFont(20);
         String iconText = EmojiUtil.canDisplay(emoji, ef) ? emoji : ((c.getName() != null && c.getName().length() > 0) ? c.getName().substring(0,1).toUpperCase() : "?");
         JLabel lblIcon = new JLabel(iconText, SwingConstants.CENTER);
         lblIcon.setFont(ef);
         lblIcon.setOpaque(true);
 
+        // Xác định danh mục mặc định hay tự thêm
+        boolean isDefault = EmojiUtil.CATEGORY_EMOJI.containsKey(c.getName());
+
         if (selectedCategoryForDelete != null && selectedCategoryForDelete.getId().equals(c.getId())) {
             lblIcon.setBackground(ThemeManager.getColor("accent"));
             lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("accent"), 1, true));
             lblIcon.setForeground(ThemeManager.getColor("bg"));
         } else {
-            lblIcon.setBackground(ThemeManager.getColor("input"));
-            lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+            if (isDefault) {
+                lblIcon.setBackground(ThemeManager.getColor("input"));
+                lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+            } else {
+                // Danh mục tự thêm: nền khác biệt một chút
+                lblIcon.setBackground(ThemeManager.getColor("surface"));
+                lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+            }
             lblIcon.setForeground(ThemeManager.getColor("textPrimary"));
         }
 
+        // Tên hiển thị: thêm dấu "+" nếu là danh mục tự thêm (dùng dấu cộng ASCII thay vì Unicode)
         String displayName = c.getName();
-        if (displayName != null && displayName.length() > 8) {
+        if (!isDefault) {
+            displayName = "+ " + displayName;  // Sửa: dấu "+ " thường
+        }
+        if (displayName.length() > 8) {
             displayName = displayName.substring(0, 6) + "...";
         }
         JLabel lblName = new JLabel(displayName, SwingConstants.CENTER);
@@ -342,8 +362,12 @@ public class CategoryManagerPanel extends JPanel {
 
     private void deleteCategory() {
         if (selectedCategoryForDelete != null) {
+            String displayName = selectedCategoryForDelete.getName();
+            if (!EmojiUtil.CATEGORY_EMOJI.containsKey(displayName)) {
+                displayName = "+ " + displayName;  // Sửa tương tự
+            }
             int confirm = JOptionPane.showConfirmDialog(this,
-                    (isVietnamese ? "Xóa danh mục \"" : "Delete category \"") + selectedCategoryForDelete.getName() + "\"?",
+                    (isVietnamese ? "Xóa danh mục \"" : "Delete category \"") + displayName + "\"?",
                     (isVietnamese ? "Xác nhận" : "Confirm"), JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 DatabaseUtil.deleteCategory(selectedCategoryForDelete.getId());
@@ -423,6 +447,7 @@ public class CategoryManagerPanel extends JPanel {
         try {
             DatabaseUtil.insertCategory(newCat);
             allCategories.add(newCat);
+            // Lưu emoji tùy chỉnh vào custom map
             AddTransactionDialog.addCustomEmoji(name, selectedEmoji);
             JOptionPane.showMessageDialog(this, isVietnamese ? "Đã thêm danh mục '" + name + "' thành công!" : "Category '" + name + "' added successfully!");
             txtCategoryName.setText("");
@@ -544,7 +569,7 @@ public class CategoryManagerPanel extends JPanel {
         JLabel lbl = new JLabel(text);
         lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
         lbl.setForeground(ThemeManager.getColor("textSecondary"));
-        lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 4, 0)); // giảm khoảng cách dưới
+        lbl.setBorder(BorderFactory.createEmptyBorder(0, 2, 4, 0));
         lbl.setAlignmentX(Component.LEFT_ALIGNMENT);
         return lbl;
     }
@@ -556,7 +581,7 @@ public class CategoryManagerPanel extends JPanel {
         tf.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         tf.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(ThemeManager.getColor("border")),
-                BorderFactory.createEmptyBorder(8, 15, 8, 15)  // giảm chiều cao ô
+                BorderFactory.createEmptyBorder(8, 15, 8, 15)
         ));
     }
 

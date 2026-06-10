@@ -4,6 +4,7 @@ import com.expensemanager.database.DatabaseUtil;
 import com.expensemanager.entity.*;
 import com.expensemanager.service.RecurringTransactionService;
 import com.expensemanager.service.ThemeManager;
+import com.expensemanager.util.CategoryTranslator;
 
 import javax.swing.*;
 import java.awt.*;
@@ -16,39 +17,38 @@ public class AddRecurringTransactionDialog extends JDialog {
 
     private MainFrame mainFrame;
     private RecurringTransactionService recurringTransactionService;
-    private TransactionType selectedType = TransactionType.EXPENSE;
     private Category selectedCategory;
     private RecurringTransaction.RecurrenceType selectedRecurrenceType = RecurringTransaction.RecurrenceType.MONTHLY;
 
     private JTextField txtAmount;
     private JTextArea txtNote;
     private JPanel categoryPanel;
-    private JButton btnExpense, btnIncome;
     private JComboBox<String> cmbRecurrenceType;
-    private JSpinner spnCustomDays;
-    private JSpinner spnStartDate, spnEndDate;
-    private JCheckBox chkEndDate;
     private boolean isVietnamese = true;
 
+    private int currentPage = 1;
+    private final int ITEMS_PER_PAGE = 8;
+    private JButton btnPrevPage, btnNextPage;
+    private JLabel lblPageIndicator;
+    private JScrollPane categoryScrollPane;
+
+    public static Map<String, String> customEmojiMap = new HashMap<>();
     private List<Category> allCategories = new ArrayList<>();
 
     public AddRecurringTransactionDialog(MainFrame parent, RecurringTransactionService recurringTransactionService) {
-        super(parent, parent != null && parent.isVietnamese() ? "Thêm giao dịch lặp lại" : "Add Recurring Transaction", true);
+        super(parent, parent != null && parent.isVietnamese() ? "Thêm giao dịch định kì" : "Add Scheduled Transaction", true);
         this.mainFrame = parent;
         this.recurringTransactionService = recurringTransactionService;
-        if (parent != null) {
-            this.isVietnamese = parent.isVietnamese();
-        }
+        if (parent != null) this.isVietnamese = parent.isVietnamese();
 
-        setSize(500, 700);
+        setSize(460, 600);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout());
+        getContentPane().setBackground(ThemeManager.getColor("bg"));
 
         initComponents();
         applyTheme();
-
         loadCategoriesAsync();
-
         ThemeManager.applyThemeRecursively(this);
     }
 
@@ -63,16 +63,24 @@ public class AddRecurringTransactionDialog extends JDialog {
         SwingWorker<Void, Void> worker = new SwingWorker<>() {
             @Override
             protected Void doInBackground() throws Exception {
-                allCategories = DatabaseUtil.getAllCategories();
-                if (allCategories == null) allCategories = new ArrayList<>();
+                List<Category> cats = DatabaseUtil.getAllCategories();
+                checkAndSeedCategories(cats);
+                allCategories = cats;
                 return null;
             }
-
             @Override
             protected void done() {
                 try {
                     get();
                     refreshCategoryGrid();
+                    SwingUtilities.invokeLater(() -> {
+                        categoryPanel.revalidate();
+                        categoryPanel.repaint();
+                        categoryScrollPane.revalidate();
+                        categoryScrollPane.repaint();
+                        revalidate();
+                        repaint();
+                    });
                 } catch (Exception e) {
                     e.printStackTrace();
                     JOptionPane.showMessageDialog(AddRecurringTransactionDialog.this,
@@ -84,119 +92,135 @@ public class AddRecurringTransactionDialog extends JDialog {
         worker.execute();
     }
 
+    private void checkAndSeedCategories(List<Category> currentList) {
+        if (currentList == null) currentList = new ArrayList<>();
+        Map<String, String> emojiMap = com.expensemanager.util.EmojiUtil.CATEGORY_EMOJI;
+        for (Map.Entry<String, String> entry : emojiMap.entrySet()) {
+            String name = entry.getKey();
+            boolean existed = false;
+            for (Category existing : currentList) {
+                if (existing.getName().trim().equalsIgnoreCase(name.trim())) {
+                    existed = true;
+                    break;
+                }
+            }
+            if (!existed) {
+                TransactionType type = (name.equals("Lương") || name.equals("Thưởng") ||
+                        name.equals("Học bổng") || name.equals("Được cho") ||
+                        name.equals("Làm thêm") || name.equals("Đầu tư") ||
+                        name.equals("Tiết kiệm") || name.equals("Thu khác"))
+                        ? TransactionType.INCOME : TransactionType.EXPENSE;
+                String generatedId = UUID.randomUUID().toString().substring(0, 8);
+                Category newCat = new Category(generatedId, name, type);
+                DatabaseUtil.insertCategory(newCat);
+                currentList.add(newCat);
+            }
+        }
+    }
+
     private void initComponents() {
-        JPanel header = new JPanel(new GridLayout(1, 2, 10, 0));
-        header.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
-        header.setOpaque(false);
-
-        btnExpense = createTypeButton(isVietnamese ? "CHI TIÊU" : "EXPENSE", true);
-        btnIncome = createTypeButton(isVietnamese ? "THU NHẬP" : "INCOME", false);
-
-        btnExpense.addActionListener(e -> switchType(TransactionType.EXPENSE));
-        btnIncome.addActionListener(e -> switchType(TransactionType.INCOME));
-
-        header.add(btnExpense);
-        header.add(btnIncome);
-        add(header, BorderLayout.NORTH);
-
-        JScrollPane scrollPane = new JScrollPane();
-        scrollPane.setBorder(null);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-        centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        centerPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 5, 20));
         centerPanel.setOpaque(false);
 
+        // ---- Số tiền ----
         centerPanel.add(createLabel(isVietnamese ? "Số tiền (VND)" : "Amount (VND)"));
-        txtAmount = new JTextField();
+        txtAmount = new JTextField() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        txtAmount.setOpaque(false);
         styleTextField(txtAmount);
         txtAmount.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        txtAmount.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(txtAmount);
+        centerPanel.add(Box.createVerticalStrut(10));
 
-        centerPanel.add(Box.createVerticalStrut(12));
-
+        // ---- Danh mục ----
         centerPanel.add(createLabel(isVietnamese ? "Chọn danh mục" : "Select Category"));
         centerPanel.add(Box.createVerticalStrut(4));
         categoryPanel = new JPanel(new GridLayout(0, 4, 8, 8));
-        categoryPanel.setOpaque(false);
-        JScrollPane catScroll = new JScrollPane(categoryPanel);
-        catScroll.setBorder(null);
-        catScroll.setOpaque(false);
-        catScroll.getViewport().setOpaque(false);
-        catScroll.setPreferredSize(new Dimension(460, 120));
-        catScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
-        centerPanel.add(catScroll);
-        centerPanel.add(Box.createVerticalStrut(12));
+        categoryScrollPane = new JScrollPane(categoryPanel);
+        categoryScrollPane.setBorder(null);
+        categoryScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        categoryScrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+        categoryScrollPane.setAlignmentX(Component.CENTER_ALIGNMENT);
+        categoryScrollPane.setPreferredSize(new Dimension(400, 160));
+        centerPanel.add(categoryScrollPane);
 
-        centerPanel.add(createLabel(isVietnamese ? "Loại lặp lại" : "Recurrence Type"));
-        String[] recurrenceTypes = isVietnamese ?
-                new String[]{"Hàng ngày", "Hàng tuần", "Hàng tháng", "Hàng năm", "Tùy chỉnh"} :
-                new String[]{"Daily", "Weekly", "Monthly", "Yearly", "Custom"};
-        cmbRecurrenceType = new JComboBox<>(recurrenceTypes);
+        // Phân trang
+        JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        paginationPanel.setOpaque(false);
+        btnPrevPage = createArrowButton("<");
+        btnNextPage = createArrowButton(">");
+        lblPageIndicator = new JLabel(isVietnamese ? "Trang 1 / 1" : "Page 1 / 1");
+        lblPageIndicator.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblPageIndicator.setForeground(ThemeManager.getColor("textPrimary"));
+        btnPrevPage.addActionListener(e -> { if (currentPage > 1) { currentPage--; refreshCategoryGrid(); } });
+        btnNextPage.addActionListener(e -> { currentPage++; refreshCategoryGrid(); });
+        paginationPanel.add(btnPrevPage);
+        paginationPanel.add(lblPageIndicator);
+        paginationPanel.add(btnNextPage);
+        centerPanel.add(paginationPanel);
+        centerPanel.add(Box.createVerticalStrut(10));
+
+        // ---- Chu kì ----
+        JPanel recurRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        recurRow.setOpaque(false);
+        recurRow.add(new JLabel(isVietnamese ? "Chu kì:" : "Recurrence:"));
+        String[] types = isVietnamese ?
+                new String[]{"Hàng ngày", "Hàng tuần", "Hàng tháng", "Hàng năm"} :
+                new String[]{"Daily", "Weekly", "Monthly", "Yearly"};
+        cmbRecurrenceType = new JComboBox<>(types);
         cmbRecurrenceType.setSelectedIndex(2);
-        cmbRecurrenceType.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        cmbRecurrenceType.addActionListener(e -> updateRecurrenceUI());
-        centerPanel.add(cmbRecurrenceType);
-        centerPanel.add(Box.createVerticalStrut(8));
+        cmbRecurrenceType.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        cmbRecurrenceType.addActionListener(e -> {
+            selectedRecurrenceType = RecurringTransaction.RecurrenceType.values()[cmbRecurrenceType.getSelectedIndex()];
+        });
+        recurRow.add(cmbRecurrenceType);
+        centerPanel.add(recurRow);
+        centerPanel.add(Box.createVerticalStrut(10));
 
-        centerPanel.add(createLabel(isVietnamese ? "Khoảng cách (ngày)" : "Interval (days)"));
-        spnCustomDays = new JSpinner(new SpinnerNumberModel(1, 1, 365, 1));
-        spnCustomDays.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        spnCustomDays.setVisible(false);
-        centerPanel.add(spnCustomDays);
-        centerPanel.add(Box.createVerticalStrut(12));
-
-        centerPanel.add(createLabel(isVietnamese ? "Ngày bắt đầu" : "Start Date"));
-        spnStartDate = new JSpinner(new SpinnerDateModel(new java.util.Date(), null, null, java.util.Calendar.DAY_OF_MONTH));
-        spnStartDate.setEditor(new JSpinner.DateEditor(spnStartDate, "dd/MM/yyyy"));
-        spnStartDate.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        centerPanel.add(spnStartDate);
-        centerPanel.add(Box.createVerticalStrut(8));
-
-        chkEndDate = new JCheckBox(isVietnamese ? "Đặt ngày kết thúc" : "Set End Date");
-        chkEndDate.setOpaque(false);
-        chkEndDate.addActionListener(e -> spnEndDate.setEnabled(chkEndDate.isSelected()));
-        centerPanel.add(chkEndDate);
-
-        spnEndDate = new JSpinner(new SpinnerDateModel(new java.util.Date(), null, null, java.util.Calendar.DAY_OF_MONTH));
-        spnEndDate.setEditor(new JSpinner.DateEditor(spnEndDate, "dd/MM/yyyy"));
-        spnEndDate.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        spnEndDate.setEnabled(false);
-        centerPanel.add(spnEndDate);
-        centerPanel.add(Box.createVerticalStrut(12));
-
+        // ---- Ghi chú ----
         centerPanel.add(createLabel(isVietnamese ? "Ghi chú" : "Transaction Note"));
-        txtNote = new JTextArea(2, 20);
+        centerPanel.add(Box.createVerticalStrut(4));
+        txtNote = new JTextArea(3, 20);
         txtNote.setLineWrap(true);
         txtNote.setWrapStyleWord(true);
-        txtNote.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        txtNote.setFont(new Font("Segoe UI", Font.PLAIN, 15));
         txtNote.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
         JScrollPane scrollNote = new JScrollPane(txtNote);
-        scrollNote.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
-        scrollNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        scrollNote.setBorder(new javax.swing.border.LineBorder(ThemeManager.getColor("border"), 1, true));
+        scrollNote.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+        scrollNote.setMaximumSize(new Dimension(Integer.MAX_VALUE, 75));
+        scrollNote.setAlignmentX(Component.CENTER_ALIGNMENT);
         centerPanel.add(scrollNote);
 
-        centerPanel.add(Box.createVerticalGlue());
+        add(centerPanel, BorderLayout.CENTER);
 
-        scrollPane.setViewportView(centerPanel);
-        add(scrollPane, BorderLayout.CENTER);
-
-        JPanel footer = new JPanel(new GridLayout(1, 2, 10, 0));
-        footer.setBorder(BorderFactory.createEmptyBorder(10, 20, 20, 20));
+        // Footer
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         footer.setOpaque(false);
+        footer.setBorder(BorderFactory.createEmptyBorder(5, 20, 15, 20));
 
         JButton btnCancel = new JButton(isVietnamese ? "HỦY BỎ" : "CANCEL");
-        btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        btnCancel.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnCancel.setFocusPainted(false);
-        btnCancel.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        btnCancel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         btnCancel.addActionListener(e -> dispose());
 
-        JButton btnSave = new JButton(isVietnamese ? "LƯU GIAO DỊCH LẶP LẠI" : "SAVE RECURRING");
-        btnSave.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        JButton btnSave = new JButton(isVietnamese ? "LƯU GIAO DỊCH" : "SAVE TRANSACTION");
+        btnSave.setFont(new Font("Segoe UI", Font.BOLD, 14));
         btnSave.setFocusPainted(false);
-        btnSave.setBorder(BorderFactory.createEmptyBorder(12, 0, 12, 0));
+        btnSave.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
         btnSave.addActionListener(e -> saveRecurringTransaction());
 
         footer.add(btnCancel);
@@ -206,60 +230,80 @@ public class AddRecurringTransactionDialog extends JDialog {
 
     private void refreshCategoryGrid() {
         categoryPanel.removeAll();
-        if (allCategories.isEmpty()) {
-            categoryPanel.add(new JLabel(isVietnamese ? "Không có danh mục" : "No categories", SwingConstants.CENTER));
-        } else {
-            for (Category cat : allCategories) {
-                if (cat.getType() == selectedType) {
-                    JButton btnCategory = new JButton("[" + cat.getName() + "]");
-                    btnCategory.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-                    btnCategory.setFocusPainted(false);
-                    btnCategory.setPreferredSize(new Dimension(80, 50));
-                    btnCategory.addActionListener(e -> {
-                        selectedCategory = cat;
-                        refreshCategoryGrid();
-                    });
-                    if (selectedCategory != null && selectedCategory.getId().equals(cat.getId())) {
-                        btnCategory.setBackground(ThemeManager.getColor("accent"));
-                        btnCategory.setForeground(ThemeManager.getColor("bg"));
-                    } else {
-                        btnCategory.setBackground(ThemeManager.getColor("inputBg"));
-                        btnCategory.setForeground(ThemeManager.getColor("textPrimary"));
-                    }
-                    categoryPanel.add(btnCategory);
-                }
-            }
+        List<Category> filteredList = new ArrayList<>();
+        for (Category c : allCategories) {
+            if (c.getType() == TransactionType.EXPENSE) filteredList.add(c);
         }
+
+        int totalItems = filteredList.size();
+        int totalPages = (int) Math.ceil((double) totalItems / ITEMS_PER_PAGE);
+        if (totalPages == 0) totalPages = 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        lblPageIndicator.setText((isVietnamese ? "Trang " : "Page ") + currentPage + " / " + totalPages);
+        btnPrevPage.setEnabled(currentPage > 1);
+        btnNextPage.setEnabled(currentPage < totalPages);
+
+        int startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+        for (int i = startIndex; i < endIndex; i++) {
+            categoryPanel.add(createCategoryItem(filteredList.get(i)));
+        }
+        int displayedCount = endIndex - startIndex;
+        for (int i = displayedCount; i < ITEMS_PER_PAGE; i++) {
+            categoryPanel.add(new JPanel() {{ setOpaque(false); }});
+        }
+
+        int rows = displayedCount <= 4 ? 1 : 2;
+        int calculatedHeight = rows * 74 + (rows - 1) * 8 + 6;
+        categoryScrollPane.setPreferredSize(new Dimension(400, calculatedHeight));
+
         categoryPanel.revalidate();
         categoryPanel.repaint();
+        categoryScrollPane.revalidate();
+        categoryScrollPane.repaint();
     }
 
-    private void switchType(TransactionType type) {
-        selectedType = type;
-        selectedCategory = null;
-        updateTypeButtons();
-        refreshCategoryGrid();
-    }
+    private JPanel createCategoryItem(Category c) {
+        JPanel item = new JPanel(new BorderLayout(0, 4));
+        item.setOpaque(false);
+        item.setPreferredSize(new Dimension(85, 74));
+        item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-    private void updateTypeButtons() {
-        if (selectedType == TransactionType.EXPENSE) {
-            btnExpense.setBackground(ThemeManager.getColor("accent"));
-            btnExpense.setForeground(ThemeManager.getColor("bg"));
-            btnIncome.setBackground(ThemeManager.getColor("surface"));   // SỬA: cardBg → surface
-            btnIncome.setForeground(ThemeManager.getColor("textPrimary"));
+        String emoji = customEmojiMap.containsKey(c.getName())
+                ? customEmojiMap.get(c.getName())
+                : com.expensemanager.util.EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
+
+        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
+        lblIcon.setFont(com.expensemanager.util.EmojiUtil.getEmojiFont(22));
+        lblIcon.setOpaque(true);
+        lblIcon.setPreferredSize(new Dimension(48, 48));
+        lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+
+        if (selectedCategory != null && selectedCategory.getId().equals(c.getId())) {
+            lblIcon.setBackground(ThemeManager.getColor("accent"));
+            lblIcon.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         } else {
-            btnIncome.setBackground(ThemeManager.getColor("accent"));
-            btnIncome.setForeground(ThemeManager.getColor("bg"));
-            btnExpense.setBackground(ThemeManager.getColor("surface")); // SỬA: cardBg → surface
-            btnExpense.setForeground(ThemeManager.getColor("textPrimary"));
+            lblIcon.setBackground(ThemeManager.getColor("input"));
+            lblIcon.setForeground(ThemeManager.getColor("textPrimary"));
         }
-    }
 
-    private void updateRecurrenceUI() {
-        int idx = cmbRecurrenceType.getSelectedIndex();
-        RecurringTransaction.RecurrenceType[] types = RecurringTransaction.RecurrenceType.values();
-        selectedRecurrenceType = types[idx];
-        spnCustomDays.setVisible(selectedRecurrenceType == RecurringTransaction.RecurrenceType.CUSTOM);
+        // Dịch tên danh mục
+        String displayName = CategoryTranslator.translate(c.getName(), isVietnamese);
+        JLabel lblName = new JLabel(displayName, SwingConstants.CENTER);
+        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblName.setForeground(ThemeManager.getColor("textPrimary"));
+
+        item.add(lblIcon, BorderLayout.CENTER);
+        item.add(lblName, BorderLayout.SOUTH);
+        item.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                selectedCategory = c;
+                refreshCategoryGrid();
+            }
+        });
+        return item;
     }
 
     private void saveRecurringTransaction() {
@@ -269,7 +313,6 @@ public class AddRecurringTransactionDialog extends JDialog {
                     isVietnamese ? "Cảnh báo" : "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         String amountStr = txtAmount.getText().trim();
         if (amountStr.isEmpty()) {
             JOptionPane.showMessageDialog(this,
@@ -277,44 +320,27 @@ public class AddRecurringTransactionDialog extends JDialog {
                     isVietnamese ? "Cảnh báo" : "Warning", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         try {
             double amount = Double.parseDouble(amountStr);
             if (amount <= 0) throw new NumberFormatException();
-
-            LocalDate startDate = ((java.util.Date) spnStartDate.getValue()).toInstant()
-                    .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-            LocalDate endDate = null;
-
-            if (chkEndDate.isSelected()) {
-                endDate = ((java.util.Date) spnEndDate.getValue()).toInstant()
-                        .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
-                if (endDate.isBefore(startDate)) {
-                    JOptionPane.showMessageDialog(this,
-                            isVietnamese ? "Ngày kết thúc phải sau ngày bắt đầu!" : "End date must be after start date!",
-                            isVietnamese ? "Cảnh báo" : "Warning", JOptionPane.WARNING_MESSAGE);
-                    return;
-                }
-            }
 
             String id = UUID.randomUUID().toString().substring(0, 10);
             RecurringTransaction rt = new RecurringTransaction();
             rt.setId(id);
             rt.setAmount(amount);
-            rt.setType(selectedType);
+            rt.setType(TransactionType.EXPENSE);
             rt.setCategory(selectedCategory);
             rt.setNote(txtNote.getText().trim());
             rt.setRecurrenceType(selectedRecurrenceType);
-            rt.setCustomIntervalDays(selectedRecurrenceType == RecurringTransaction.RecurrenceType.CUSTOM ?
-                    (int) spnCustomDays.getValue() : 0);
-            rt.setStartDate(startDate);
-            rt.setEndDate(endDate);
+            rt.setCustomIntervalDays(0);
+            rt.setStartDate(LocalDate.now());
+            rt.setEndDate(null);
             rt.setActive(true);
 
             recurringTransactionService.addRecurringTransaction(rt);
 
             JOptionPane.showMessageDialog(this,
-                    isVietnamese ? "Giao dịch lặp lại đã được lưu!" : "Recurring transaction saved!",
+                    isVietnamese ? "Giao dịch định kì đã được lưu!" : "Scheduled transaction saved!",
                     isVietnamese ? "Thông báo" : "Info", JOptionPane.INFORMATION_MESSAGE);
             dispose();
         } catch (NumberFormatException e) {
@@ -325,52 +351,60 @@ public class AddRecurringTransactionDialog extends JDialog {
     }
 
     private JLabel createLabel(String text) {
-        JLabel label = new JLabel(text);
+        JLabel label = new JLabel(text, SwingConstants.CENTER);
         label.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        label.setForeground(ThemeManager.getColor("textPrimary"));
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        label.setForeground(ThemeManager.getColor("textSecondary"));
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
         return label;
     }
 
-    private JButton createTypeButton(String text, boolean isExpense) {
+    private JButton createArrowButton(String text) {
         JButton btn = new JButton(text);
         btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         btn.setFocusPainted(false);
-        btn.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
-        btn.setOpaque(true);
-        if (isExpense) {
-            btn.setBackground(ThemeManager.getColor("accent"));
-            btn.setForeground(ThemeManager.getColor("bg"));
-        } else {
-            btn.setBackground(ThemeManager.getColor("surface")); // SỬA: cardBg → surface
-            btn.setForeground(ThemeManager.getColor("textPrimary"));
-        }
+        btn.setPreferredSize(new Dimension(36, 28));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return btn;
     }
 
-    private void styleTextField(JTextField txt) {
-        txt.setFont(new Font("Segoe UI", Font.PLAIN, 15));
-        txt.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
-        txt.setBackground(ThemeManager.getColor("inputBg"));
-        txt.setForeground(ThemeManager.getColor("textPrimary"));
-        txt.setCaretColor(ThemeManager.getColor("textPrimary"));
+    private void styleTextField(JTextField tf) {
+        tf.setBackground(ThemeManager.getColor("input"));
+        tf.setForeground(ThemeManager.getColor("textPrimary"));
+        tf.setCaretColor(ThemeManager.getColor("accent"));
+        tf.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+        tf.setBorder(BorderFactory.createCompoundBorder(
+                new javax.swing.border.LineBorder(ThemeManager.getColor("border"), 1, true),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)));
+        tf.setHorizontalAlignment(JTextField.CENTER);
     }
 
     private void applyTheme() {
-        setBackground(ThemeManager.getColor("bg"));
-        setForeground(ThemeManager.getColor("textPrimary"));
-        for (Component comp : getContentPane().getComponents()) {
-            applyThemeRecursive(comp);
+        getContentPane().setBackground(ThemeManager.getColor("bg"));
+        if (txtAmount != null) {
+            txtAmount.setBackground(ThemeManager.getColor("input"));
+            txtAmount.setForeground(ThemeManager.getColor("textPrimary"));
+            txtAmount.setCaretColor(ThemeManager.getColor("accent"));
         }
-    }
-
-    private void applyThemeRecursive(Component comp) {
-        comp.setBackground(ThemeManager.getColor("bg"));
-        comp.setForeground(ThemeManager.getColor("textPrimary"));
-        if (comp instanceof Container) {
-            for (Component child : ((Container) comp).getComponents()) {
-                applyThemeRecursive(child);
-            }
+        if (txtNote != null) {
+            txtNote.setBackground(ThemeManager.getColor("input"));
+            txtNote.setForeground(ThemeManager.getColor("textPrimary"));
+            txtNote.setCaretColor(ThemeManager.getColor("accent"));
         }
+        if (cmbRecurrenceType != null) {
+            cmbRecurrenceType.setBackground(ThemeManager.getColor("input"));
+            cmbRecurrenceType.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (categoryPanel != null) categoryPanel.setBackground(ThemeManager.getColor("bg"));
+        if (categoryScrollPane != null) categoryScrollPane.getViewport().setBackground(ThemeManager.getColor("bg"));
+        if (btnPrevPage != null) {
+            btnPrevPage.setBackground(ThemeManager.getColor("surface"));
+            btnPrevPage.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (btnNextPage != null) {
+            btnNextPage.setBackground(ThemeManager.getColor("surface"));
+            btnNextPage.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+        if (lblPageIndicator != null) lblPageIndicator.setForeground(ThemeManager.getColor("textPrimary"));
     }
 }

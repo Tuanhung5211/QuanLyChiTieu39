@@ -24,7 +24,6 @@ public class DatabaseUtil {
         } catch (Exception e) {
             System.err.println("Khởi tạo database không thành công: " + e.getMessage());
             e.printStackTrace();
-            // Ứng dụng vẫn chạy, nhưng các chức năng DB sẽ báo lỗi khi dùng
         }
     }
 
@@ -213,13 +212,16 @@ public class DatabaseUtil {
     }
 
     // ========== BUDGETS ==========
+    // Tối ưu: dùng range query thay vì MONTH/YEAR để tận dụng index
     public static Budget getBudget(int month, int year, String userId) {
-        String query = "SELECT * FROM budgets WHERE user_id = ? AND MONTH(start_date) = ? AND YEAR(start_date) = ? LIMIT 1";
+        LocalDate start = LocalDate.of(year, month, 1);
+        LocalDate end = start.plusMonths(1);
+        String query = "SELECT * FROM budgets WHERE user_id = ? AND start_date >= ? AND start_date < ? LIMIT 1";
         try (Connection conn = getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
             pstmt.setString(1, userId);
-            pstmt.setInt(2, month);
-            pstmt.setInt(3, year);
+            pstmt.setDate(2, java.sql.Date.valueOf(start));
+            pstmt.setDate(3, java.sql.Date.valueOf(end));
             ResultSet rs = pstmt.executeQuery();
             if (rs.next()) {
                 Budget b = new Budget();
@@ -420,6 +422,17 @@ public class DatabaseUtil {
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Lỗi khi xóa lịch sử ngân sách", e);
+        }
+    }
+
+    // ✅ THÊM: Xóa giao dịch lặp lại khi xóa user
+    public static void deleteRecurringTransactionsByUser(String userId) {
+        String sql = "DELETE FROM recurring_transactions WHERE user_id = ?";
+        try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, userId);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Lỗi khi xóa giao dịch lặp lại của user", e);
         }
     }
 
@@ -716,18 +729,17 @@ public class DatabaseUtil {
             System.out.println("✅ Đã cấp quyền admin cho user: admin");
         }
     }
-    // Hàm lấy danh sách giao dịch theo khoảng thời gian
-    public static List<Transaction> getTransactionsByDateRange(String userId, java.time.LocalDate startDate, java.time.LocalDate endDate) {
+
+    // ========== TIỆN ÍCH KHOẢNG THỜI GIAN ==========
+    public static List<Transaction> getTransactionsByDateRange(String userId, LocalDate startDate, LocalDate endDate) {
         List<Transaction> list = new ArrayList<>();
 
-        // Đảm bảo startDate luôn nhỏ hơn hoặc bằng endDate
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
-            java.time.LocalDate temp = startDate;
+            LocalDate temp = startDate;
             startDate = endDate;
             endDate = temp;
         }
 
-        // Câu truy vấn SQL lấy giao dịch trong khoảng ngày
         String sql = "SELECT t.*, c.name as category_name, c.type as category_type " +
                 "FROM transactions t JOIN categories c ON t.category_id = c.id " +
                 "WHERE t.user_id = ? AND DATE(t.date_time) >= ? AND DATE(t.date_time) <= ? " +
@@ -741,24 +753,20 @@ public class DatabaseUtil {
             pstmt.setString(3, endDate.toString());
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                // Tùy thuộc vào code cũ của bạn, hàm map dữ liệu từ ResultSet sang List<Transaction>
-                // có thể tên là mapTransactions(rs) hoặc bạn dùng vòng lặp rs.next()
-                // Dưới đây là cách dùng vòng lặp thủ công an toàn nhất:
                 while (rs.next()) {
                     String id = rs.getString("id");
                     double amount = rs.getDouble("amount");
                     String note = rs.getString("note");
-                    java.time.LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
+                    LocalDateTime dateTime = rs.getTimestamp("date_time").toLocalDateTime();
 
-                    // Lấy thông tin Category
                     String catId = rs.getString("category_id");
                     String catName = rs.getString("category_name");
                     String typeStr = rs.getString("category_type");
-                    com.expensemanager.entity.TransactionType type = com.expensemanager.entity.TransactionType.valueOf(typeStr);
-                    com.expensemanager.entity.Category category = new com.expensemanager.entity.Category(catId, catName, type);
+                    TransactionType type = TransactionType.valueOf(typeStr);
+                    Category category = new Category(catId, catName, type);
 
-                    Transaction t = new Transaction(id, amount, type, category, note);
-                    t.setDateTime(dateTime);
+                    // Sử dụng constructor 6 tham số để tránh gọi setDateTime thừa
+                    Transaction t = new Transaction(id, amount, type, category, note, dateTime);
                     list.add(t);
                 }
             }

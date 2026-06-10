@@ -7,16 +7,18 @@ import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.service.StatisticsService;
+import com.expensemanager.util.CategoryTranslator;
 import com.expensemanager.util.EmojiUtil;
 import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,6 +45,9 @@ public class StatisticsPanel extends JPanel implements Observer {
 
     private boolean isVietnamese = true;
 
+    // Dữ liệu chung cho legend và biểu đồ (đã lọc và đã gom nhóm top 9 + Khác)
+    private ChartData currentChartData = null;
+
     // =====================================================================
     // 2. CONSTRUCTOR - KHỞI TẠO BỐ CỤC
     // =====================================================================
@@ -55,7 +60,7 @@ public class StatisticsPanel extends JPanel implements Observer {
         setBorder(new EmptyBorder(15, 20, 15, 20));
 
         initComponents();
-        applyTheme(); // Gọi áp dụng Theme ngay khi khởi tạo
+        applyTheme();
     }
 
     private void initComponents() {
@@ -121,7 +126,7 @@ public class StatisticsPanel extends JPanel implements Observer {
         mainGbc.weightx = 0.65;
         mainGrid.add(leftChartCard, mainGbc);
 
-        // CỘT PHẢI: CHÚ THÍCH TIẾN ĐỘ
+        // CỘT PHẢI: CHÚ THÍCH
         JPanel rightLegendCard = new JPanel(new BorderLayout(0, 15));
         rightLegendCard.setName("surfacePanel");
         rightLegendCard.setBorder(BorderFactory.createCompoundBorder(
@@ -166,7 +171,7 @@ public class StatisticsPanel extends JPanel implements Observer {
     }
 
     // =====================================================================
-    // 3. XỬ LÝ DỮ LIỆU & VẼ BIỂU ĐỒ (CHART LOGIC)
+    // 3. XỬ LÝ DỮ LIỆU
     // =====================================================================
     public void refreshData() {
         if (statsService == null || financeService == null) return;
@@ -174,58 +179,113 @@ public class StatisticsPanel extends JPanel implements Observer {
         LocalDate targetDate = calculateTargetDate();
         updateNavigationButtonsStatus();
 
-        int month = targetDate.getMonthValue();
-        int year = targetDate.getYear();
-        double totalExpense = statsService.calculateTotal(month, year, TransactionType.EXPENSE);
+        // Lọc giao dịch theo chế độ
+        List<Transaction> allTx = financeService.getAllTransactions();
+        List<Transaction> filtered = filterTransactions(allTx, targetDate);
 
-        List<Transaction> transactions = financeService.getAllTransactions();
-        Map<String, Double> dataMap = new java.util.HashMap<>();
+        // Xây dựng dữ liệu top 9 + Khác (giữ originalName để tra cứu emoji)
+        currentChartData = buildChartData(filtered);
 
-        for (Transaction t : transactions) {
-            if (t != null && t.getType() == TransactionType.EXPENSE && t.getDateTime().getYear() == year) {
-                if ("month".equals(currentMode) && t.getDateTime().getMonthValue() != month) continue;
-                String catName = t.getCategory().getName();
-                dataMap.put(catName, dataMap.getOrDefault(catName, 0.0) + t.getAmount());
-            }
-        }
+        // Cập nhật legend
+        renderLegend(currentChartData);
 
-        renderLegend(dataMap, totalExpense);
+        // Vẽ lại biểu đồ
+        chartDrawPanel.repaint();
     }
 
-    private void renderLegend(Map<String, Double> dataMap, double totalExpense) {
-        legendPanel.removeAll();
+    private List<Transaction> filterTransactions(List<Transaction> transactions, LocalDate targetDate) {
+        List<Transaction> result = new ArrayList<>();
+        if (transactions == null) return result;
 
-        List<Map.Entry<String, Double>> sortedEntries = dataMap.entrySet().stream()
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .collect(Collectors.toList());
+        if ("week".equals(currentMode)) {
+            LocalDate monday = targetDate.with(DayOfWeek.MONDAY);
+            LocalDate sunday = targetDate.with(DayOfWeek.SUNDAY);
+            for (Transaction t : transactions) {
+                if (t == null) continue;
+                LocalDate tDate = t.getDateTime().toLocalDate();
+                if (!tDate.isBefore(monday) && !tDate.isAfter(sunday)) {
+                    result.add(t);
+                }
+            }
+        } else if ("month".equals(currentMode)) {
+            int month = targetDate.getMonthValue();
+            int year = targetDate.getYear();
+            for (Transaction t : transactions) {
+                if (t == null) continue;
+                LocalDate tDate = t.getDateTime().toLocalDate();
+                if (tDate.getYear() == year && tDate.getMonthValue() == month) {
+                    result.add(t);
+                }
+            }
+        } else if ("year".equals(currentMode)) {
+            int year = targetDate.getYear();
+            for (Transaction t : transactions) {
+                if (t == null) continue;
+                if (t.getDateTime().getYear() == year) {
+                    result.add(t);
+                }
+            }
+        }
+        return result;
+    }
 
-        // 👉 LỌC TOP 9 VÀ GỘP MỤC "KHÁC" CHO CHÚ GIẢI
-        List<Map.Entry<String, Double>> displayEntries = new ArrayList<>();
-        double othersTotal = 0;
-
-        for (int i = 0; i < sortedEntries.size(); i++) {
-            if (i < 9) {
-                displayEntries.add(sortedEntries.get(i));
-            } else {
-                othersTotal += sortedEntries.get(i).getValue();
+    private ChartData buildChartData(List<Transaction> transactions) {
+        // Gom nhóm theo tên gốc (tiếng Việt) để giữ nguyên key cho emoji
+        Map<String, Double> catMap = new LinkedHashMap<>();
+        double total = 0;
+        for (Transaction t : transactions) {
+            if (t.getType() == TransactionType.EXPENSE) {
+                String originalName = t.getCategory().getName();
+                double amt = t.getAmount();
+                catMap.put(originalName, catMap.getOrDefault(originalName, 0.0) + amt);
+                total += amt;
             }
         }
 
-        if (othersTotal > 0) {
-            displayEntries.add(new java.util.AbstractMap.SimpleEntry<>(isVietnamese ? "Khác" : "Others", othersTotal));
+        // Sắp xếp giảm dần theo số tiền
+        List<Map.Entry<String, Double>> sorted = catMap.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .collect(Collectors.toList());
+
+        // Top 9 + Khác, đồng thời dịch tên hiển thị
+        List<ChartItem> items = new ArrayList<>();
+        double others = 0;
+        int count = 0;
+        for (Map.Entry<String, Double> entry : sorted) {
+            String originalName = entry.getKey();
+            double amt = entry.getValue();
+            if (count < 9) {
+                double pct = total > 0 ? (amt / total) * 100 : 0;
+                String displayName = CategoryTranslator.translate(originalName, isVietnamese);
+                items.add(new ChartItem(originalName, displayName, amt, pct));
+                count++;
+            } else {
+                others += amt;
+            }
+        }
+        if (others > 0) {
+            double pctOthers = total > 0 ? (others / total) * 100 : 0;
+            String othersKey = isVietnamese ? "Khác" : "Others";
+            items.add(new ChartItem(othersKey, othersKey, others, pctOthers)); // originalName = displayName cho mục Khác
+        }
+
+        return new ChartData(items, total);
+    }
+
+    private void renderLegend(ChartData data) {
+        legendPanel.removeAll();
+        if (data == null || data.items.isEmpty()) {
+            legendPanel.revalidate();
+            legendPanel.repaint();
+            return;
         }
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0; gbc.weighty = 0.0; gbc.insets = new Insets(0, 0, 2, 0);
 
         int ci = 0;
-        for (Map.Entry<String, Double> entry : displayEntries) {
-            String catName = entry.getKey();
-            double amt = entry.getValue();
-            double percent = totalExpense > 0 ? (amt / totalExpense) * 100 : 0;
-
-            // Xử lý màu sắc: Mục khác dùng màu xám
-            Color color = (catName.equals("Khác") || catName.equals("Others"))
+        for (ChartItem item : data.items) {
+            Color color = (item.displayName.equals("Khác") || item.displayName.equals("Others"))
                     ? ThemeManager.getColor("textSecondary")
                     : ThemeManager.getColor("chart" + (ci % 9));
 
@@ -244,38 +304,40 @@ public class StatisticsPanel extends JPanel implements Observer {
             indicator.setBackground(color);
             leftGroup.add(indicator);
 
-            // Xử lý icon: Mục khác dùng cái hộp
-            String emoji = (catName.equals("Khác") || catName.equals("Others")) ? "📦" : EmojiUtil.CATEGORY_EMOJI.getOrDefault(catName, "\uD83D\uDCCD");
+            // Emoji: dùng originalName để tra cứu, fallback cho mục Khác
+            String emoji;
+            if (item.displayName.equals("Khác") || item.displayName.equals("Others")) {
+                emoji = "📦";
+            } else {
+                emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(item.originalName, "\uD83D\uDCCD");
+            }
             JLabel lblEmoji = new JLabel(emoji);
             lblEmoji.setFont(EmojiUtil.getEmojiFont(15));
             leftGroup.add(lblEmoji);
 
-            JLabel lblCatText = new JLabel(catName + " " + String.format("%.1f%%", percent));
+            JLabel lblCatText = new JLabel(item.displayName + " " + String.format("%.1f%%", item.percent));
             lblCatText.setFont(new Font("Segoe UI", Font.PLAIN, 14));
             lblCatText.setForeground(ThemeManager.getColor("textPrimary"));
             leftGroup.add(lblCatText);
             textRow.add(leftGroup, BorderLayout.WEST);
 
-            JLabel lblAmount = new JLabel(isVietnamese ? String.format("%,.0f đ", amt) : String.format("%,.0f VND", amt));
+            JLabel lblAmount = new JLabel(isVietnamese ? String.format("%,.0f đ", item.amount) : String.format("%,.0f VND", item.amount));
             lblAmount.setFont(new Font("Segoe UI", Font.BOLD, 14));
             lblAmount.setForeground(ThemeManager.getColor("textPrimary"));
             textRow.add(lblAmount, BorderLayout.EAST);
 
             itemContainer.add(textRow, BorderLayout.NORTH);
 
-            final double percentValue = percent;
             JPanel progressLine = new JPanel() {
                 @Override
                 protected void paintComponent(Graphics g) {
                     super.paintComponent(g);
                     Graphics2D g2d = (Graphics2D) g;
                     g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
                     g2d.setColor(ThemeManager.getColor("progressTrack"));
                     g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 4, 4);
-
                     g2d.setColor(color);
-                    int fillW = (int) (getWidth() * (percentValue / 100.0));
+                    int fillW = (int) (getWidth() * (item.percent / 100.0));
                     g2d.fillRoundRect(0, 0, fillW, getHeight(), 4, 4);
                 }
             };
@@ -305,62 +367,30 @@ public class StatisticsPanel extends JPanel implements Observer {
 
         legendPanel.revalidate();
         legendPanel.repaint();
-        chartDrawPanel.revalidate();
-        chartDrawPanel.repaint();
     }
 
+    // ============== VẼ BIỂU ĐỒ ==============
     private void paintCustomChart(Graphics g) {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
         int w = chartDrawPanel.getWidth();
         int h = chartDrawPanel.getHeight();
         if (w <= 0 || h <= 0) return;
 
-        LocalDate targetDate = calculateTargetDate();
-        List<Transaction> transactions = financeService.getAllTransactions();
-
         if ("pie".equals(currentChartType)) {
-            paintPieChart(g2, w, h, targetDate, transactions);
+            paintPieChart(g2, w, h);
         } else {
-            paintLineChart(g2, w, h, targetDate, transactions);
+            paintLineChart(g2, w, h);
         }
     }
 
-    private void paintPieChart(Graphics2D g2, int w, int h, LocalDate targetDate, List<Transaction> transactions) {
-        Map<String, Double> dataMap = new java.util.HashMap<>();
-        double total = 0;
-
-        for (Transaction t : transactions) {
-            if (t != null && t.getType() == TransactionType.EXPENSE && t.getDateTime().getYear() == targetDate.getYear()) {
-                if ("month".equals(currentMode) && t.getDateTime().getMonthValue() != targetDate.getMonthValue()) continue;
-                dataMap.put(t.getCategory().getName(), dataMap.getOrDefault(t.getCategory().getName(), 0.0) + t.getAmount());
-                total += t.getAmount();
-            }
-        }
-
-        if (total == 0) {
-            g2.setColor(ThemeManager.getColor("textSecondary")); g2.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-            g2.drawString(isVietnamese ? "Không có dữ liệu trong kỳ" : "No data available in this period", w / 2 - 80, h / 2);
+    private void paintPieChart(Graphics2D g2, int w, int h) {
+        if (currentChartData == null || currentChartData.items.isEmpty() || currentChartData.total <= 0) {
+            g2.setColor(ThemeManager.getColor("textSecondary"));
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            String msg = isVietnamese ? "Không có dữ liệu trong kỳ" : "No data available in this period";
+            g2.drawString(msg, w / 2 - 80, h / 2);
             return;
-        }
-
-        // 👉 LỌC TOP 9 VÀ GỘP MỤC "KHÁC" CHO BIỂU ĐỒ TRÒN
-        List<Map.Entry<String, Double>> sortedPieEntries = dataMap.entrySet().stream()
-                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
-                .collect(Collectors.toList());
-
-        List<Map.Entry<String, Double>> displayPieEntries = new ArrayList<>();
-        double othersTotal = 0;
-        for (int i = 0; i < sortedPieEntries.size(); i++) {
-            if (i < 9) {
-                displayPieEntries.add(sortedPieEntries.get(i));
-            } else {
-                othersTotal += sortedPieEntries.get(i).getValue();
-            }
-        }
-        if (othersTotal > 0) {
-            displayPieEntries.add(new java.util.AbstractMap.SimpleEntry<>(isVietnamese ? "Khác" : "Others", othersTotal));
         }
 
         int size = Math.min(w, h) - 80;
@@ -369,28 +399,26 @@ public class StatisticsPanel extends JPanel implements Observer {
         int startAngle = 90;
         int ci = 0;
 
-        for (Map.Entry<String, Double> entry : displayPieEntries) {
-            int arcAngle = (int) Math.round((entry.getValue() / total) * 360);
-
-            // Màu của "Khác" là xám trung tính
-            if (entry.getKey().equals("Khác") || entry.getKey().equals("Others")) {
+        for (ChartItem item : currentChartData.items) {
+            int arcAngle = (int) Math.round((item.amount / currentChartData.total) * 360);
+            if (item.displayName.equals("Khác") || item.displayName.equals("Others")) {
                 g2.setColor(ThemeManager.getColor("textSecondary"));
             } else {
                 g2.setColor(ThemeManager.getColor("chart" + (ci % 9)));
             }
-
             g2.fillArc(x, y, size, size, startAngle, arcAngle);
             startAngle += arcAngle;
             ci++;
         }
 
+        // Lỗ tròn trung tâm
         int innerSize = (int) (size * 0.55);
         int innerX = x + (size - innerSize) / 2;
         int innerY = y + (size - innerSize) / 2;
-
         g2.setColor(ThemeManager.getColor("surface"));
         g2.fillOval(innerX, innerY, innerSize, innerSize);
 
+        // Chữ tổng chi tiêu
         g2.setColor(ThemeManager.getColor("textSecondary"));
         g2.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         String centerTitle = isVietnamese ? "Tổng chi tiêu" : "Total Expenses";
@@ -398,20 +426,23 @@ public class StatisticsPanel extends JPanel implements Observer {
 
         g2.setColor(ThemeManager.getColor("danger"));
         g2.setFont(new Font("Segoe UI", Font.BOLD, 17));
-        String totalStr = isVietnamese ? String.format("-%,.0f đ", total) : String.format("-%,.0f VND", total);
+        String totalStr = isVietnamese ? String.format("-%,.0f đ", currentChartData.total) : String.format("-%,.0f VND", currentChartData.total);
         g2.drawString(totalStr, w / 2 - g2.getFontMetrics().stringWidth(totalStr) / 2, h / 2 + 15);
     }
 
-    private void paintLineChart(Graphics2D g2, int w, int h, LocalDate targetDate, List<Transaction> transactions) {
+    private void paintLineChart(Graphics2D g2, int w, int h) {
+        LocalDate targetDate = calculateTargetDate();
+        List<Transaction> transactions = filterTransactions(financeService.getAllTransactions(), targetDate);
+
         int numPoints = 7;
         String[] xLabels = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
         double[] timeValues = new double[numPoints];
 
         if ("week".equals(currentMode)) {
-            LocalDate monday = targetDate.with(java.time.DayOfWeek.MONDAY);
-            LocalDate sunday = targetDate.with(java.time.DayOfWeek.SUNDAY);
+            LocalDate monday = targetDate.with(DayOfWeek.MONDAY);
+            LocalDate sunday = targetDate.with(DayOfWeek.SUNDAY);
             for (Transaction t : transactions) {
-                if (t != null && t.getType() == TransactionType.EXPENSE) {
+                if (t.getType() == TransactionType.EXPENSE) {
                     LocalDate tDate = t.getDateTime().toLocalDate();
                     if (!tDate.isBefore(monday) && !tDate.isAfter(sunday)) {
                         int dayIndex = t.getDateTime().getDayOfWeek().getValue() - 1;
@@ -421,29 +452,36 @@ public class StatisticsPanel extends JPanel implements Observer {
             }
         } else if ("month".equals(currentMode)) {
             numPoints = targetDate.lengthOfMonth();
-            xLabels = new String[numPoints]; timeValues = new double[numPoints];
+            xLabels = new String[numPoints];
+            timeValues = new double[numPoints];
             for (int i = 0; i < numPoints; i++) xLabels[i] = String.valueOf(i + 1);
+            int month = targetDate.getMonthValue();
+            int year = targetDate.getYear();
             for (Transaction t : transactions) {
-                if (t != null && t.getType() == TransactionType.EXPENSE && t.getDateTime().getYear() == targetDate.getYear() && t.getDateTime().getMonthValue() == targetDate.getMonthValue()) {
-                    int dayIndex = t.getDateTime().getDayOfMonth() - 1;
-                    timeValues[dayIndex] += t.getAmount();
+                if (t.getType() == TransactionType.EXPENSE) {
+                    LocalDate tDate = t.getDateTime().toLocalDate();
+                    if (tDate.getYear() == year && tDate.getMonthValue() == month) {
+                        int dayIndex = tDate.getDayOfMonth() - 1;
+                        timeValues[dayIndex] += t.getAmount();
+                    }
                 }
             }
-        } else {
+        } else { // year
             numPoints = 12;
             xLabels = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
             timeValues = new double[numPoints];
+            int year = targetDate.getYear();
             for (Transaction t : transactions) {
-                if (t != null && t.getType() == TransactionType.EXPENSE && t.getDateTime().getYear() == targetDate.getYear()) {
-                    int monthIndex = t.getDateTime().getMonthValue() - 1;
-                    timeValues[monthIndex] += t.getAmount();
+                if (t.getType() == TransactionType.EXPENSE) {
+                    if (t.getDateTime().getYear() == year) {
+                        int monthIndex = t.getDateTime().getMonthValue() - 1;
+                        timeValues[monthIndex] += t.getAmount();
+                    }
                 }
             }
         }
 
-        double maxValue = 0;
-        for (double v : timeValues) if (v > maxValue) maxValue = v;
-
+        double maxValue = Arrays.stream(timeValues).max().orElse(0);
         double step = Math.ceil((maxValue / 2.0) / 50000.0) * 50000.0;
         if (step == 0) step = 50000.0;
         double ceilMaxValue = step * 2;
@@ -454,7 +492,6 @@ public class StatisticsPanel extends JPanel implements Observer {
         g2.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         for (int i = 0; i <= 2; i++) {
             int yGrid = paddingTop + (i * chartH / 2);
-
             g2.setStroke(new BasicStroke(1f));
             Color border = ThemeManager.getColor("border");
             g2.setColor(new Color(border.getRed(), border.getGreen(), border.getBlue(), 100));
@@ -462,7 +499,6 @@ public class StatisticsPanel extends JPanel implements Observer {
 
             double currentTickValue = ceilMaxValue - (i * step);
             String tickLabel = isVietnamese ? String.format("%,.0f đ", currentTickValue) : String.format("%,.0f", currentTickValue);
-
             g2.setColor(ThemeManager.getColor("textSecondary"));
             int labelW = g2.getFontMetrics().stringWidth(tickLabel);
             g2.drawString(tickLabel, paddingLeft - labelW - 8, yGrid + 4);
@@ -511,8 +547,8 @@ public class StatisticsPanel extends JPanel implements Observer {
         LocalDate targetDate = LocalDate.now();
         if ("week".equals(currentMode)) {
             targetDate = targetDate.plusWeeks(currentOffset);
-            LocalDate monday = targetDate.with(java.time.DayOfWeek.MONDAY);
-            LocalDate sunday = targetDate.with(java.time.DayOfWeek.SUNDAY);
+            LocalDate monday = targetDate.with(DayOfWeek.MONDAY);
+            LocalDate sunday = targetDate.with(DayOfWeek.SUNDAY);
             WeekFields weekFields = WeekFields.of(Locale.getDefault());
             int weekNumber = targetDate.get(weekFields.weekOfWeekBasedYear());
             lblTimeRange.setText(isVietnamese ?
@@ -548,7 +584,7 @@ public class StatisticsPanel extends JPanel implements Observer {
             else checkPrev = realTimeNow.plusYears(currentOffset - 1);
 
             if ("week".equals(currentMode)) {
-                btnPrevTime.setEnabled(!checkPrev.with(java.time.DayOfWeek.SUNDAY).isBefore(earliestTxDate.with(java.time.DayOfWeek.MONDAY)));
+                btnPrevTime.setEnabled(!checkPrev.with(DayOfWeek.SUNDAY).isBefore(earliestTxDate.with(DayOfWeek.MONDAY)));
             } else if ("month".equals(currentMode)) {
                 btnPrevTime.setEnabled(!checkPrev.withDayOfMonth(1).isBefore(earliestTxDate.withDayOfMonth(1)));
             } else {
@@ -564,8 +600,8 @@ public class StatisticsPanel extends JPanel implements Observer {
             boolean isNextPastDataBounds = false;
 
             if ("week".equals(currentMode)) {
-                isNextInFuture = checkNext.with(java.time.DayOfWeek.MONDAY).isAfter(realTimeNow.with(java.time.DayOfWeek.SUNDAY));
-                isNextPastDataBounds = checkNext.with(java.time.DayOfWeek.MONDAY).isAfter(latestTxDate);
+                isNextInFuture = checkNext.with(DayOfWeek.MONDAY).isAfter(realTimeNow.with(DayOfWeek.SUNDAY));
+                isNextPastDataBounds = checkNext.with(DayOfWeek.MONDAY).isAfter(latestTxDate);
             } else if ("month".equals(currentMode)) {
                 isNextInFuture = checkNext.withDayOfMonth(1).isAfter(realTimeNow.withDayOfMonth(realTimeNow.lengthOfMonth()));
                 isNextPastDataBounds = checkNext.withDayOfMonth(1).isAfter(latestTxDate.withDayOfMonth(latestTxDate.lengthOfMonth()));
@@ -579,6 +615,7 @@ public class StatisticsPanel extends JPanel implements Observer {
         }
     }
 
+    // ============== CÁC HÀM TẠO NÚT ==============
     private JButton createStyleNavButton(String text, boolean active) {
         JButton btn = new JButton(text); btn.setFont(new Font("Segoe UI", Font.BOLD, 13)); btn.setFocusPainted(false);
         btn.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1), BorderFactory.createEmptyBorder(6, 14, 6, 14)));
@@ -626,6 +663,7 @@ public class StatisticsPanel extends JPanel implements Observer {
         return btn;
     }
 
+    // ============== LANGUAGE & THEME ==============
     public void updateLanguageText(boolean isVN) {
         this.isVietnamese = isVN;
         if (lblMainTitle != null) lblMainTitle.setText(isVN ? "Phân tích thống kê chi tiêu" : "Expense Statistical Analysis");
@@ -637,9 +675,6 @@ public class StatisticsPanel extends JPanel implements Observer {
         refreshData();
     }
 
-    // =====================================================================
-    // 5. KẾT NỐI SỰ KIỆN OBSERVER VÀ THEME MANAGER
-    // =====================================================================
     @Override
     public void update(EventType eventType, Object data) {
         if (eventType == EventType.TRANSACTION_ADDED || eventType == EventType.TRANSACTION_UPDATED || eventType == EventType.TRANSACTION_DELETED || eventType == EventType.DATA_LOADED) {
@@ -692,5 +727,29 @@ public class StatisticsPanel extends JPanel implements Observer {
         else selectIntervalTab(btnYearTab);
 
         refreshData();
+    }
+
+    // ============== LỚP NỘI BỘ ==============
+    private static class ChartItem {
+        String originalName;  // tên gốc (tiếng Việt) để tra cứu emoji
+        String displayName;   // tên hiển thị (đã dịch)
+        double amount;
+        double percent;
+
+        ChartItem(String originalName, String displayName, double amount, double percent) {
+            this.originalName = originalName;
+            this.displayName = displayName;
+            this.amount = amount;
+            this.percent = percent;
+        }
+    }
+
+    private static class ChartData {
+        List<ChartItem> items;
+        double total;
+        ChartData(List<ChartItem> items, double total) {
+            this.items = items;
+            this.total = total;
+        }
     }
 }

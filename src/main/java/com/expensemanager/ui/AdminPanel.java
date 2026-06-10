@@ -18,10 +18,8 @@ public class AdminPanel extends JPanel {
     private JTable userTable;
     private DefaultTableModel tableModel;
 
-    // ĐÃ THÊM: Khai báo JScrollPane làm biến instance để lát nữa đổi màu
     private JScrollPane scrollPane;
 
-    // Các nút chuyển thành biến instance
     private JButton btnGrantPremium;
     private JButton btnRevokePremium;
     private JButton btnDeleteUser;
@@ -56,7 +54,6 @@ public class AdminPanel extends JPanel {
         userTable.setRowHeight(28);
         userTable.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        // ĐÃ SỬA: Sử dụng biến instance scrollPane ở trên (bỏ chữ JScrollPane đi)
         scrollPane = new JScrollPane(userTable);
         add(scrollPane, BorderLayout.CENTER);
 
@@ -166,11 +163,12 @@ public class AdminPanel extends JPanel {
             return;
         }
         int confirm = JOptionPane.showConfirmDialog(this,
-                isVietnamese ? "Xóa vĩnh viễn người dùng " + username + " và toàn bộ dữ liệu của họ?" : "Permanently delete user " + username + " and all their data?",
+                isVietnamese ? "Xóa vĩnh viễn người dùng " + username + " và toàn bộ dữ liệu của họ (bao gồm giao dịch định kì)?" : "Permanently delete user " + username + " and all their data (including scheduled transactions)?",
                 isVietnamese ? "Cảnh báo" : "Warning", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
             DatabaseUtil.deleteTransactionsByUser(userId);
             DatabaseUtil.deleteBudgetsByUser(userId);
+            DatabaseUtil.deleteRecurringTransactionsByUser(userId); // Thêm dòng này
             DatabaseUtil.deleteUser(userId);
             refreshTable();
         }
@@ -195,7 +193,6 @@ public class AdminPanel extends JPanel {
             userTable.setGridColor(ThemeManager.getColor("border"));
         }
 
-        // ĐÃ THÊM: Sửa lỗi màu trắng nền Viewport
         if (scrollPane != null) {
             scrollPane.setBackground(ThemeManager.getColor("surface"));
             scrollPane.getViewport().setBackground(ThemeManager.getColor("surface"));
@@ -203,17 +200,14 @@ public class AdminPanel extends JPanel {
         }
     }
 
-    // PHƯƠNG THỨC CẬP NHẬT NGÔN NGỮ ĐẦY ĐỦ
     public void updateLanguageText(boolean isVN) {
         this.isVietnamese = isVN;
 
-        // Cập nhật tiêu đề cột
         String[] columns = isVN ?
                 new String[]{"ID", "Tên đăng nhập", "Email", "Premium hạn", "Admin"} :
                 new String[]{"ID", "Username", "Email", "Premium Expiry", "Admin"};
         tableModel.setColumnIdentifiers(columns);
 
-        // Cập nhật văn bản nút
         if (btnGrantPremium != null) btnGrantPremium.setText(isVN ? "🎁 Cấp Premium" : "🎁 Grant Premium");
         if (btnRevokePremium != null) btnRevokePremium.setText(isVN ? "❌ Hủy Premium" : "❌ Revoke Premium");
         if (btnDeleteUser != null) btnDeleteUser.setText(isVN ? "🗑️ Xóa người dùng" : "🗑️ Delete User");

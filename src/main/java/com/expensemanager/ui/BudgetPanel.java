@@ -9,14 +9,18 @@ import com.expensemanager.observer.Observer;
 import com.expensemanager.service.BudgetManager;
 import com.expensemanager.service.FinanceService;
 import com.expensemanager.service.SessionManager;
+import com.expensemanager.util.EmojiUtil;
 import com.expensemanager.util.InputValidator;
 import com.expensemanager.service.ThemeManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 public class BudgetPanel extends JPanel implements Observer {
@@ -28,15 +32,22 @@ public class BudgetPanel extends JPanel implements Observer {
 
     // Form components
     private JComboBox<String> cmbScope;
-    private JComboBox<Category> cmbCategory;
+    private JPanel categoryGridPanel;
+    private JScrollPane categoryGridScroll;
+    private Category selectedCategory;
     private JComboBox<String> cmbPeriod;
     private JTextField txtAmount;
     private JSpinner spinReminderThreshold;
     private JButton btnSaveBudget;
     private JLabel lblFormTitle, lblListTitle;
 
-    // Labels cần cập nhật ngôn ngữ
     private JLabel lblScope, lblCategory, lblPeriod, lblAmount, lblReminder;
+
+    private int categoryPage = 1;
+    private final int CATEGORIES_PER_PAGE = 8;
+    private JButton btnPrevCatPage, btnNextCatPage;
+    private JLabel lblCatPageIndicator;
+    private JPanel categoryContainer; // khai báo instance
 
     private JPanel budgetListContainer;
     private JScrollPane scrollPane;
@@ -62,10 +73,10 @@ public class BudgetPanel extends JPanel implements Observer {
         JPanel splitContainer = new JPanel(new BorderLayout(30, 0));
         splitContainer.setOpaque(false);
 
-        // --- CỘT TRÁI: FORM THIẾT LẬP ---
+        // --- LEFT COLUMN ---
         JPanel leftColumn = new JPanel(new BorderLayout(0, 15));
         leftColumn.setOpaque(false);
-        leftColumn.setPreferredSize(new Dimension(360, 0));
+        leftColumn.setPreferredSize(new Dimension(380, 0)); // tăng nhẹ để chứa lưới
 
         lblFormTitle = new JLabel(isVietnamese ? "THIẾT LẬP HẠN MỨC" : "BUDGET CONFIG");
         lblFormTitle.setFont(new Font("Segoe UI", Font.BOLD, 18));
@@ -86,10 +97,13 @@ public class BudgetPanel extends JPanel implements Observer {
 
         addFormFields(formPanel, gbc);
 
+        // Nạp danh sách danh mục (sẽ ẩn, nhưng có dữ liệu)
+        refreshCategoryGrid();
+
         leftColumn.add(formPanel, BorderLayout.CENTER);
         splitContainer.add(leftColumn, BorderLayout.WEST);
 
-        // --- CỘT PHẢI: DANH SÁCH THEO DÕI ---
+        // --- RIGHT COLUMN ---
         JPanel rightColumn = new JPanel(new BorderLayout(0, 15));
         rightColumn.setOpaque(false);
 
@@ -110,7 +124,7 @@ public class BudgetPanel extends JPanel implements Observer {
     }
 
     private void addFormFields(JPanel panel, GridBagConstraints gbc) {
-        // 1. Phạm vi áp dụng
+        // 1. Scope
         lblScope = new JLabel(isVietnamese ? "Phạm vi áp dụng:" : "Scope:");
         panel.add(lblScope, gbc);
 
@@ -118,23 +132,59 @@ public class BudgetPanel extends JPanel implements Observer {
         styleComboBox(cmbScope);
         panel.add(cmbScope, gbc);
 
-        // 2. Chọn Danh mục
-        lblCategory = new JLabel(isVietnamese ? "Danh mục:" : "Category:");
+        // 2. Category label
+        lblCategory = new JLabel(isVietnamese ? "Chọn danh mục:" : "Select Category:");
         panel.add(lblCategory, gbc);
 
-        cmbCategory = new JComboBox<>();
-        styleComboBox(cmbCategory);
-        if (financeService != null) {
-            financeService.getAllCategories().stream()
-                    .filter(c -> c.getType() == TransactionType.EXPENSE)
-                    .forEach(cmbCategory::addItem);
-        }
-        cmbCategory.setEnabled(false);
-        panel.add(cmbCategory, gbc);
+        // Container cho lưới
+        categoryContainer = new JPanel(new BorderLayout());
+        categoryContainer.setOpaque(false);
+        // Kích thước tối thiểu để GridBagLayout cấp không gian
+        categoryContainer.setMinimumSize(new Dimension(340, 180));
+        categoryContainer.setPreferredSize(new Dimension(340, 180));
 
-        cmbScope.addActionListener(e -> cmbCategory.setEnabled(cmbScope.getSelectedIndex() == 1));
+        categoryGridPanel = new JPanel(new GridLayout(0, 4, 8, 8));
+        categoryGridScroll = new JScrollPane(categoryGridPanel);
+        categoryGridScroll.setBorder(null);
+        categoryGridScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        categoryGridScroll.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER);
+        categoryContainer.add(categoryGridScroll, BorderLayout.CENTER);
 
-        // 3. Chu kỳ hạn mức
+        JPanel pagination = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
+        pagination.setOpaque(false);
+        btnPrevCatPage = createArrowButton("<");
+        btnNextCatPage = createArrowButton(">");
+        lblCatPageIndicator = new JLabel(isVietnamese ? "Trang 1 / 1" : "Page 1 / 1");
+        lblCatPageIndicator.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblCatPageIndicator.setForeground(ThemeManager.getColor("textPrimary"));
+        btnPrevCatPage.addActionListener(e -> { if (categoryPage > 1) { categoryPage--; refreshCategoryGrid(); } });
+        btnNextCatPage.addActionListener(e -> { categoryPage++; refreshCategoryGrid(); });
+        pagination.add(btnPrevCatPage);
+        pagination.add(lblCatPageIndicator);
+        pagination.add(btnNextCatPage);
+        categoryContainer.add(pagination, BorderLayout.SOUTH);
+
+        panel.add(categoryContainer, gbc);
+
+        categoryContainer.setVisible(false); // ẩn ban đầu
+
+        cmbScope.addActionListener(e -> {
+            boolean byCategory = cmbScope.getSelectedIndex() == 1;
+            categoryContainer.setVisible(byCategory);
+            if (byCategory) {
+                categoryPage = 1;
+                refreshCategoryGrid();
+            } else {
+                selectedCategory = null;
+            }
+            // Cập nhật layout toàn bộ cây giao diện
+            panel.revalidate();
+            panel.repaint();
+            SwingUtilities.getWindowAncestor(panel).revalidate();
+            SwingUtilities.getWindowAncestor(panel).repaint();
+        });
+
+        // 3. Period
         lblPeriod = new JLabel(isVietnamese ? "Kỳ hạn:" : "Period:");
         panel.add(lblPeriod, gbc);
 
@@ -142,7 +192,7 @@ public class BudgetPanel extends JPanel implements Observer {
         styleComboBox(cmbPeriod);
         panel.add(cmbPeriod, gbc);
 
-        // 4. Số tiền giới hạn
+        // 4. Amount
         lblAmount = new JLabel(isVietnamese ? "Số tiền (VND):" : "Amount (VND):");
         panel.add(lblAmount, gbc);
 
@@ -150,7 +200,7 @@ public class BudgetPanel extends JPanel implements Observer {
         styleTextField(txtAmount);
         panel.add(txtAmount, gbc);
 
-        // 5. Ngưỡng cảnh báo nhắc nhở
+        // 5. Threshold
         lblReminder = new JLabel(isVietnamese ? "Ngưỡng nhắc nhở (%):" : "Reminder Threshold (%):");
         panel.add(lblReminder, gbc);
 
@@ -159,7 +209,7 @@ public class BudgetPanel extends JPanel implements Observer {
         styleSpinner(spinReminderThreshold);
         panel.add(spinReminderThreshold, gbc);
 
-        // 6. Nút lưu
+        // 6. Save button
         gbc.insets = new Insets(20, 0, 5, 0);
         btnSaveBudget = new JButton(isVietnamese ? "Kích hoạt Ngân sách" : "Activate Budget");
         btnSaveBudget.setFont(new Font("Segoe UI", Font.BOLD, 15));
@@ -170,11 +220,93 @@ public class BudgetPanel extends JPanel implements Observer {
         panel.add(btnSaveBudget, gbc);
     }
 
+    private void refreshCategoryGrid() {
+        categoryGridPanel.removeAll();
+        List<Category> categories = new ArrayList<>();
+        if (financeService != null) {
+            for (Category c : financeService.getAllCategories()) {
+                if (c.getType() == TransactionType.EXPENSE) categories.add(c);
+            }
+        }
+
+        int totalItems = categories.size();
+        int totalPages = (int) Math.ceil((double) totalItems / CATEGORIES_PER_PAGE);
+        if (totalPages == 0) totalPages = 1;
+        if (categoryPage > totalPages) categoryPage = totalPages;
+        if (categoryPage < 1) categoryPage = 1;
+
+        lblCatPageIndicator.setText((isVietnamese ? "Trang " : "Page ") + categoryPage + " / " + totalPages);
+        btnPrevCatPage.setEnabled(categoryPage > 1);
+        btnNextCatPage.setEnabled(categoryPage < totalPages);
+
+        int start = (categoryPage - 1) * CATEGORIES_PER_PAGE;
+        int end = Math.min(start + CATEGORIES_PER_PAGE, totalItems);
+        for (int i = start; i < end; i++) {
+            categoryGridPanel.add(createCategoryItem(categories.get(i)));
+        }
+        int displayed = end - start;
+        for (int i = displayed; i < CATEGORIES_PER_PAGE; i++) {
+            categoryGridPanel.add(new JPanel() {{ setOpaque(false); }});
+        }
+
+        // Điều chỉnh chiều cao scroll
+        int rows = displayed <= 4 ? 1 : 2;
+        int height = rows * 74 + (rows - 1) * 8 + 6;
+        categoryGridScroll.setPreferredSize(new Dimension(340, height));
+        categoryGridPanel.revalidate();
+        categoryGridPanel.repaint();
+    }
+
+    private JPanel createCategoryItem(Category c) {
+        JPanel item = new JPanel(new BorderLayout(0, 4));
+        item.setOpaque(false);
+        item.setPreferredSize(new Dimension(75, 74));
+        item.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        String emoji = EmojiUtil.CATEGORY_EMOJI.getOrDefault(c.getName(), "\uD83D\uDCCD");
+        JLabel lblIcon = new JLabel(emoji, SwingConstants.CENTER);
+        lblIcon.setFont(EmojiUtil.getEmojiFont(22));
+        lblIcon.setOpaque(true);
+        lblIcon.setPreferredSize(new Dimension(48, 48));
+        lblIcon.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1, true));
+
+        if (selectedCategory != null && selectedCategory.getId().equals(c.getId())) {
+            lblIcon.setBackground(ThemeManager.getColor("accent"));
+            lblIcon.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
+        } else {
+            lblIcon.setBackground(ThemeManager.getColor("input"));
+            lblIcon.setForeground(ThemeManager.getColor("textPrimary"));
+        }
+
+        JLabel lblName = new JLabel(c.getName(), SwingConstants.CENTER);
+        lblName.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblName.setForeground(ThemeManager.getColor("textPrimary"));
+
+        item.add(lblIcon, BorderLayout.CENTER);
+        item.add(lblName, BorderLayout.SOUTH);
+        item.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                selectedCategory = c;
+                refreshCategoryGrid();
+            }
+        });
+        return item;
+    }
+
     private void saveBudgetAction() {
         try {
             double amount = InputValidator.validateAmount(txtAmount.getText(), isVietnamese);
 
-            Category selectedCat = (cmbScope.getSelectedIndex() == 1) ? (Category) cmbCategory.getSelectedItem() : null;
+            boolean byCategory = cmbScope.getSelectedIndex() == 1;
+            if (byCategory && selectedCategory == null) {
+                JOptionPane.showMessageDialog(this,
+                        isVietnamese ? "Vui lòng chọn một danh mục!" : "Please select a category!",
+                        isVietnamese ? "Lỗi" : "Error", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            Category selectedCat = byCategory ? selectedCategory : null;
             String period = (String) cmbPeriod.getSelectedItem();
             int threshold = (int) spinReminderThreshold.getValue();
 
@@ -204,6 +336,8 @@ public class BudgetPanel extends JPanel implements Observer {
                 budgetManager.addBudget(budget);
                 JOptionPane.showMessageDialog(this, isVietnamese ? "Đã lưu và triển khai mục tiêu hạn mức!" : "Budget deployed successfully!");
                 txtAmount.setText("");
+                selectedCategory = null;
+                refreshCategoryGrid();
                 refreshData();
                 if (mainFrame != null) mainFrame.refreshAllPanels();
             }
@@ -219,7 +353,7 @@ public class BudgetPanel extends JPanel implements Observer {
         if (budgetListContainer == null || budgetManager == null) return;
 
         budgetListContainer.removeAll();
-        JLabel lblLoading = new JLabel(isVietnamese ? "⏳ Đang tải dữ liệu ngân sách..." : "⏳ Loading budget data...");
+        JLabel lblLoading = new JLabel(isVietnamese ? "Đang tải dữ liệu ngân sách..." : "Loading budget data...");
         lblLoading.setFont(new Font("Segoe UI", Font.ITALIC, 14));
         lblLoading.setForeground(ThemeManager.getColor("textSecondary"));
         lblLoading.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -280,8 +414,8 @@ public class BudgetPanel extends JPanel implements Observer {
         infoPanel.setOpaque(false);
 
         String title = b.getCategory() == null ?
-                (isVietnamese ? "🎯 Ngân sách Tổng Thể" : "🎯 Overall Budget") :
-                ("📌 Hạn mức: " + b.getCategory().getName());
+                (isVietnamese ? "Ngân sách Tổng Thể" : "Overall Budget") :
+                (b.getCategory().getName());
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 15));
         lblTitle.setForeground(ThemeManager.getColor("textPrimary"));
@@ -323,7 +457,6 @@ public class BudgetPanel extends JPanel implements Observer {
         return card;
     }
 
-    // =================== INNER CLASS: VÒNG TRÒN TIẾN ĐỘ ===================
     private class BudgetProgressCircle extends JComponent {
         private final double limit;
         private final double spent;
@@ -374,7 +507,6 @@ public class BudgetPanel extends JPanel implements Observer {
         }
     }
 
-    // =================== CÁC HÀM STYLE ===================
     private void styleTextField(JTextField tf) {
         tf.setBackground(ThemeManager.getColor("input"));
         tf.setForeground(ThemeManager.getColor("textPrimary"));
@@ -415,7 +547,16 @@ public class BudgetPanel extends JPanel implements Observer {
         }
     }
 
-    // =================== THEME & LANGUAGE ===================
+    private JButton createArrowButton(String text) {
+        JButton btn = new JButton(text);
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        btn.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
+        btn.setFocusPainted(false);
+        btn.setPreferredSize(new Dimension(36, 28));
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
+    }
+
     public void applyTheme() {
         setOpaque(true);
         setBackground(ThemeManager.getColor("bg"));
@@ -437,12 +578,10 @@ public class BudgetPanel extends JPanel implements Observer {
 
         if (btnSaveBudget != null) {
             btnSaveBudget.setBackground(ThemeManager.getColor("accent"));
-            // SỬA: Dùng màu tương phản thay vì cứng "bg"
             btnSaveBudget.setForeground(ThemeManager.getContrastColor(ThemeManager.getColor("accent")));
         }
 
         if (cmbScope != null) styleComboBox(cmbScope);
-        if (cmbCategory != null) styleComboBox(cmbCategory);
         if (cmbPeriod != null) styleComboBox(cmbPeriod);
         if (spinReminderThreshold != null) styleSpinner(spinReminderThreshold);
 
@@ -450,6 +589,7 @@ public class BudgetPanel extends JPanel implements Observer {
             updateLabelsTheme(c);
         }
 
+        refreshCategoryGrid();
         refreshData();
     }
 
@@ -470,7 +610,7 @@ public class BudgetPanel extends JPanel implements Observer {
         if (btnSaveBudget != null) btnSaveBudget.setText(isVN ? "Kích hoạt Ngân sách" : "Activate Budget");
 
         if (lblScope != null) lblScope.setText(isVN ? "Phạm vi áp dụng:" : "Scope:");
-        if (lblCategory != null) lblCategory.setText(isVN ? "Danh mục:" : "Category:");
+        if (lblCategory != null) lblCategory.setText(isVN ? "Chọn danh mục:" : "Select Category:");
         if (lblPeriod != null) lblPeriod.setText(isVN ? "Kỳ hạn:" : "Period:");
         if (lblAmount != null) lblAmount.setText(isVN ? "Số tiền (VND):" : "Amount (VND):");
         if (lblReminder != null) lblReminder.setText(isVN ? "Ngưỡng nhắc nhở (%):" : "Reminder Threshold (%):");
@@ -486,6 +626,7 @@ public class BudgetPanel extends JPanel implements Observer {
             if (sel >= 0) cmbPeriod.setSelectedIndex(sel);
         }
 
+        refreshCategoryGrid();
         refreshData();
     }
 

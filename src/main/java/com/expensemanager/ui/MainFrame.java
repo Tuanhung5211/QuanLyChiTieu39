@@ -239,7 +239,7 @@ public class MainFrame extends JFrame implements Observer {
         btnDashboard = createNavButton(isVietnamese ? "Tổng quan" : "Overview");
         btnStatistics = createNavButton(isVietnamese ? "Thống kê" : "Statistics");
         btnBudget = createNavButton(isVietnamese ? "Ngân sách" : "Budget");
-        btnRecurring = createNavButton(isVietnamese ? "Lặp lại" : "Recurring");
+        btnRecurring = createNavButton(isVietnamese ? "Định kì" : "Scheduled");
         btnSettings = createNavButton(isVietnamese ? "Cài đặt" : "Settings");
 
         if (SessionManager.isAdmin()) {
@@ -374,7 +374,7 @@ public class MainFrame extends JFrame implements Observer {
         if (btnDashboard != null) btnDashboard.setText(isVN ? "Tổng quan" : "Overview");
         if (btnStatistics != null) btnStatistics.setText(isVN ? "Thống kê" : "Statistics");
         if (btnBudget != null) btnBudget.setText(isVN ? "Ngân sách" : "Budget");
-        if (btnRecurring != null) btnRecurring.setText(isVN ? "Lặp lại" : "Recurring");
+        if (btnRecurring != null) btnRecurring.setText(isVN ? "Định kì" : "Scheduled");
         if (btnSettings != null) btnSettings.setText(isVN ? "Cài đặt" : "Settings");
         if (btnAdmin != null) btnAdmin.setText(isVN ? "Quản trị" : "Admin");
 
@@ -465,7 +465,6 @@ public class MainFrame extends JFrame implements Observer {
                 revalidate();
                 repaint();
             }
-            // Cập nhật trạng thái nút Premium trong SettingsPanel
             if (settingsPanel != null) {
                 settingsPanel.updateLanguageAndResponsive(isVietnamese, getWidth());
             }

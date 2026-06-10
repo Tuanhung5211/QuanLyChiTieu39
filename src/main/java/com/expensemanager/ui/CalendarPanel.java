@@ -33,6 +33,7 @@ public class CalendarPanel extends JPanel implements Observer {
     private JButton btnPrevMonth, btnNextMonth;
     private LocalDate currentDate;
     private Map<LocalDate, Double> dailyExpenseMap;
+    private Map<LocalDate, Double> dailyIncomeMap;
 
     public CalendarPanel(MainFrame mainFrame, FinanceService financeService, BudgetManager budgetManager) {
         this.mainFrame = mainFrame;
@@ -41,6 +42,7 @@ public class CalendarPanel extends JPanel implements Observer {
         this.isVietnamese = mainFrame != null && mainFrame.isVietnamese();
         this.currentDate = LocalDate.now();
         this.dailyExpenseMap = new HashMap<>();
+        this.dailyIncomeMap = new HashMap<>();
 
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -71,13 +73,14 @@ public class CalendarPanel extends JPanel implements Observer {
         header.add(navPanel, BorderLayout.CENTER);
         add(header, BorderLayout.NORTH);
 
-        daysPanel = new JPanel(new GridLayout(0, 7, 8, 8));
+        daysPanel = new JPanel(new GridLayout(0, 7, 4, 4));
         add(daysPanel, BorderLayout.CENTER);
     }
 
     private void refreshCalendar() {
         daysPanel.removeAll();
         dailyExpenseMap.clear();
+        dailyIncomeMap.clear();
 
         YearMonth yearMonth = YearMonth.from(currentDate);
         LocalDate firstOfMonth = yearMonth.atDay(1);
@@ -89,7 +92,7 @@ public class CalendarPanel extends JPanel implements Observer {
                 new String[]{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
         for (String d : weekDays) {
             JLabel lbl = new JLabel(d, SwingConstants.CENTER);
-            lbl.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            lbl.setFont(new Font("Segoe UI", Font.BOLD, 13));
             lbl.setForeground(ThemeManager.getColor("textSecondary"));
             daysPanel.add(lbl);
         }
@@ -97,11 +100,15 @@ public class CalendarPanel extends JPanel implements Observer {
         List<Transaction> allTx = financeService.getAllTransactions();
         double totalExpenseMonth = 0;
         for (Transaction t : allTx) {
-            if (t.getType() == TransactionType.EXPENSE && t.getDateTime().getYear() == currentDate.getYear()
+            if (t.getDateTime().getYear() == currentDate.getYear()
                     && t.getDateTime().getMonthValue() == currentDate.getMonthValue()) {
                 LocalDate d = t.getDateTime().toLocalDate();
-                dailyExpenseMap.put(d, dailyExpenseMap.getOrDefault(d, 0.0) + t.getAmount());
-                totalExpenseMonth += t.getAmount();
+                if (t.getType() == TransactionType.EXPENSE) {
+                    dailyExpenseMap.put(d, dailyExpenseMap.getOrDefault(d, 0.0) + t.getAmount());
+                    totalExpenseMonth += t.getAmount();
+                } else if (t.getType() == TransactionType.INCOME) {
+                    dailyIncomeMap.put(d, dailyIncomeMap.getOrDefault(d, 0.0) + t.getAmount());
+                }
             }
         }
 
@@ -121,8 +128,10 @@ public class CalendarPanel extends JPanel implements Observer {
         for (int day = 1; day <= daysInMonth; day++) {
             LocalDate date = LocalDate.of(currentDate.getYear(), currentDate.getMonth(), day);
             double expense = dailyExpenseMap.getOrDefault(date, 0.0);
+            double income = dailyIncomeMap.getOrDefault(date, 0.0);
             boolean isOver = dailyBudget > 0 && expense > dailyBudget;
-            JPanel dayCell = createDayCell(day, expense, isOver);
+            boolean hasTransaction = expense > 0 || income > 0;
+            JPanel dayCell = createDayCell(day, expense, income, isOver, hasTransaction);
             daysPanel.add(dayCell);
         }
 
@@ -141,14 +150,19 @@ public class CalendarPanel extends JPanel implements Observer {
         daysPanel.repaint();
     }
 
-    private JPanel createDayCell(int day, double expense, boolean isOver) {
+    private JPanel createDayCell(int day, double expense, double income, boolean isOver, boolean hasTransaction) {
         JPanel cell = new JPanel(new BorderLayout());
         cell.setBorder(BorderFactory.createLineBorder(ThemeManager.getColor("border"), 1));
         cell.setPreferredSize(new Dimension(80, 70));
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
+        // Nền
         if (isOver) {
             cell.setBackground(ThemeManager.getColor("danger"));
+        } else if (hasTransaction) {
+            // Tô nền nhẹ màu accent với độ trong suốt
+            Color accent = ThemeManager.getColor("accent");
+            cell.setBackground(new Color(accent.getRed(), accent.getGreen(), accent.getBlue(), 40));
         } else {
             cell.setBackground(ThemeManager.getColor("surface"));
         }
@@ -158,13 +172,27 @@ public class CalendarPanel extends JPanel implements Observer {
         lblDay.setForeground(ThemeManager.getColor("textPrimary"));
         lblDay.setBorder(BorderFactory.createEmptyBorder(5, 5, 0, 0));
 
-        JLabel lblAmount = new JLabel(String.format("%,.0f", expense), SwingConstants.RIGHT);
-        lblAmount.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        String amountText = "";
+        if (expense > 0 && income > 0) {
+            amountText = String.format("-%,.0f/+%,.0f", expense, income);
+        } else if (expense > 0) {
+            amountText = String.format("-%,.0f", expense);
+        } else if (income > 0) {
+            amountText = String.format("+%,.0f", income);
+        }
+        JLabel lblAmount = new JLabel(amountText, SwingConstants.RIGHT);
+        lblAmount.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         lblAmount.setForeground(ThemeManager.getColor("textPrimary"));
         lblAmount.setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 5));
 
         cell.add(lblDay, BorderLayout.NORTH);
         cell.add(lblAmount, BorderLayout.SOUTH);
+
+        // Tooltip
+        if (hasTransaction) {
+            String tooltip = String.format("Chi: %,.0f VND | Thu: %,.0f VND", expense, income);
+            cell.setToolTipText(tooltip);
+        }
 
         cell.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -235,7 +263,6 @@ public class CalendarPanel extends JPanel implements Observer {
         refreshCalendar();
     }
 
-    // 👉 PHƯƠNG THỨC MỚI THÊM
     public void updateLanguageText(boolean isVN) {
         this.isVietnamese = isVN;
         refreshCalendar();
